@@ -32,7 +32,7 @@ const Header = () => {
 
   return (
     <>
-      {/* Top info bar — only on desktop */}
+      {/* Top info bar — only on desktop (lg+) */}
       <div className={`hidden lg:block fixed top-0 left-0 right-0 z-[51] transition-all duration-300 ${
         transparent ? "bg-white/5 backdrop-blur-sm border-b border-white/10" : "bg-muted border-b border-border"
       }`}>
@@ -62,24 +62,24 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Main header */}
-      <header className={`fixed left-0 right-0 z-50 transition-all duration-300 ${
+      {/* Main header — top-0 on mobile, top-8 (32px) on lg+ to sit below info bar */}
+      <header className={`fixed left-0 right-0 z-50 transition-all duration-300 top-0 lg:top-8 ${
         transparent
-          ? "top-8 bg-transparent"
-          : "top-8 bg-card/98 backdrop-blur-2xl shadow-[0_1px_3px_hsl(var(--foreground)/0.06)] border-b border-border/50"
-      } lg:top-8`} style={{ top: scrolled || !isHome ? '32px' : undefined }}>
+          ? "bg-transparent"
+          : "bg-card/98 backdrop-blur-2xl shadow-[0_1px_3px_hsl(var(--foreground)/0.06)] border-b border-border/50"
+      }`}>
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-[60px]">
+          <div className="flex items-center justify-between h-14 lg:h-[60px]">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2.5 group">
-              <div className="w-10 h-10 rounded-xl hero-gradient flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow">
-                <Plane className="w-5 h-5 text-white" />
+            <Link to="/" className="flex items-center gap-2 lg:gap-2.5 group">
+              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl hero-gradient flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow">
+                <Plane className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
               </div>
               <div className="flex flex-col">
-                <span className={`text-[19px] font-black tracking-tight leading-none ${transparent ? "text-white" : "text-foreground"}`}>
+                <span className={`text-[17px] lg:text-[19px] font-black tracking-tight leading-none ${transparent ? "text-white" : "text-foreground"}`}>
                   TravelHub
                 </span>
-                <span className={`text-[9px] font-semibold uppercase tracking-[0.2em] ${transparent ? "text-white/50" : "text-muted-foreground"}`}>
+                <span className={`text-[8px] lg:text-[9px] font-semibold uppercase tracking-[0.2em] ${transparent ? "text-white/50" : "text-muted-foreground"}`}>
                   Bangladesh
                 </span>
               </div>
@@ -132,7 +132,7 @@ const Header = () => {
               </DropdownMenu>
             </nav>
 
-            {/* Right Side */}
+            {/* Right Side — desktop */}
             <div className="hidden lg:flex items-center gap-2.5">
               <Button
                 variant="ghost"
@@ -156,10 +156,10 @@ const Header = () => {
               </Button>
             </div>
 
-            {/* Mobile */}
+            {/* Mobile menu button */}
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild className="lg:hidden">
-                <Button variant="ghost" size="icon" className={transparent ? "text-white" : ""}>
+                <Button variant="ghost" size="icon" className={`h-10 w-10 ${transparent ? "text-white" : ""}`}>
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
@@ -179,18 +179,18 @@ const Header = () => {
                         key={item.href}
                         to={item.href}
                         onClick={() => setMobileOpen(false)}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-foreground hover:bg-muted transition-colors font-medium"
+                        className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-foreground hover:bg-muted transition-colors font-medium"
                       >
                         <item.icon className="w-5 h-5 text-primary" />
                         {item.label}
                       </Link>
                     ))}
                   </nav>
-                  <div className="p-4 border-t border-border space-y-2">
-                    <Button className="w-full font-bold" asChild>
+                  <div className="p-4 border-t border-border space-y-2.5">
+                    <Button className="w-full h-11 font-bold" asChild>
                       <Link to="/auth/login" onClick={() => setMobileOpen(false)}>Login</Link>
                     </Button>
-                    <Button variant="outline" className="w-full" asChild>
+                    <Button variant="outline" className="w-full h-11" asChild>
                       <Link to="/auth/register" onClick={() => setMobileOpen(false)}>Create Account</Link>
                     </Button>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center pt-2">
