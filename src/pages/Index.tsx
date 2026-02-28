@@ -151,11 +151,13 @@ const Index = () => {
   return (
     <div className="overflow-hidden">
       {/* ===== HERO ===== */}
-      <section className="relative min-h-[540px] sm:min-h-[580px] md:min-h-[660px]">
+      <section className="relative min-h-[540px] sm:min-h-[580px] md:min-h-[660px] overflow-hidden">
         <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat hero-bg-animated"
           style={{ backgroundImage: "url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80')" }}
         />
+        <div className="hero-light-sweep" />
+        <div className="hero-water-shimmer" />
         <div className="absolute inset-0 bg-gradient-to-b from-[hsl(224,30%,6%)/0.6] via-[hsl(224,30%,6%)/0.4] to-[hsl(224,30%,6%)/0.75]" />
 
         {/* Floating shapes — hidden on small screens for perf */}

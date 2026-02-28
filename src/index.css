@@ -286,3 +286,66 @@
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+@keyframes hero-pan {
+  0% { transform: scale(1.15) translate(0, 0); }
+  25% { transform: scale(1.2) translate(-1.5%, -1%); }
+  50% { transform: scale(1.18) translate(-0.5%, 0.5%); }
+  75% { transform: scale(1.22) translate(1%, -0.5%); }
+  100% { transform: scale(1.15) translate(0, 0); }
+}
+
+@keyframes hero-light {
+  0%, 100% { opacity: 0; }
+  30% { opacity: 0.08; }
+  60% { opacity: 0.03; }
+}
+
+@keyframes hero-waves {
+  0% { transform: translateX(0) scaleY(1); }
+  50% { transform: translateX(-2%) scaleY(1.08); }
+  100% { transform: translateX(0) scaleY(1); }
+}
+
+.hero-bg-animated {
+  animation: hero-pan 25s ease-in-out infinite;
+  will-change: transform;
+}
+
+.hero-light-sweep {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    hsl(38 90% 65% / 0.12) 30%,
+    transparent 50%,
+    hsl(200 80% 70% / 0.08) 70%,
+    transparent 100%
+  );
+  background-size: 300% 300%;
+  animation: hero-light-sweep-move 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes hero-light-sweep-move {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.hero-water-shimmer {
+  position: absolute;
+  bottom: 0;
+  left: -5%;
+  right: -5%;
+  height: 40%;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    hsl(190 70% 70% / 0.04) 40%,
+    hsl(190 70% 70% / 0.08) 100%
+  );
+  animation: hero-waves 6s ease-in-out infinite;
+  pointer-events: none;
+}
