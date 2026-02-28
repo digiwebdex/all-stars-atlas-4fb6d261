@@ -165,7 +165,7 @@ const Index = () => {
             <source src="/videos/hero-beach.mp4" type="video/mp4" />
           </video>
         </div>
-        <div className="absolute inset-0 bg-gradient-to-b from-[hsl(224,30%,6%)/0.55] via-[hsl(224,30%,6%)/0.35] to-[hsl(224,30%,6%)/0.7]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[hsl(200,80%,20%)/0.3] via-[hsl(200,80%,20%)/0.15] to-[hsl(200,80%,20%)/0.45]" />
 
         {/* Floating shapes — hidden on small screens for perf */}
         <div className="hidden sm:block absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-[100px] animate-float" />
@@ -178,15 +178,15 @@ const Index = () => {
             transition={{ duration: 0.6 }}
             className="text-center mb-6 sm:mb-8 md:mb-10"
           >
-            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/80 text-[11px] sm:text-xs font-semibold mb-4 sm:mb-5">
+            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-black/20 backdrop-blur-md border border-white/15 text-white text-[11px] sm:text-xs font-semibold mb-4 sm:mb-5" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>
               <CheckCircle2 className="w-3.5 h-3.5 text-success" />
               Bangladesh's Most Trusted Travel Platform
             </div>
-            <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-[68px] font-black text-white mb-3 sm:mb-4 leading-[1.08] tracking-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-[68px] font-black text-white mb-3 sm:mb-4 leading-[1.08] tracking-tight" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4), 0 4px 24px rgba(0,0,0,0.2)' }}>
               Your Journey,{" "}
-              <span className="text-gradient-warm">Simplified.</span>
+              <span className="text-gradient-warm" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.35))' }}>Simplified.</span>
             </h1>
-            <p className="text-sm sm:text-base md:text-lg text-white/65 font-medium max-w-xl mx-auto leading-relaxed px-2">
+            <p className="text-sm sm:text-base md:text-lg text-white/80 font-medium max-w-xl mx-auto leading-relaxed px-2" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4), 0 2px 12px rgba(0,0,0,0.2)' }}>
               Book flights, hotels, holidays & visa — all in one place.
               <br className="hidden md:block" />
               Best prices, 24/7 support, instant confirmation.
