@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { PhoneCall, Zap, CheckCircle2, ArrowRight } from "lucide-react";
+import { PhoneCall, Zap, CheckCircle2 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { RECHARGE_OPERATORS } from "@/lib/constants";
+import { useRechargeOperators, useSubmitRecharge } from "@/hooks/useApiData";
+import DataLoader from "@/components/DataLoader";
 
 const RechargePage = () => {
   const [searchParams] = useSearchParams();
@@ -19,14 +19,23 @@ const RechargePage = () => {
   const [rechargeType, setRechargeType] = useState(searchParams.get("type") || "prepaid");
   const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
+  const { data: operatorsData, isLoading, error, refetch } = useRechargeOperators();
+  const submitRecharge = useSubmitRecharge();
 
-  const handleSubmit = () => {
+  const operators = (operatorsData as any)?.operators || [];
+
+  const handleSubmit = async () => {
     if (!operator || !number || !amount) {
       toast({ title: "Error", description: "Please fill in all fields", variant: "destructive" });
       return;
     }
-    setSubmitted(true);
-    toast({ title: "Success", description: "Recharge submitted successfully!" });
+    try {
+      await submitRecharge.mutateAsync({ operator, number, amount: Number(amount), type: rechargeType } as any);
+      setSubmitted(true);
+      toast({ title: "Success", description: "Recharge submitted successfully!" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Recharge failed", variant: "destructive" });
+    }
   };
 
   if (submitted) {
@@ -34,9 +43,7 @@ const RechargePage = () => {
       <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="pt-8 pb-8 space-y-4">
-            <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8 text-success" />
-            </div>
+            <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto"><CheckCircle2 className="w-8 h-8 text-success" /></div>
             <h2 className="text-xl font-bold">Recharge Successful!</h2>
             <p className="text-sm text-muted-foreground">৳{amount} has been recharged to {number}</p>
             <div className="flex gap-3 justify-center">
@@ -52,70 +59,43 @@ const RechargePage = () => {
   return (
     <div className="min-h-screen bg-muted/30 pt-20 lg:pt-28 pb-10">
       <div className="container mx-auto px-4 max-w-lg">
-        <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
-          <PhoneCall className="w-6 h-6 text-primary" /> Mobile Recharge
-        </h1>
-
-        <Card>
-          <CardContent className="p-6 space-y-5">
-            <div className="flex gap-2">
-              {["prepaid", "postpaid"].map(t => (
-                <button key={t} onClick={() => setRechargeType(t)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${
-                    rechargeType === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"
-                  }`}>
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Operator</Label>
-              <Select value={operator} onValueChange={setOperator}>
-                <SelectTrigger className="h-11"><SelectValue placeholder="Select operator" /></SelectTrigger>
-                <SelectContent>
-                  {RECHARGE_OPERATORS.map(op => (
-                    <SelectItem key={op.id} value={op.id}>{op.logo} {op.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Phone Number</Label>
-              <Input value={number} onChange={e => setNumber(e.target.value)} placeholder="01XXX-XXXXXX" className="h-11" />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Amount (৳)</Label>
-              <Input value={amount} onChange={e => setAmount(e.target.value)} placeholder="Enter amount" type="number" className="h-11" />
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {[20, 50, 100, 200, 500, 1000].map(amt => (
-                <button key={amt} onClick={() => setAmount(String(amt))}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all ${
-                    amount === String(amt) ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
-                  }`}>
-                  ৳{amt}
-                </button>
-              ))}
-            </div>
-
-            <Separator />
-
-            {amount && (
-              <div className="flex justify-between text-base">
-                <span className="font-bold">Total</span>
-                <span className="font-black text-primary">৳{Number(amount).toLocaleString()}</span>
+        <h1 className="text-2xl font-bold mb-6 flex items-center gap-2"><PhoneCall className="w-6 h-6 text-primary" /> Mobile Recharge</h1>
+        <DataLoader isLoading={isLoading} error={error} skeleton="detail" retry={refetch}>
+          <Card>
+            <CardContent className="p-6 space-y-5">
+              <div className="flex gap-2">
+                {["prepaid", "postpaid"].map(t => (
+                  <button key={t} onClick={() => setRechargeType(t)}
+                    className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${rechargeType === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"}`}>
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                  </button>
+                ))}
               </div>
-            )}
-
-            <Button onClick={handleSubmit} className="w-full h-12 font-bold">
-              <Zap className="w-5 h-5 mr-2" /> Recharge Now
-            </Button>
-          </CardContent>
-        </Card>
+              <div className="space-y-1.5">
+                <Label>Operator</Label>
+                <Select value={operator} onValueChange={setOperator}>
+                  <SelectTrigger className="h-11"><SelectValue placeholder="Select operator" /></SelectTrigger>
+                  <SelectContent>
+                    {operators.map((op: any) => <SelectItem key={op.id} value={op.id}>{op.logo} {op.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5"><Label>Phone Number</Label><Input value={number} onChange={e => setNumber(e.target.value)} placeholder="01XXX-XXXXXX" className="h-11" /></div>
+              <div className="space-y-1.5"><Label>Amount (৳)</Label><Input value={amount} onChange={e => setAmount(e.target.value)} placeholder="Enter amount" type="number" className="h-11" /></div>
+              <div className="flex flex-wrap gap-2">
+                {[20, 50, 100, 200, 500, 1000].map(amt => (
+                  <button key={amt} onClick={() => setAmount(String(amt))}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all ${amount === String(amt) ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>৳{amt}</button>
+                ))}
+              </div>
+              <Separator />
+              {amount && <div className="flex justify-between text-base"><span className="font-bold">Total</span><span className="font-black text-primary">৳{Number(amount).toLocaleString()}</span></div>}
+              <Button onClick={handleSubmit} className="w-full h-12 font-bold" disabled={submitRecharge.isPending}>
+                <Zap className="w-5 h-5 mr-2" /> {submitRecharge.isPending ? "Processing..." : "Recharge Now"}
+              </Button>
+            </CardContent>
+          </Card>
+        </DataLoader>
       </div>
     </div>
   );

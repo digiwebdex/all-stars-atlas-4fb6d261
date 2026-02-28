@@ -8,7 +8,8 @@ import { Separator } from "@/components/ui/separator";
 import { Receipt, CreditCard, CheckCircle2 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { BILL_CATEGORIES } from "@/lib/constants";
+import { useBillCategories, useSubmitBillPayment } from "@/hooks/useApiData";
+import DataLoader from "@/components/DataLoader";
 
 const PayBillPage = () => {
   const [searchParams] = useSearchParams();
@@ -18,14 +19,23 @@ const PayBillPage = () => {
   const [amount, setAmount] = useState(searchParams.get("amount") || "");
   const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
+  const { data: catData, isLoading, error, refetch } = useBillCategories();
+  const submitBill = useSubmitBillPayment();
 
-  const handleSubmit = () => {
+  const categories = (catData as any)?.categories || [];
+
+  const handleSubmit = async () => {
     if (!category || !biller || !account || !amount) {
       toast({ title: "Error", description: "Please fill in all fields", variant: "destructive" });
       return;
     }
-    setSubmitted(true);
-    toast({ title: "Success", description: "Bill payment submitted!" });
+    try {
+      await submitBill.mutateAsync({ category, biller, account, amount: Number(amount) } as any);
+      setSubmitted(true);
+      toast({ title: "Success", description: "Bill payment submitted!" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Payment failed", variant: "destructive" });
+    }
   };
 
   if (submitted) {
@@ -33,9 +43,7 @@ const PayBillPage = () => {
       <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="pt-8 pb-8 space-y-4">
-            <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8 text-success" />
-            </div>
+            <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto"><CheckCircle2 className="w-8 h-8 text-success" /></div>
             <h2 className="text-xl font-bold">Payment Successful!</h2>
             <p className="text-sm text-muted-foreground">৳{Number(amount).toLocaleString()} paid to {biller}</p>
             <p className="text-xs text-muted-foreground">Account: {account}</p>
@@ -52,55 +60,35 @@ const PayBillPage = () => {
   return (
     <div className="min-h-screen bg-muted/30 pt-20 lg:pt-28 pb-10">
       <div className="container mx-auto px-4 max-w-lg">
-        <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
-          <Receipt className="w-6 h-6 text-primary" /> Pay Bill
-        </h1>
-
-        <Card>
-          <CardContent className="p-6 space-y-5">
-            <div className="space-y-1.5">
-              <Label>Bill Category</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="h-11"><SelectValue placeholder="Select category" /></SelectTrigger>
-                <SelectContent>
-                  {BILL_CATEGORIES.map(cat => (
-                    <SelectItem key={cat} value={cat.toLowerCase().replace(/ /g, '-')}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Biller Name</Label>
-              <Input value={biller} onChange={e => setBiller(e.target.value)} placeholder="e.g. DPDC, Titas Gas" className="h-11" />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Account / Subscriber Number</Label>
-              <Input value={account} onChange={e => setAccount(e.target.value)} placeholder="Enter account number" className="h-11" />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Amount (৳)</Label>
-              <Input value={amount} onChange={e => setAmount(e.target.value)} placeholder="Enter amount" type="number" className="h-11" />
-            </div>
-
-            <Separator />
-
-            {amount && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Bill Amount</span><span className="font-semibold">৳{Number(amount).toLocaleString()}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Service Charge</span><span className="font-semibold">৳10</span></div>
-                <Separator />
-                <div className="flex justify-between text-base"><span className="font-bold">Total</span><span className="font-black text-primary">৳{(Number(amount) + 10).toLocaleString()}</span></div>
+        <h1 className="text-2xl font-bold mb-6 flex items-center gap-2"><Receipt className="w-6 h-6 text-primary" /> Pay Bill</h1>
+        <DataLoader isLoading={isLoading} error={error} skeleton="detail" retry={refetch}>
+          <Card>
+            <CardContent className="p-6 space-y-5">
+              <div className="space-y-1.5">
+                <Label>Bill Category</Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger className="h-11"><SelectValue placeholder="Select category" /></SelectTrigger>
+                  <SelectContent>{categories.map((cat: any) => <SelectItem key={cat.id || cat} value={cat.id || cat.toLowerCase().replace(/ /g, '-')}>{cat.name || cat}</SelectItem>)}</SelectContent>
+                </Select>
               </div>
-            )}
-
-            <Button onClick={handleSubmit} className="w-full h-12 font-bold">
-              <CreditCard className="w-5 h-5 mr-2" /> Pay Bill
-            </Button>
-          </CardContent>
-        </Card>
+              <div className="space-y-1.5"><Label>Biller Name</Label><Input value={biller} onChange={e => setBiller(e.target.value)} placeholder="e.g. DPDC, Titas Gas" className="h-11" /></div>
+              <div className="space-y-1.5"><Label>Account / Subscriber Number</Label><Input value={account} onChange={e => setAccount(e.target.value)} placeholder="Enter account number" className="h-11" /></div>
+              <div className="space-y-1.5"><Label>Amount (৳)</Label><Input value={amount} onChange={e => setAmount(e.target.value)} placeholder="Enter amount" type="number" className="h-11" /></div>
+              <Separator />
+              {amount && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Bill Amount</span><span className="font-semibold">৳{Number(amount).toLocaleString()}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Service Charge</span><span className="font-semibold">৳10</span></div>
+                  <Separator />
+                  <div className="flex justify-between text-base"><span className="font-bold">Total</span><span className="font-black text-primary">৳{(Number(amount) + 10).toLocaleString()}</span></div>
+                </div>
+              )}
+              <Button onClick={handleSubmit} className="w-full h-12 font-bold" disabled={submitBill.isPending}>
+                <CreditCard className="w-5 h-5 mr-2" /> {submitBill.isPending ? "Processing..." : "Pay Bill"}
+              </Button>
+            </CardContent>
+          </Card>
+        </DataLoader>
       </div>
     </div>
   );
