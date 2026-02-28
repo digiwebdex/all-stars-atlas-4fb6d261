@@ -4,6 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import AdminRoute from "@/components/AdminRoute";
 
 // Layouts
 import PublicLayout from "@/components/layout/PublicLayout";
@@ -15,6 +18,8 @@ import Index from "@/pages/Index";
 import NotFound from "@/pages/NotFound";
 import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
+import ForgotPassword from "@/pages/auth/ForgotPassword";
+import VerifyOTP from "@/pages/auth/VerifyOTP";
 import FlightResults from "@/pages/flights/FlightResults";
 import HotelResults from "@/pages/hotels/HotelResults";
 import VisaServices from "@/pages/visa/VisaServices";
@@ -29,6 +34,16 @@ import HotelDetail from "@/pages/hotels/HotelDetail";
 import HolidayDetail from "@/pages/holidays/HolidayDetail";
 import VisaApplication from "@/pages/visa/VisaApplication";
 import BookingConfirmation from "@/pages/booking/BookingConfirmation";
+
+// New Service Pages
+import MedicalServices from "@/pages/medical/MedicalServices";
+import MedicalBooking from "@/pages/medical/MedicalBooking";
+import CarRental from "@/pages/cars/CarRental";
+import CarBooking from "@/pages/cars/CarBooking";
+import ESIMPlans from "@/pages/esim/ESIMPlans";
+import ESIMPurchase from "@/pages/esim/ESIMPurchase";
+import RechargePage from "@/pages/recharge/RechargePage";
+import PayBillPage from "@/pages/paybill/PayBillPage";
 
 // Dashboard Pages
 import DashboardHome from "@/pages/dashboard/DashboardHome";
@@ -58,70 +73,83 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <ThemeProvider>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-        <Routes>
-          {/* Public Routes */}
-          <Route element={<PublicLayout />}>
-            <Route path="/" element={<Index />} />
-            <Route path="/flights" element={<FlightResults />} />
-            <Route path="/flights/book" element={<FlightBooking />} />
-            <Route path="/hotels" element={<HotelResults />} />
-            <Route path="/hotels/:id" element={<HotelDetail />} />
-            <Route path="/visa" element={<VisaServices />} />
-            <Route path="/visa/apply" element={<VisaApplication />} />
-            <Route path="/holidays" element={<HolidayPackages />} />
-            <Route path="/holidays/:id" element={<HolidayDetail />} />
-            <Route path="/booking/confirmation" element={<BookingConfirmation />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/refund-policy" element={<RefundPolicy />} />
-          </Route>
+    <AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+          <Routes>
+            {/* Public Routes */}
+            <Route element={<PublicLayout />}>
+              <Route path="/" element={<Index />} />
+              <Route path="/flights" element={<FlightResults />} />
+              <Route path="/flights/book" element={<FlightBooking />} />
+              <Route path="/hotels" element={<HotelResults />} />
+              <Route path="/hotels/:id" element={<HotelDetail />} />
+              <Route path="/visa" element={<VisaServices />} />
+              <Route path="/visa/apply" element={<VisaApplication />} />
+              <Route path="/holidays" element={<HolidayPackages />} />
+              <Route path="/holidays/:id" element={<HolidayDetail />} />
+              <Route path="/booking/confirmation" element={<BookingConfirmation />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/refund-policy" element={<RefundPolicy />} />
+              {/* New Service Routes */}
+              <Route path="/medical" element={<MedicalServices />} />
+              <Route path="/medical/book" element={<MedicalBooking />} />
+              <Route path="/cars" element={<CarRental />} />
+              <Route path="/cars/book" element={<CarBooking />} />
+              <Route path="/esim" element={<ESIMPlans />} />
+              <Route path="/esim/purchase" element={<ESIMPurchase />} />
+              <Route path="/recharge" element={<RechargePage />} />
+              <Route path="/paybill" element={<PayBillPage />} />
+            </Route>
 
-          {/* User Auth (public) */}
-          <Route path="/auth/login" element={<Login />} />
-          <Route path="/auth/register" element={<Register />} />
+            {/* User Auth (public) */}
+            <Route path="/auth/login" element={<Login />} />
+            <Route path="/auth/register" element={<Register />} />
+            <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+            <Route path="/auth/verify-otp" element={<VerifyOTP />} />
 
-          {/* Hidden Admin Login */}
-          <Route path="/admin/login" element={<AdminLogin />} />
+            {/* Hidden Admin Login */}
+            <Route path="/admin/login" element={<AdminLogin />} />
 
-          {/* Customer Dashboard */}
-          <Route path="/dashboard" element={<DashboardLayout />}>
-            <Route index element={<DashboardHome />} />
-            <Route path="bookings" element={<DashboardBookings />} />
-            <Route path="transactions" element={<DashboardTransactions />} />
-            <Route path="payments" element={<DashboardPayments />} />
-            <Route path="travellers" element={<DashboardTravellers />} />
-            <Route path="settings" element={<DashboardSettings />} />
-          </Route>
+            {/* Customer Dashboard — Protected */}
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+              <Route index element={<DashboardHome />} />
+              <Route path="bookings" element={<DashboardBookings />} />
+              <Route path="transactions" element={<DashboardTransactions />} />
+              <Route path="payments" element={<DashboardPayments />} />
+              <Route path="travellers" element={<DashboardTravellers />} />
+              <Route path="settings" element={<DashboardSettings />} />
+            </Route>
 
-          {/* Admin Dashboard */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="bookings" element={<AdminBookings />} />
-            <Route path="users" element={<AdminUsers />} />
-            <Route path="payments" element={<AdminPayments />} />
-            <Route path="reports" element={<AdminReports />} />
-            <Route path="cms/pages" element={<CMSPages />} />
-            <Route path="cms/promotions" element={<CMSPromotions />} />
-            <Route path="cms/media" element={<CMSMedia />} />
-            <Route path="cms/blog" element={<CMSBlog />} />
-            <Route path="cms/email-templates" element={<CMSEmailTemplates />} />
-            <Route path="cms/destinations" element={<CMSDestinations />} />
-            <Route path="visa" element={<AdminVisa />} />
-            <Route path="settings" element={<AdminSettings />} />
-          </Route>
+            {/* Admin Dashboard — Admin Protected */}
+            <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="bookings" element={<AdminBookings />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="payments" element={<AdminPayments />} />
+              <Route path="reports" element={<AdminReports />} />
+              <Route path="cms/pages" element={<CMSPages />} />
+              <Route path="cms/promotions" element={<CMSPromotions />} />
+              <Route path="cms/media" element={<CMSMedia />} />
+              <Route path="cms/blog" element={<CMSBlog />} />
+              <Route path="cms/email-templates" element={<CMSEmailTemplates />} />
+              <Route path="cms/destinations" element={<CMSDestinations />} />
+              <Route path="visa" element={<AdminVisa />} />
+              <Route path="settings" element={<AdminSettings />} />
+            </Route>
 
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </AuthProvider>
   </ThemeProvider>
 );
 
