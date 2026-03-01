@@ -151,7 +151,7 @@ const Index = () => {
   return (
     <div>
       {/* ===== HERO ===== */}
-      <section className="relative min-h-[540px] sm:min-h-[580px] md:min-h-[660px]">
+      <section className="relative min-h-[540px] sm:min-h-[580px] md:min-h-[660px] z-20">
         {/* Video Background */}
         <div className="absolute inset-0">
           <video
