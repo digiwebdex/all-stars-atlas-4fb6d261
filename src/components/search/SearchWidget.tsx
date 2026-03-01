@@ -292,22 +292,11 @@ const SearchWidget = () => {
   const totalHotelGuests = hotelGuests.adults + hotelGuests.children;
 
   const swapAirports = useCallback(() => {
-    if (flightScope === "international") {
-      // In international mode, only swap if both airports fit the scope after swap
-      // FROM can be anything, TO must be non-BD
-      if (toAirport && fromAirport && fromAirport.country !== "BD") {
-        setFromAirport(toAirport);
-        setToAirport(fromAirport);
-      }
-    } else {
-      // Domestic: both must be BD
-      setFromAirport(prev => {
-        const oldFrom = prev;
-        setToAirport(oldFrom);
-        return toAirport;
-      });
-    }
-  }, [toAirport, fromAirport, flightScope]);
+    const oldFrom = fromAirport;
+    const oldTo = toAirport;
+    setFromAirport(oldTo);
+    setToAirport(oldFrom);
+  }, [toAirport, fromAirport]);
 
   // ====== SEARCH HANDLERS ======
   const handleFlightSearch = () => {
