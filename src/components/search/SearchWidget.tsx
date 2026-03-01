@@ -295,8 +295,13 @@ const SearchWidget = () => {
     const oldFrom = fromAirport;
     const oldTo = toAirport;
     setFromAirport(oldTo);
-    setToAirport(oldFrom);
-  }, [toAirport, fromAirport]);
+    // In international mode, if the old FROM is a BD airport, clear TO instead of setting it
+    if (flightScope === "international" && oldFrom && oldFrom.country === "BD") {
+      setToAirport(null);
+    } else {
+      setToAirport(oldFrom);
+    }
+  }, [toAirport, fromAirport, flightScope]);
 
   // ====== SEARCH HANDLERS ======
   const handleFlightSearch = () => {
