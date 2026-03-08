@@ -251,7 +251,7 @@ router.get('/paybill/categories', async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM bill_categories WHERE active = 1');
     const data = rows.map(r => ({
-      id: r.id, name: r.name, icon: r.icon, billers: JSON.parse(r.billers || '[]'),
+      id: r.id, name: r.name, icon: r.icon, billers: safeJsonParse(r.billers, []),
     }));
     res.json({ data });
   } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
