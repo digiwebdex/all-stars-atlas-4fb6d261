@@ -52,10 +52,10 @@ router.get('/stats', async (req, res) => {
 
     // Monthly spending (last 6 months)
     const [monthly] = await db.query(
-      `SELECT DATE_FORMAT(created_at, '%b') as month, SUM(amount) as amount
+      `SELECT DATE_FORMAT(created_at, '%Y-%m') as ym, DATE_FORMAT(created_at, '%b') as month, SUM(amount) as amount
        FROM transactions WHERE user_id = ? AND type = 'payment' AND status = 'completed'
        AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-       GROUP BY DATE_FORMAT(created_at, '%Y-%m') ORDER BY MIN(created_at)`, [userId]
+       GROUP BY ym, month ORDER BY ym`, [userId]
     );
     const spendingData = monthly.map(m => ({ month: m.month, amount: parseFloat(m.amount) }));
 

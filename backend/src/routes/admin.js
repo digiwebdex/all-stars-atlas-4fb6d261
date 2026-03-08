@@ -20,10 +20,10 @@ router.get('/dashboard', async (req, res) => {
     byType.forEach(r => { bookingsByType[r.booking_type] = r.count; });
 
     const [monthlyRev] = await db.query(
-      `SELECT DATE_FORMAT(created_at, '%b %Y') as month, SUM(amount) as revenue, COUNT(*) as bookings
+      `SELECT DATE_FORMAT(created_at, '%Y-%m') as ym, DATE_FORMAT(created_at, '%b %Y') as month, SUM(amount) as revenue, COUNT(*) as bookings
        FROM transactions WHERE type = 'payment' AND status = 'completed'
        AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-       GROUP BY DATE_FORMAT(created_at, '%Y-%m') ORDER BY MIN(created_at)`
+       GROUP BY ym, month ORDER BY ym`
     );
 
     const [recentBookings] = await db.query(

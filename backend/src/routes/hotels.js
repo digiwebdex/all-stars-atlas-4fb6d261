@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { notifyBookingConfirm } = require('../services/notify');
+const { safeJsonParse } = require('../utils/json');
 
 const router = express.Router();
 
@@ -28,7 +29,7 @@ router.get('/search', async (req, res) => {
       id: r.id, name: r.name, city: r.city, country: r.country, address: r.address,
       starRating: r.star_rating, userRating: r.user_rating ? parseFloat(r.user_rating) : null,
       reviewCount: r.review_count, pricePerNight: parseFloat(r.price_per_night), currency: r.currency,
-      images: JSON.parse(r.images || '[]'), amenities: JSON.parse(r.amenities || '[]'), description: r.description,
+      images: safeJsonParse(r.images, []), amenities: safeJsonParse(r.amenities, []), description: r.description,
     }));
 
     res.json({ data, total: countResult[0].total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(countResult[0].total / parseInt(limit)) });
@@ -48,7 +49,7 @@ router.get('/:id', async (req, res) => {
       id: r.id, name: r.name, city: r.city, country: r.country, address: r.address,
       starRating: r.star_rating, userRating: r.user_rating ? parseFloat(r.user_rating) : null,
       reviewCount: r.review_count, pricePerNight: parseFloat(r.price_per_night), currency: r.currency,
-      images: JSON.parse(r.images || '[]'), amenities: JSON.parse(r.amenities || '[]'),
+      images: safeJsonParse(r.images, []), amenities: safeJsonParse(r.amenities, []),
       description: r.description, latitude: r.latitude, longitude: r.longitude,
     });
   } catch (err) {
