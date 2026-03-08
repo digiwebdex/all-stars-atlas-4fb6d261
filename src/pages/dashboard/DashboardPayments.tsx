@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CreditCard, Upload, Smartphone, Building2, CheckCircle2, Clock, Copy, Banknote, Eye, FileText, Download, AlertCircle } from "lucide-react";
 import { useDashboardPayments, useSubmitPayment } from "@/hooks/useApiData";
 import DataLoader from "@/components/DataLoader";
@@ -31,6 +32,7 @@ const allPaymentMethods = [
 
 const DashboardPayments = () => {
   const [showMakePayment, setShowMakePayment] = useState(false);
+  const [viewPayment, setViewPayment] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [selectedBank, setSelectedBank] = useState("");
   const [amount, setAmount] = useState("");
@@ -380,7 +382,7 @@ const DashboardPayments = () => {
                       <Badge variant="outline" className="text-[10px]">{txn.channel || 'Web'}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="h-7 text-xs"><Eye className="w-3.5 h-3.5 mr-1" /> View</Button>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setViewPayment(txn)}><Eye className="w-3.5 h-3.5 mr-1" /> View</Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -389,6 +391,29 @@ const DashboardPayments = () => {
           </CardContent>
         </Card>
       </DataLoader>
+
+      {/* Payment Detail Dialog */}
+      <Dialog open={!!viewPayment} onOpenChange={() => setViewPayment(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Payment Details</DialogTitle></DialogHeader>
+          {viewPayment && (
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div><p className="text-xs text-muted-foreground">Reference No</p><p className="font-bold font-mono">{viewPayment.id}</p></div>
+                <div><p className="text-xs text-muted-foreground">Payment Method</p><p className="font-bold">{viewPayment.method}</p></div>
+                <div><p className="text-xs text-muted-foreground">Amount</p><p className="font-bold text-lg text-primary">৳{viewPayment.amount}</p></div>
+                <div><p className="text-xs text-muted-foreground">Date</p><p className="font-bold">{viewPayment.date}</p></div>
+                {viewPayment.reference && <div><p className="text-xs text-muted-foreground">Booking Ref</p><p className="font-bold font-mono">{viewPayment.reference}</p></div>}
+                {viewPayment.transactionId && <div><p className="text-xs text-muted-foreground">Transaction ID</p><p className="font-bold font-mono">{viewPayment.transactionId}</p></div>}
+                {viewPayment.channel && <div><p className="text-xs text-muted-foreground">Channel</p><p className="font-bold">{viewPayment.channel}</p></div>}
+                {viewPayment.createdBy && <div><p className="text-xs text-muted-foreground">Created By</p><p className="font-bold">{viewPayment.createdBy}</p></div>}
+              </div>
+              <Separator />
+              <Badge variant="outline" className={`${statusColors[viewPayment.status] || ''}`}>{viewPayment.status}</Badge>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

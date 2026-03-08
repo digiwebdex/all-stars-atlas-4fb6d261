@@ -130,7 +130,7 @@ const DashboardBookings = () => {
                       <TableCell><Badge variant="outline" className={`text-[10px] ${statusColors[booking.status] || ""}`}>{booking.status}</Badge></TableCell>
                       <TableCell className="text-right font-semibold text-sm">{booking.amount}</TableCell>
                       <TableCell>
-                        <DropdownMenu>
+                        <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => setViewBooking(booking)}><Eye className="w-4 h-4 mr-2" /> View Details</DropdownMenuItem>

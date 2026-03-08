@@ -89,7 +89,7 @@ const AdminBookings = () => {
                 <TableCell><Badge variant="outline" className={`text-[11px] capitalize ${statusColors[b.status] || ''}`}>{b.status}</Badge></TableCell>
                 <TableCell className="text-right font-semibold text-sm">{b.amount}</TableCell>
                 <TableCell>
-                  <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                  <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => setViewBooking(b)}><Eye className="w-4 h-4 mr-2" /> View</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => toast({ title: "Edit Booking", description: `Editing ${b.id}` })}><Edit2 className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
