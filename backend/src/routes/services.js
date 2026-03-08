@@ -168,7 +168,7 @@ router.get('/cars/:id', async (req, res) => {
       id: r.id, name: r.name, type: r.type, brand: r.brand, model: r.model, year: r.year,
       seats: r.seats, transmission: r.transmission, fuelType: r.fuel_type,
       pricePerDay: parseFloat(r.price_per_day), currency: r.currency,
-      images: JSON.parse(r.images || '[]'), features: JSON.parse(r.features || '[]'), city: r.city,
+      images: safeJsonParse(r.images, []), features: safeJsonParse(r.features, []), city: r.city,
     });
   } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
 });
