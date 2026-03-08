@@ -155,7 +155,7 @@ const DashboardBookings = () => {
                               <DropdownMenuItem onClick={() => toast({ title: "Request Submitted", description: "Reissue request has been submitted." })}><RotateCcw className="w-4 h-4 mr-2" /> Request Reissue</DropdownMenuItem>
                               <DropdownMenuItem className="text-destructive" onClick={() => toast({ title: "Request Submitted", description: "Refund request has been submitted." })}><XCircle className="w-4 h-4 mr-2" /> Request Refund</DropdownMenuItem>
                             </>)}
-                            {booking.status === "On Hold" && <DropdownMenuItem onClick={() => toast({ title: "Redirecting...", description: "Redirecting to payments." })}><CreditCard className="w-4 h-4 mr-2" /> Pay Now</DropdownMenuItem>}
+                            {booking.status === "On Hold" && <DropdownMenuItem onClick={() => { window.location.href = "/dashboard/payments"; }}><CreditCard className="w-4 h-4 mr-2" /> Pay Now</DropdownMenuItem>}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
