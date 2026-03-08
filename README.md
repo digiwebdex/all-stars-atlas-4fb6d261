@@ -1,449 +1,249 @@
 # Seven Trip — Bangladesh's #1 Travel Platform
 
-> Full-stack travel booking platform built with React + TypeScript. Self-hosted on Ubuntu VPS with a separate Node.js REST API backend.
+> Full-stack B2C travel agency web application. Book flights, hotels, visa, holiday packages, medical tourism, car rentals, eSIM, mobile recharge & utility bill payments.
+
+**Live URL:** [http://187.77.137.249](http://187.77.137.249) → [https://seventrip.com.bd](https://seventrip.com.bd)
 
 ---
 
-## 🌐 What is Seven Trip?
+## 🏗 Architecture
 
-Seven Trip is a complete travel booking platform (like Booking.com or MakeMyTrip) built for the Bangladesh market. It supports:
-
-- ✈️ **Flight Search & Booking** — GDS integration, multi-city, fare comparison
-- 🏨 **Hotel Search & Booking** — Filter by stars, amenities, room types
-- 🏖️ **Holiday Packages** — Curated tours with day-by-day itinerary
-- 📋 **Visa Application & Tracking** — 40+ countries, document upload, admin processing
-- 🏥 **Medical Tourism** — Hospital search, treatment booking
-- 🚗 **Car Rental** — Pickup/dropoff, daily rates
-- 📱 **eSIM Data Plans** — International data by country
-- 📞 **Mobile Recharge** — All BD operators (GP, Banglalink, Robi, Airtel, Teletalk)
-- 💡 **Utility Bill Payment** — DESCO, DPDC, gas, water, internet
-- 👤 **Customer Dashboard** — 12 pages: bookings, e-tickets, transactions, e-transactions, payments, invoices, pay later, travellers, wishlist, search history, settings
-- 🔐 **Super Admin Panel** — 17 enterprise modules: analytics dashboard, user management, booking management, payment management, payment approvals, invoices, reports, visa processing, discounts & pricing, system settings, and full CMS (homepage, pages, blog, popups & banners, media, email templates, SEO, footer, destinations, booking forms)
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, Framer Motion |
+| **Backend** | Node.js (Express), MySQL/MariaDB, JWT Auth |
+| **Hosting** | Ubuntu 24.04 VPS (Hostinger KVM 1), Nginx, PM2, local file storage |
+| **State** | React Query (server), Context API (auth), localStorage (CMS) |
 
 ---
 
-## 🧰 Tech Stack
-
-| Layer        | Technology                                                      |
-| ------------ | --------------------------------------------------------------- |
-| **Frontend** | React 18, TypeScript, Vite 5                                    |
-| **Styling**  | Tailwind CSS 3, shadcn/ui (Radix UI), Framer Motion            |
-| **State**    | React Query (TanStack), React Context (Auth)                    |
-| **Forms**    | React Hook Form + Zod validation                                |
-| **Routing**  | React Router DOM v6 (60+ routes)                                |
-| **Charts**   | Recharts (bar, line, pie, area)                                 |
-| **PDF**      | jsPDF (e-tickets, invoices, visa applications)                  |
-| **CSV**      | Custom UTF-8 BOM export (Excel-compatible)                      |
-| **Backend**  | Node.js + Express REST API (separate repo)                      |
-| **Database** | MySQL 8 / MariaDB 10.6+                                        |
-| **Hosting**  | Ubuntu VPS (Nginx for static files, PM2 for Node.js API)        |
-
-> ⚠️ **No Lovable, Supabase, Firebase, or cloud vendor dependencies.** This is fully self-contained.
-
----
-
-## 📁 Project Structure
+## 📂 Project Structure
 
 ```
-seven-trip/
-├── public/                    # Static assets (favicon, logo, robots.txt, videos)
-│   ├── images/
-│   │   └── seven-trip-logo.png
-│   └── videos/
-│       ├── hero-beach.mp4
-│       └── hero-beach-alt.mp4
-├── backend/                   # Node.js REST API (included in same repo)
-│   ├── server.js              # Express entry point
+├── backend/                  # Node.js Express API
+│   ├── server.js             # Entry point (Express app)
 │   ├── src/
-│   │   ├── config/            # DB connection, media config
-│   │   ├── middleware/        # JWT auth, admin guard
-│   │   └── routes/            # auth, flights, hotels, services, dashboard, admin, visa, cms
+│   │   ├── config/db.js      # MySQL connection pool
+│   │   ├── middleware/auth.js # JWT auth + role guards
+│   │   └── routes/
+│   │       ├── auth.js        # Register, login, OTP, password reset
+│   │       ├── social-auth.js # Google & Facebook OAuth
+│   │       ├── flights.js     # Flight search & booking
+│   │       ├── hotels.js      # Hotel search & booking
+│   │       ├── services.js    # Holidays, medical, cars, eSIM, recharge, paybill
+│   │       ├── visa.js        # Visa applications
+│   │       ├── dashboard.js   # User dashboard APIs
+│   │       ├── admin.js       # Admin panel APIs
+│   │       └── cms.js         # CMS CRUD (public + admin)
 │   ├── database/
-│   │   └── migration.sql      # Full 20-table MySQL schema
-│   ├── package.json
-│   ├── setup.sh               # Quick setup script
-│   └── full-setup.sh          # Complete VPS setup script
-├── src/
-│   ├── components/            # Reusable UI components
-│   │   ├── layout/            # Header, Footer, PublicLayout
-│   │   ├── search/            # SearchWidget (9-tab search form)
-│   │   ├── ui/                # 50+ shadcn/ui components
-│   │   ├── AdminRoute.tsx     # Route guard — admin only
-│   │   ├── AuthGateModal.tsx  # Login gate for booking flows
-│   │   ├── DataLoader.tsx     # Loading/error/skeleton wrapper
-│   │   ├── ErrorBoundary.tsx  # Global error handler
-│   │   ├── ProtectedRoute.tsx # Route guard — logged-in users
-│   │   ├── ThemeProvider.tsx  # Dark/light mode provider
-│   │   └── ThemeToggle.tsx    # Dark/light toggle button
-│   ├── contexts/
-│   │   └── AuthContext.tsx    # Authentication state (login, register, tokens)
-│   ├── hooks/
-│   │   ├── useApiData.ts      # 40+ React Query hooks for all endpoints
-│   │   ├── useAuth.ts         # Hook to access AuthContext
-│   │   ├── useCmsContent.ts   # CMS page content hooks with fallbacks
-│   │   ├── use-mobile.tsx     # Responsive breakpoint hook
-│   │   └── use-toast.ts      # Toast notification hook
-│   ├── lib/
-│   │   ├── api.ts             # HTTP client (fetch wrapper with JWT, refresh, interceptors)
-│   │   ├── airports.ts        # BD airport data for search autocomplete
-│   │   ├── cms-defaults.ts    # Fallback CMS content for all 40+ pages
-│   │   ├── config.ts          # App config (API URL, currency, support info)
-│   │   ├── constants.ts       # API endpoints, enums, static data
-│   │   ├── content-data.ts    # Static content for homepage sections
-│   │   ├── csv-export.ts      # CSV download utility (UTF-8 BOM)
-│   │   ├── homepage-store.ts  # CMS homepage sync store
-│   │   ├── local-store.ts     # Generic localStorage CRUD helpers
-│   │   ├── mock-data.ts       # Fallback data for all pages when API is down
-│   │   ├── pdf-generator.ts   # PDF generation for tickets, invoices (with logo)
-│   │   ├── google-drive.ts    # Google Drive API integration (OAuth2 + upload)
-│   │   └── utils.ts           # Utility functions (cn helper)
-│   ├── pages/
-│   │   ├── admin/             # 16 admin modules
-│   │   │   ├── cms/           # 10 CMS pages
-│   │   │   ├── AdminBookings.tsx
-│   │   │   ├── AdminDashboard.tsx
-│   │   │   ├── AdminDiscounts.tsx
-│   │   │   ├── AdminInvoices.tsx
-│   │   │   ├── AdminLayout.tsx
-│   │   │   ├── AdminLogin.tsx
-│   │   │   ├── AdminPaymentApprovals.tsx
-│   │   │   ├── AdminPayments.tsx
-│   │   │   ├── AdminReports.tsx
-│   │   │   ├── AdminSettings.tsx
-│   │   │   ├── AdminUsers.tsx
-│   │   │   └── AdminVisa.tsx
-│   │   ├── auth/              # Login, Register, Forgot Password, OTP
-│   │   ├── booking/           # Booking confirmation
-│   │   ├── cars/              # Car rental listing + booking
-│   │   ├── dashboard/         # 12 customer dashboard pages
-│   │   ├── esim/              # eSIM plans + purchase
-│   │   ├── flights/           # Flight search results + booking
-│   │   ├── holidays/          # Holiday packages + detail
-│   │   ├── hotels/            # Hotel results + detail
-│   │   ├── medical/           # Medical tourism listing + booking
-│   │   ├── paybill/           # Bill payment
-│   │   ├── recharge/          # Mobile recharge
-│   │   ├── static/            # About, Contact, Terms, Privacy, FAQ, Careers, Refund, Blog
-│   │   ├── visa/              # Visa services + application
-│   │   ├── Index.tsx          # Homepage
-│   │   └── NotFound.tsx       # 404 page
-│   ├── App.tsx                # Root component (all routes defined here)
-│   ├── main.tsx               # Entry point
-│   └── index.css              # Global styles + Tailwind + CSS variables
-├── .env.example               # Environment variable template
-├── .lovable/plan.md           # Development plan & status tracking
-├── BACKEND_API_SPEC.md        # Complete 87+ endpoint API specification
-├── CHANGELOG.md               # Version history and release notes
-├── Deployment.md              # Step-by-step VPS deployment guide
-├── developer_documentation.md # Architecture & developer reference
-├── package.json               # Dependencies and scripts
-├── tailwind.config.ts         # Tailwind CSS configuration
-├── tsconfig.json              # TypeScript configuration
-├── vite.config.ts             # Vite build configuration
-└── vitest.config.ts           # Test configuration
+│   │   ├── migration.sql            # Full schema (20 tables)
+│   │   └── social-auth-migration.sql # Social login columns
+│   └── uploads/              # Local file storage
+├── src/                      # React frontend
+│   ├── App.tsx               # Root router (70+ routes)
+│   ├── components/           # Shared UI components
+│   │   ├── layout/           # Header, Footer, PublicLayout
+│   │   ├── search/           # SearchWidget (10 tabs)
+│   │   ├── ui/               # shadcn/ui components
+│   │   ├── AdminRoute.tsx    # Admin route guard
+│   │   ├── ProtectedRoute.tsx # User route guard
+│   │   ├── AuthGateModal.tsx # Inline auth popup (booking flow)
+│   │   ├── IdUploadModal.tsx # Mandatory NID/Passport upload
+│   │   ├── ErrorBoundary.tsx # Global error boundary
+│   │   └── DataLoader.tsx    # Skeleton/error/retry wrapper
+│   ├── contexts/AuthContext.tsx # Auth state + social login
+│   ├── hooks/                # Custom hooks
+│   │   ├── useAuth.ts        # Auth context consumer
+│   │   ├── useApiData.ts     # React Query hooks (all endpoints)
+│   │   └── useCmsContent.ts  # CMS page content hook
+│   ├── lib/                  # Utilities
+│   │   ├── api.ts            # HTTP client with auto-refresh
+│   │   ├── social-auth.ts    # Google GSI + Facebook SDK
+│   │   ├── google-drive.ts   # Google Drive upload
+│   │   ├── airports.ts       # 740+ airport database
+│   │   ├── config.ts         # App configuration
+│   │   ├── constants.ts      # API endpoints, enums
+│   │   ├── mock-data.ts      # Fallback mock data
+│   │   ├── pdf-generator.ts  # E-ticket PDF generation
+│   │   └── cms-defaults.ts   # CMS page defaults
+│   └── pages/                # Route pages
+│       ├── Index.tsx          # Homepage (CMS-driven, 11 sections)
+│       ├── auth/              # Login, Register, ForgotPassword, VerifyOTP
+│       ├── flights/           # FlightResults, FlightBooking
+│       ├── hotels/            # HotelResults, HotelDetail
+│       ├── holidays/          # HolidayPackages, HolidayDetail
+│       ├── visa/              # VisaServices, VisaApplication
+│       ├── medical/           # MedicalServices, MedicalBooking
+│       ├── cars/              # CarRental, CarBooking
+│       ├── esim/              # ESIMPlans, ESIMPurchase
+│       ├── recharge/          # RechargePage
+│       ├── paybill/           # PayBillPage
+│       ├── booking/           # BookingConfirmation
+│       ├── static/            # About, Contact, Blog, FAQ, Terms, Privacy, etc.
+│       ├── dashboard/         # 12 user dashboard pages
+│       └── admin/             # 17 admin panel modules
+├── public/                   # Static assets
+│   ├── images/               # Logo, hero images
+│   ├── videos/               # Hero video
+│   ├── sitemap.xml           # SEO sitemap
+│   ├── robots.txt            # Crawler rules
+│   └── favicon.png           # App icon
+└── docs
+    ├── BACKEND_API_SPEC.md   # 86 API endpoint spec
+    ├── CHANGELOG.md          # Version history
+    ├── Deployment.md         # VPS deployment guide
+    └── developer_documentation.md # Dev handbook
 ```
 
 ---
 
-## 🚀 Quick Start (Local Development)
+## 🎯 Features (100% Complete)
 
-### Prerequisites
+### Public Site (10 Services)
+- **Homepage** — 11 CMS-driven sections with parallax hero video, animated counters, and section reordering
+- **Flight Search** — One-way, round-trip, multi-city (2-5 segments), 740+ airports, cabin class, passenger count
+- **Hotel Search** — Location, dates, guests, grid/list view, wishlist hearts, star rating & price filters
+- **Visa Services** — 20 countries, step-by-step application, document upload
+- **Holiday Packages** — Tour grid with detail pages, pricing, itineraries
+- **Medical Tourism** — Hospital search, specialist booking
+- **Car Rental** — Vehicle type selection, date-based booking
+- **eSIM Plans** — Country-based international data plans
+- **Mobile Recharge** — Operator selection, amount, prepaid/postpaid
+- **Utility Bill Payment** — Category-based bill processing
+- **Blog** — 16+ managed articles with search & category filters
+- **Static Pages** — About, Contact (with form), FAQ, Careers, Terms, Privacy, Refund Policy
 
-- **Node.js** 18+ (use [nvm](https://github.com/nvm-sh/nvm) to install)
-- **npm** or **bun** package manager
+### Authentication System
+- **Email/Password** — Register with mandatory NID/Passport upload
+- **Google Sign-In** — OAuth 2.0 via Google Identity Services (admin-configurable)
+- **Facebook Login** — OAuth via Facebook SDK v19.0 (admin-configurable)
+- **Post-social-signup ID verification** — Mandatory NID/Passport upload modal
+- **OTP-based password reset** — Email → OTP → Reset flow
+- **JWT tokens** — 15min access + 7-day refresh with auto-rotation
+- **Role-based routing** — Admin ↔ Customer strict separation
+- **AuthGateModal** — Inline auth popup during booking flow (no page redirect)
 
-### Step 1: Clone the Repository
+### User Dashboard (12 pages)
+| Page | Features |
+|------|----------|
+| Overview | Stats cards, recent bookings, quick actions |
+| Bookings | 12-status lifecycle, filters, detail view |
+| E-Tickets | PDF download via jsPDF, print |
+| Transactions | Running balance ledger with debit/credit |
+| E-Transactions | Digital gateway fee tracking |
+| Payments | Receipt upload for manual payment verification |
+| Invoices | Auto-generated PDF invoices |
+| Pay Later | Due management & reminders |
+| Travellers | Saved passenger profiles for faster booking |
+| Wishlist | Saved hotels |
+| Search History | Past flight/hotel searches |
+| Settings | Profile, password, notifications, 2FA toggle, delete account |
 
-```bash
-git clone https://github.com/your-username/seven-trip.git
-cd seven-trip
-```
+### Admin Panel (17 modules)
+| Module | Features |
+|--------|----------|
+| Dashboard | Revenue charts (Recharts), booking stats, recent activity |
+| Bookings | All bookings, status management, notes |
+| Users | User list, role assignment, ID verification status |
+| Payments | Payment tracking & history |
+| Payment Approvals | Receipt image viewer, approve/reject workflow |
+| Discounts & Pricing | Coupon codes, seasonal pricing rules |
+| Invoices | Invoice management & reminders |
+| Reports | Revenue, booking, user analytics with export |
+| Visa | Application management, status updates |
+| CMS: All Pages | 40+ page content management with defaults |
+| CMS: Homepage | Section reordering, visibility toggles, text/image editing |
+| CMS: Booking Forms | Dynamic form field builder per service |
+| CMS: Popups & Banners | Exit-intent popups, announcement banners, push templates |
+| CMS: Blog | Visual WYSIWYG + HTML editor, 16 default posts |
+| CMS: SEO, Footer, Media, Destinations, Email Templates | Full CMS suite |
+| Settings | General, payments, bank accounts, email SMTP, notifications, API integrations, **Social Login OAuth** (Google + Facebook), Google Drive |
 
-### Step 2: Install Dependencies
-
-```bash
-npm install
-```
-
-### Step 3: Set Up Environment
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and set your API URL:
-
-```env
-VITE_API_BASE_URL=http://localhost:3001/api
-
-# Optional: Google Drive integration for admin visa document management
-# Get from https://console.cloud.google.com/apis/credentials (OAuth 2.0 Client ID)
-VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-```
-
-### Step 4: Start Development Server
-
-```bash
-npm run dev
-```
-
-The app will start at `http://localhost:8080`
-
-### Step 5: Build for Production
-
-```bash
-npm run build
-```
-
-The output will be in the `dist/` folder — these are static files you serve with Nginx.
-
----
-
-## 🔗 All Routes (70+ Pages)
-
-### Public Pages
-
-| Route                    | Description                      |
-| ------------------------ | -------------------------------- |
-| `/`                      | Homepage with 9-tab search       |
-| `/flights`               | Flight search results + filters  |
-| `/flights/book`          | Multi-step flight booking        |
-| `/hotels`                | Hotel search results + filters   |
-| `/hotels/:id`            | Hotel detail + room selection    |
-| `/holidays`              | Holiday packages listing         |
-| `/holidays/:id`          | Package detail + itinerary       |
-| `/visa`                  | Visa services by country         |
-| `/visa/apply`            | Multi-step visa application      |
-| `/medical`               | Medical tourism hospitals        |
-| `/medical/book`          | Medical booking form             |
-| `/cars`                  | Car rental listing + filters     |
-| `/cars/book`             | Car booking form                 |
-| `/esim`                  | eSIM data plans by country       |
-| `/esim/purchase`         | eSIM purchase form               |
-| `/recharge`              | Mobile recharge (all operators)  |
-| `/paybill`               | Utility bill payment             |
-| `/booking/confirmation`  | Booking confirmation + PDF       |
-| `/about`                 | About us                         |
-| `/contact`               | Contact form (API-wired)         |
-| `/blog`                  | Travel blog with categories      |
-| `/terms`                 | Terms of service                 |
-| `/privacy`               | Privacy policy                   |
-| `/refund-policy`         | Refund policy                    |
-| `/faq`                   | FAQ with category filter         |
-| `/careers`               | Job listings with apply          |
-
-### Auth Pages (No Header/Footer)
-
-| Route                   | Description                                    |
-| ----------------------- | ---------------------------------------------- |
-| `/auth/login`           | Customer login                                 |
-| `/auth/register`        | Customer registration (with NID/Passport upload) |
-| `/auth/forgot-password` | Password reset request                         |
-| `/auth/verify-otp`      | OTP verification                               |
-| `/admin/login`          | Admin login (hidden)                           |
-
-### Customer Dashboard (Protected — Login Required)
-
-| Route                          | Description                         |
-| ------------------------------ | ----------------------------------- |
-| `/dashboard`                   | Overview with charts & stats        |
-| `/dashboard/bookings`          | My bookings (12 status filters)     |
-| `/dashboard/tickets`           | E-Tickets (view + PDF download)     |
-| `/dashboard/transactions`      | Transaction ledger + export         |
-| `/dashboard/e-transactions`    | Electronic payment transactions     |
-| `/dashboard/payments`          | Make payment (7 methods + receipt)  |
-| `/dashboard/invoices`          | Invoices (view + PDF + CSV export)  |
-| `/dashboard/pay-later`         | Outstanding dues & pay now          |
-| `/dashboard/travellers`        | Saved traveller profiles (CRUD)    |
-| `/dashboard/wishlist`          | Saved flights/hotels/holidays      |
-| `/dashboard/search-history`    | Past searches with repeat action   |
-| `/dashboard/settings`          | Profile, password, notifications   |
-
-### Admin Panel (Admin Role Required)
-
-| Route                          | Description                               |
-| ------------------------------ | ----------------------------------------- |
-| `/admin`                       | Analytics dashboard + revenue charts      |
-| `/admin/bookings`              | Manage all bookings + status transitions  |
-| `/admin/users`                 | User management (add/suspend/delete/verify ID) |
-| `/admin/payments`              | All payment transactions + export         |
-| `/admin/payment-approvals`     | Approve/reject manual payments            |
-| `/admin/invoices`              | Create, download, print, remind invoices  |
-| `/admin/reports`               | Revenue reports + charts + CSV export     |
-| `/admin/discounts`             | Discount codes + price rules              |
-| `/admin/visa`                  | Visa apps (process/approve/PDF/Google Drive) |
-| `/admin/settings`              | System settings + API keys + Google Drive |
-| `/admin/cms/homepage`          | CMS — Homepage sections                  |
-| `/admin/cms/pages`             | CMS — Static pages                       |
-| `/admin/cms/blog`              | CMS — Blog posts                         |
-| `/admin/cms/promotions`        | CMS — Promotions (legacy)                |
-| `/admin/cms/popups`            | CMS — Popups, Banners & Push Notifications |
-| `/admin/cms/media`             | CMS — Media library                      |
-| `/admin/cms/email-templates`   | CMS — Email templates                    |
-| `/admin/cms/destinations`      | CMS — Destinations                       |
-| `/admin/cms/booking-forms`     | CMS — Booking form editor                |
-| `/admin/cms/footer`            | CMS — Footer content                     |
-| `/admin/cms/seo`               | CMS — SEO meta tags                      |
-
----
-
-## 🔐 Authentication Flow
-
-1. User submits email + password on `/auth/login`
-2. Frontend sends `POST /api/auth/login` to your backend
-3. Backend returns `{ user, accessToken, refreshToken }`
-4. Tokens stored in `localStorage` (`auth_token`, `refresh_token`, `user`)
-5. All subsequent API calls include `Authorization: Bearer <token>` header
-6. If a 401 is received, the client automatically tries to refresh the token via `POST /api/auth/refresh`
-7. If refresh fails, user is logged out and redirected
-
-### User Roles
-
-| Role          | Access                                        |
-| ------------- | --------------------------------------------- |
-| `customer`    | Public site + Customer Dashboard              |
-| `admin`       | Public site + Customer Dashboard + Admin Panel |
-| `super_admin` | Full access including system settings          |
-
----
-
-## 💰 Currency & Localization
-
-- **Currency:** BDT (৳) — Bangladeshi Taka
-- **Language:** English (default), বাংলা (configurable)
-- **Phone Format:** +880 1XXX-XXXXXX
-- **Support:** support@seventrip.com.bd
-- **Payment Methods:** bKash, Nagad, Rocket, Bank Deposit, Bank Transfer, Cheque, Visa/Mastercard
-
-All configurable in `src/lib/config.ts`.
-
----
-
-## 🔌 API Integrations — Admin Setup Guide
-
-All 3rd-party API keys are managed via **Admin → Settings → API Integrations**. Each integration includes inline documentation and a "View Docs" link.
-
-### Travel APIs
-
-| Integration | Where to Get API Key | Setup Steps |
-|---|---|---|
-| **Flight GDS (BDFare)** | [docs.bdfare.com](https://docs.bdfare.com) | 1. Sign up as BDFare agent → 2. Get API Key + Secret from dashboard → 3. Enter in Admin → Settings → Travel APIs → Flight GDS |
-| **Hotel Supplier (Hotelbeds)** | [developer.hotelbeds.com](https://developer.hotelbeds.com) | 1. Register as Hotelbeds partner → 2. Get API Key + Shared Secret → 3. Enter in Admin → Settings → Travel APIs → Hotel Supplier |
-
-### Digital Services
-
-| Integration | Where to Get API Key | Setup Steps |
-|---|---|---|
-| **eSIM Provider** | [docs.esimgo.com](https://docs.esimgo.com) | 1. Create eSIMGo merchant account → 2. Get API Key from developer dashboard → 3. Enter in Admin → Settings |
-| **Mobile Recharge** | SSLCommerz or direct operator API | 1. Contact SSLCommerz/operator for merchant credentials → 2. Get Merchant ID + API Key + Secret |
-| **Bill Payment** | SSLCommerz bill pay module | 1. Activate bill pay module with SSLCommerz → 2. Use same merchant credentials |
-
-### Payment Gateways
-
-| Integration | Where to Get API Key | Setup Steps |
-|---|---|---|
-| **bKash** | [developer.bka.sh](https://developer.bka.sh) | 1. Apply for bKash merchant account → 2. Get App Key, App Secret, Username, Password → 3. Start with Sandbox mode ON → 4. Toggle off for production |
-| **Nagad** | [nagad.com.bd/merchant](https://nagad.com.bd/merchant) | 1. Apply for Nagad merchant account → 2. Get Merchant ID, Public Key, Private Key → 3. Start with Sandbox ON |
-| **SSLCommerz (Cards)** | [developer.sslcommerz.com](https://developer.sslcommerz.com) | 1. Register at SSLCommerz → 2. Get Store ID + Store Password → 3. Start with Sandbox ON for testing |
-
-### Communication
-
-| Integration | Where to Get API Key | Setup Steps |
-|---|---|---|
-| **SMS Gateway** | Any BD SMS provider (sms.net.bd, BulkSMSBD, etc.) | 1. Register with provider → 2. Get API Key + Sender ID → 3. Enter API URL, Key, and Sender ID in settings |
-
-### Cloud Storage
-
-| Integration | Where to Get API Key | Setup Steps |
-|---|---|---|
-| **Google Drive** | [Google Cloud Console](https://console.cloud.google.com/apis/credentials) | See detailed steps below ↓ |
-
-### Google Drive Setup (Admin → Settings → Google Drive)
-
-1. Go to [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials)
-2. Click **"Create Credentials"** → **"OAuth 2.0 Client ID"**
-3. Set Application Type to **"Web application"**
-4. Add your domain to **"Authorized JavaScript origins"** (e.g. `https://seventrip.com.bd`)
-5. Copy the **Client ID** and paste it into Admin → Settings → Google Drive
-6. Enable the **[Google Drive API](https://console.cloud.google.com/apis/library/drive.googleapis.com)** in your project
-7. Done! The "Save to Google Drive" button in Visa Management will now work
-
-> **Note:** The Client ID is a public/publishable key and is safe to store in the browser.
-
-### SMTP Email Setup (Admin → Settings → Email Configuration)
-
-| Field | Example Value | Notes |
-|---|---|---|
-| SMTP Host | `smtp.gmail.com` | Or your mail server |
-| SMTP Port | `587` | Use 587 for TLS, 465 for SSL |
-| Username | `noreply@seventrip.com.bd` | Your sending email |
-| Password | `your-app-password` | For Gmail: use App Password, not account password |
-
-> **Gmail Tip:** Enable 2FA → Go to Security → App Passwords → Generate for "Mail"
-
-### Payment Methods (Admin → Settings → Payment Methods)
-
-Toggle on/off which payment methods users can choose during checkout:
-- **Bank Deposit** — User deposits cash at your bank branch
-- **Bank Transfer** — User wires money from their bank
-- **Cheque Deposit** — User deposits cheque
-- **bKash / Nagad / Rocket** — Mobile financial services
-- **Visa/Mastercard** — Card payments via SSLCommerz
-
-### Bank Accounts (Admin → Settings → Company Bank Accounts)
-
-Add your company bank details that are shown to users when they select "Bank Deposit" or "Bank Transfer":
-- Bank Name, Account Name, Account Number, Branch, Routing Number
-
----
-
-## 📜 Available Scripts
-
-| Command              | What it does                                  |
-| -------------------- | --------------------------------------------- |
-| `npm run dev`        | Start dev server (port 8080, hot reload)      |
-| `npm run build`      | Build for production → `dist/` folder         |
-| `npm run preview`    | Preview production build locally              |
-| `npm run lint`       | Run ESLint                                    |
-| `npm run test`       | Run tests once                                |
-| `npm run test:watch` | Run tests in watch mode                       |
+### SEO & Performance
+- OpenGraph + Twitter Cards meta tags
+- JSON-LD structured data (TravelAgency schema)
+- `sitemap.xml` (20 pages) + `robots.txt` (admin/dashboard blocked)
+- Code splitting via React.lazy (every page lazy-loaded)
+- Image lazy loading with `loading="lazy"` + `decoding="async"`
+- Font preloading (Plus Jakarta Sans critical weights)
+- Hero image preloaded for fast LCP
+- Scroll progress bar + animated scroll-to-top button
+- Dark/light theme with system preference detection
 
 ---
 
 ## 🚀 Deployment
 
-See [Deployment.md](./Deployment.md) for the complete step-by-step VPS deployment guide.
-
-### Quick Deploy Command
-
 ```bash
-cd ~/projects/all-stars-atlas && git pull && npm install && npm run build && sudo cp -r dist/* /var/www/seventrip/ && cd backend && npm install && pm2 restart all
+# SSH into VPS
+ssh root@187.77.137.249
+
+# Use tmux
+tmux new -s deploy
+
+# Pull, build, deploy frontend
+cd ~/projects/all-stars-atlas
+git pull && npm install && npm run build
+sudo cp -r dist/* /var/www/seventrip/
+
+# Deploy backend
+cd backend && npm install && pm2 restart all
+
+# Run migrations (first time only)
+mysql -u seventrip_user -p seventrip < database/migration.sql
+mysql -u seventrip_user -p seventrip < database/social-auth-migration.sql
 ```
 
----
-
-## 📚 Documentation
-
-| Document                                          | Description                                |
-| ------------------------------------------------- | ------------------------------------------ |
-| [README.md](./README.md)                          | This file — project overview               |
-| [Deployment.md](./Deployment.md)                  | VPS deployment guide (Ubuntu/Nginx/PM2)    |
-| [developer_documentation.md](./developer_documentation.md) | Architecture & developer reference |
-| [BACKEND_API_SPEC.md](./BACKEND_API_SPEC.md)      | Full 86-endpoint backend API contract      |
-| [.lovable/plan.md](./.lovable/plan.md)            | Development roadmap & status               |
+See **[Deployment.md](./Deployment.md)** for full VPS setup guide with Nginx, PM2, firewall, and SSL.
 
 ---
 
-## 🤝 Contributing
+## 🔧 Local Development
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Commit changes: `git commit -m 'Add my feature'`
-4. Push: `git push origin feature/my-feature`
-5. Open a Pull Request
+```bash
+# Frontend
+npm install && npm run dev     # → http://localhost:5173
+
+# Backend (separate terminal)
+cd backend && npm install && npm start  # → http://localhost:3001
+
+# Tests
+npm test
+```
+
+### Environment Variables
+
+| File | Variable | Description |
+|------|----------|-------------|
+| `.env` | `VITE_API_BASE_URL` | Backend API URL (default: `http://localhost:3001/api`) |
+| `backend/.env` | `DB_HOST`, `DB_PASSWORD`, etc. | MySQL connection |
+| `backend/.env` | `JWT_SECRET` | Token signing key |
+| `backend/.env` | `FRONTEND_URL` | CORS origin |
+
+---
+
+## 📦 Dependencies
+
+### Frontend
+React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui (40+ components), Framer Motion, React Query, React Router v6, React Hook Form, Zod, jsPDF, Recharts, date-fns
+
+### Backend
+Express, mysql2, bcryptjs, jsonwebtoken, multer, uuid, cors, helmet, morgan, express-rate-limit, dotenv
+
+---
+
+## 📄 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [README.md](./README.md) | This file — project overview |
+| [CHANGELOG.md](./CHANGELOG.md) | Version history |
+| [BACKEND_API_SPEC.md](./BACKEND_API_SPEC.md) | 86 API endpoints with request/response schemas |
+| [Deployment.md](./Deployment.md) | VPS deployment automation guide |
+| [developer_documentation.md](./developer_documentation.md) | Developer handbook (architecture, patterns, conventions) |
 
 ---
 
 ## 📄 License
 
-Proprietary — Seven Trip © 2026. All rights reserved.
+Proprietary — Seven Trip Bangladesh Ltd. All rights reserved.
