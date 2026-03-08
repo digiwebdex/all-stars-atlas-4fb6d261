@@ -27,7 +27,8 @@ const apiIntegrations = [
   { id: 'payment_bkash', name: 'bKash Payment Gateway', description: 'bKash merchant payment integration', fields: [{ key: 'app_key', label: 'App Key', placeholder: 'bKash App Key', type: 'password' }, { key: 'app_secret', label: 'App Secret', placeholder: 'bKash App Secret', type: 'password' }, { key: 'username', label: 'Username', placeholder: 'Merchant username', type: 'text' }, { key: 'password', label: 'Password', placeholder: 'Merchant password', type: 'password' }, { key: 'sandbox', label: 'Sandbox Mode', placeholder: '', type: 'toggle' }], docs: 'https://developer.bka.sh', category: 'payment' },
   { id: 'payment_nagad', name: 'Nagad Payment Gateway', description: 'Nagad merchant payment integration', fields: [{ key: 'merchant_id', label: 'Merchant ID', placeholder: 'Your Nagad merchant ID', type: 'text' }, { key: 'api_key', label: 'Public Key', placeholder: 'Nagad public key', type: 'password' }, { key: 'api_secret', label: 'Private Key', placeholder: 'Nagad private key', type: 'password' }, { key: 'sandbox', label: 'Sandbox Mode', placeholder: '', type: 'toggle' }], docs: 'https://nagad.com.bd/merchant', category: 'payment' },
   { id: 'payment_ssl', name: 'SSLCommerz (Card Payments)', description: 'Visa/Mastercard/AMEX processing', fields: [{ key: 'store_id', label: 'Store ID', placeholder: 'Your store ID', type: 'text' }, { key: 'store_password', label: 'Store Password', placeholder: 'Your store password', type: 'password' }, { key: 'sandbox', label: 'Sandbox Mode', placeholder: '', type: 'toggle' }], docs: 'https://developer.sslcommerz.com', category: 'payment' },
-  { id: 'sms_gateway', name: 'SMS Gateway', description: 'OTP and transactional SMS delivery', fields: [{ key: 'api_url', label: 'API URL', placeholder: 'https://api.sms.net.bd/sendsms', type: 'text' }, { key: 'api_key', label: 'API Key', placeholder: 'Your SMS API key', type: 'password' }, { key: 'sender_id', label: 'Sender ID', placeholder: 'SEVENTRIP', type: 'text' }], docs: '', category: 'communication' },
+  { id: 'sms_bulksmsbd', name: 'BulkSMSBD (SMS Gateway)', description: 'OTP, booking & transactional SMS delivery to BD numbers', fields: [{ key: 'api_key', label: 'API Key', placeholder: 'Your BulkSMSBD API key', type: 'password' }, { key: 'sender_id', label: 'Sender ID', placeholder: 'SevenTrip', type: 'text' }], docs: 'https://bulksmsbd.com/developer/sms-api', category: 'communication' },
+  { id: 'email_resend', name: 'Resend (Email API)', description: 'Transactional emails — booking confirmations, OTP, invoices', fields: [{ key: 'api_key', label: 'API Key', placeholder: 're_xxxxxxxxxxxx', type: 'password' }, { key: 'from_email', label: 'From Address', placeholder: 'Seven Trip <noreply@seventrip.com.bd>', type: 'text' }], docs: 'https://resend.com/docs', category: 'communication' },
 ];
 
 interface BankAccount {
@@ -315,24 +316,23 @@ const AdminSettings = () => {
         </CardContent>
       </Card>
 
-      {/* Email */}
+      {/* Email & SMS — now configured via API Integrations > Communication tab */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><Mail className="w-5 h-5 text-primary" /></div>
-            <div><CardTitle className="text-lg">Email Configuration</CardTitle><CardDescription>SMTP settings for system emails</CardDescription></div>
+            <div><CardTitle className="text-lg">Email & SMS Configuration</CardTitle><CardDescription>Transactional email via Resend, SMS via BulkSMSBD</CardDescription></div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5"><Label>SMTP Host</Label><Input defaultValue="smtp.gmail.com" /></div>
-            <div className="space-y-1.5"><Label>SMTP Port</Label><Input defaultValue="587" /></div>
+        <CardContent className="space-y-3">
+          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 space-y-2">
+            <p className="text-sm font-semibold flex items-center gap-1.5"><Info className="w-4 h-4 text-blue-600" /> Where to configure:</p>
+            <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+              <li><strong>Email:</strong> Scroll to API Integrations → Communication → Resend (Email API) — enter your <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Resend API key</a></li>
+              <li><strong>SMS:</strong> Scroll to API Integrations → Communication → BulkSMSBD — enter your <a href="https://bulksmsbd.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">BulkSMSBD API key</a></li>
+            </ul>
+            <p className="text-[11px] text-muted-foreground mt-1">Both services send notifications for: OTP codes, booking confirmations, payment receipts, visa status updates, welcome emails, and contact form auto-replies.</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5"><Label>Username</Label><Input defaultValue="noreply@seventrip.com.bd" /></div>
-            <div className="space-y-1.5"><Label>Password</Label><Input type="password" placeholder="••••••••" /></div>
-          </div>
-          <Button onClick={handleSaveEmail}>Test & Save</Button>
         </CardContent>
       </Card>
 

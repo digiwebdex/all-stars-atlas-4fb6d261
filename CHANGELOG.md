@@ -4,6 +4,37 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [1.9.0] — 2026-03-08 — SMS + Email Notification System & Production Hardening
+
+### Added
+- **BulkSMSBD SMS Integration** (`backend/src/services/sms.js`) — OTP, booking confirmations, payment receipts, visa updates, welcome SMS to BD numbers
+- **Resend Email Integration** (`backend/src/services/email.js`) — 10 beautifully styled HTML email templates: OTP, welcome, booking confirm, booking status, payment receipt, visa update, contact auto-reply, admin alert, password reset
+- **Unified Notification Dispatcher** (`backend/src/services/notify.js`) — Sends both SMS + Email in parallel for every trigger
+- **Admin Panel: SMS & Email Config** — Admin → Settings → API Integrations → Communication tab (BulkSMSBD + Resend API keys)
+- **DB-first API key resolution** — Services read keys from `system_settings` table first, fallback to `.env`
+- **Vite manual chunks** — Code-splitting for vendor, UI, charts, PDF, motion (eliminates 500KB+ chunk warning)
+
+### Notification Triggers
+| Event | SMS | Email | Admin Alert |
+|-------|-----|-------|-------------|
+| User registers | ✅ | ✅ | ✅ |
+| Password reset OTP | ✅ | ✅ | — |
+| Flight/Hotel/Holiday/Medical/Car booked | ✅ | ✅ | ✅ |
+| Admin updates booking status | ✅ | ✅ | — |
+| Admin approves payment | ✅ | ✅ | — |
+| Admin updates visa status | ✅ | ✅ | — |
+| Contact form submitted | — | ✅ | ✅ |
+
+### Changed
+- `backend/src/routes/auth.js` — Integrated `notifyWelcome` + `notifyPasswordReset`
+- `backend/src/routes/flights.js`, `hotels.js`, `services.js` — Integrated `notifyBookingConfirm`
+- `backend/src/routes/visa.js` — Integrated `notifyVisaStatus`
+- `backend/src/routes/admin.js` — Integrated `notifyBookingStatus` + `notifyPayment`
+- Admin Settings — Replaced SMTP config with Resend, updated SMS Gateway to BulkSMSBD
+- `.env` / `.env.example` — Added `RESEND_API_KEY`, `BULKSMS_API_KEY`, `BULKSMS_SENDER_ID`
+
+---
+
 ## [1.8.0] — 2026-03-08 — Social Login & Full Production Audit
 
 ### Added
