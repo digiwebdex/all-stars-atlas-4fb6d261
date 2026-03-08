@@ -391,6 +391,29 @@ const DashboardPayments = () => {
           </CardContent>
         </Card>
       </DataLoader>
+
+      {/* Payment Detail Dialog */}
+      <Dialog open={!!viewPayment} onOpenChange={() => setViewPayment(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Payment Details</DialogTitle></DialogHeader>
+          {viewPayment && (
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div><p className="text-xs text-muted-foreground">Reference No</p><p className="font-bold font-mono">{viewPayment.id}</p></div>
+                <div><p className="text-xs text-muted-foreground">Payment Method</p><p className="font-bold">{viewPayment.method}</p></div>
+                <div><p className="text-xs text-muted-foreground">Amount</p><p className="font-bold text-lg text-primary">৳{viewPayment.amount}</p></div>
+                <div><p className="text-xs text-muted-foreground">Date</p><p className="font-bold">{viewPayment.date}</p></div>
+                {viewPayment.reference && <div><p className="text-xs text-muted-foreground">Booking Ref</p><p className="font-bold font-mono">{viewPayment.reference}</p></div>}
+                {viewPayment.transactionId && <div><p className="text-xs text-muted-foreground">Transaction ID</p><p className="font-bold font-mono">{viewPayment.transactionId}</p></div>}
+                {viewPayment.channel && <div><p className="text-xs text-muted-foreground">Channel</p><p className="font-bold">{viewPayment.channel}</p></div>}
+                {viewPayment.createdBy && <div><p className="text-xs text-muted-foreground">Created By</p><p className="font-bold">{viewPayment.createdBy}</p></div>}
+              </div>
+              <Separator />
+              <Badge variant="outline" className={`${statusColors[viewPayment.status] || ''}`}>{viewPayment.status}</Badge>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
