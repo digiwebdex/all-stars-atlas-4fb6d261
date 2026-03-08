@@ -252,7 +252,31 @@ router.get('/settings', async (req, res) => {
 // PUT /admin/settings
 router.put('/settings', async (req, res) => {
   try {
-    const { siteName, supportEmail, supportPhone, defaultCurrency } = req.body;
+    const { section, siteName, supportEmail, supportPhone, defaultCurrency, provider, config, integration, keys } = req.body;
+
+    // Social OAuth config
+    if (section === 'social_oauth' && provider && config) {
+      const settingKey = `social_oauth_${provider}`;
+      const settingValue = JSON.stringify(config);
+      await db.query(
+        'INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()',
+        [settingKey, settingValue, settingValue]
+      );
+      return res.json({ message: `${provider} OAuth config saved` });
+    }
+
+    // API integration config
+    if (section === 'api_integration' && integration && keys) {
+      const settingKey = `api_${integration}`;
+      const settingValue = JSON.stringify(keys);
+      await db.query(
+        'INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()',
+        [settingKey, settingValue, settingValue]
+      );
+      return res.json({ message: `${integration} config saved` });
+    }
+
+    // General settings
     const updates = { site_name: siteName, support_email: supportEmail, support_phone: supportPhone, currency: defaultCurrency };
     for (const [key, value] of Object.entries(updates)) {
       if (value !== undefined) {
