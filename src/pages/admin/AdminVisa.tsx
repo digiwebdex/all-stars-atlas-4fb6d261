@@ -21,6 +21,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { config } from "@/lib/config";
 import { mockAdminVisa } from "@/lib/mock-data";
+import { uploadToGoogleDrive, isGoogleDriveConfigured } from "@/lib/google-drive";
 import type { VisaCountryOption, CmsPageContent } from "@/lib/cms-defaults";
 
 const statusMap: Record<string, { label: string; class: string }> = {
