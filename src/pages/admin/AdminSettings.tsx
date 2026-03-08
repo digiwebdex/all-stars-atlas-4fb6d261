@@ -52,7 +52,6 @@ function loadSocialOAuth(): Record<string, Record<string, string>> {
 function saveSocialOAuth(data: Record<string, Record<string, string>>) {
   localStorage.setItem(SOCIAL_OAUTH_STORAGE_KEY, JSON.stringify(data));
 }
-const NOTIFICATION_STORAGE_KEY = 'seventrip_notifications';
 
 function loadApiKeys(): Record<string, Record<string, string>> {
   try { const s = localStorage.getItem(API_KEYS_STORAGE_KEY); if (s) return JSON.parse(s); } catch {} return {};
