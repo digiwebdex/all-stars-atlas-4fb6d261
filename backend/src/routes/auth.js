@@ -251,4 +251,25 @@ router.post('/logout', authenticate, async (req, res) => {
   }
 });
 
+// POST /auth/upload-id-document — upload NID/Passport after registration
+router.post('/upload-id-document', authenticate, idUpload.single('document'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded', status: 400 });
+    }
+    const documentType = req.body.documentType || 'nid';
+    const docPath = `/uploads/id-documents/${req.file.filename}`;
+
+    await db.query(
+      'UPDATE users SET id_document_path = ?, id_document_type = ?, id_verified = FALSE WHERE id = ?',
+      [docPath, documentType, req.user.sub]
+    );
+
+    res.json({ message: 'ID document uploaded successfully', path: docPath, type: documentType });
+  } catch (err) {
+    console.error('ID upload error:', err);
+    res.status(500).json({ message: 'Upload failed', status: 500 });
+  }
+});
+
 module.exports = router;
