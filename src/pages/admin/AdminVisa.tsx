@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Edit2, Eye, Globe, CheckCircle2, XCircle, Save, Trash2, GripVertical, User, Phone, Briefcase, Heart, AlertTriangle, FileText, Printer, Download, Search, Filter, Loader2, ExternalLink, Archive } from "lucide-react";
+import { Plus, MoreHorizontal, Edit2, Eye, Globe, CheckCircle2, XCircle, Save, Trash2, GripVertical, User, Phone, Briefcase, Heart, AlertTriangle, FileText, Printer, Download, Search, Filter, Loader2, ExternalLink, Archive, CloudUpload } from "lucide-react";
 import { useAdminVisa } from "@/hooks/useApiData";
 import { useCmsPageContent, useCmsSavePage } from "@/hooks/useCmsContent";
 import DataLoader from "@/components/DataLoader";
