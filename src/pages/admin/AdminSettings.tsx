@@ -209,7 +209,7 @@ const AdminSettings = () => {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <h1 className="text-2xl font-bold">System Settings</h1>
+      <h1 className="text-xl sm:text-2xl font-bold">System Settings</h1>
 
       {/* General */}
       <Card>
