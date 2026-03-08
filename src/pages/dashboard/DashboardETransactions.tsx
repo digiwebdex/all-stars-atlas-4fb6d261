@@ -40,11 +40,29 @@ const DashboardETransactions = () => {
     }),
   });
 
-  const resolved = (data as any)?.transactions?.length || (data as any)?.data?.length ? (data as any) : mockETransactions;
-  const transactions = resolved?.transactions || resolved?.data || [];
-  const total = resolved?.total || 0;
+  const isApiData = !!((data as any)?.transactions?.length || (data as any)?.data?.length);
+  const resolved = isApiData ? (data as any) : mockETransactions;
+  const allTransactions = resolved?.transactions || resolved?.data || [];
+
+  // Local filtering for mock data
+  const transactions = allTransactions.filter((txn: any) => {
+    if (!isApiData) {
+      if (filter !== "all") {
+        const filterMap: Record<string, string> = { bkash: "BKash", nagad: "Nagad", card: "Card Payment" };
+        if (txn.entryType !== filterMap[filter]) return false;
+      }
+      if (search) {
+        const q = search.toLowerCase();
+        return (txn.reference || "").toLowerCase().includes(q) || (txn.entryType || "").toLowerCase().includes(q);
+      }
+    }
+    return true;
+  });
+
+  const total = isApiData ? (resolved?.total || 0) : transactions.length;
   const totalPages = Math.ceil(total / Number(perPage)) || 1;
-  const effectiveError = error && transactions.length === 0 ? error : null;
+  const effectiveError = error && allTransactions.length === 0 ? error : null;
+  const paginatedTransactions = isApiData ? transactions : transactions.slice((page - 1) * Number(perPage), page * Number(perPage));
 
   return (
     <div className="space-y-6">
@@ -93,14 +111,14 @@ const DashboardETransactions = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {transactions.length === 0 ? (
+                {paginatedTransactions.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                       <CreditCard className="w-8 h-8 mx-auto mb-2 opacity-30" />
                       No e-transactions found
                     </TableCell>
                   </TableRow>
-                ) : transactions.map((txn: any) => {
+                ) : paginatedTransactions.map((txn: any) => {
                   const Icon = methodIcons[txn.entryType] || CreditCard;
                   return (
                     <TableRow key={txn.id} className="hover:bg-muted/50">

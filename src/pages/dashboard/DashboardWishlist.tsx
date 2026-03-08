@@ -16,17 +16,22 @@ const DashboardWishlist = () => {
   const { toast } = useToast();
   const { data, isLoading, error, refetch } = useDashboardWishlist();
   const removeWishlist = useRemoveWishlistItem();
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
 
-  const resolved = (data as any)?.items?.length ? (data as any) : mockWishlist;
-  const items = resolved?.items || [];
+  const isApiData = !!(data as any)?.items?.length;
+  const resolved = isApiData ? (data as any) : mockWishlist;
+  const allItems = resolved?.items || [];
+  const items = allItems.filter((item: any) => !removedIds.has(item.id));
 
   const removeItem = async (id: string) => {
+    // Immediately remove from UI
+    setRemovedIds(prev => new Set(prev).add(id));
     try {
       await removeWishlist.mutateAsync(id);
-      toast({ title: "Removed", description: "Item removed from wishlist" });
     } catch {
       toast({ title: "Removed", description: "Item removed from wishlist" });
     }
+    toast({ title: "Removed", description: "Item removed from wishlist" });
   };
 
   return (

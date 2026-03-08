@@ -18,6 +18,7 @@ const typeIcons: Record<string, typeof Plane> = { flight: Plane, hotel: Building
 const DashboardSearchHistory = () => {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [cleared, setCleared] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -29,9 +30,11 @@ const DashboardSearchHistory = () => {
     }),
   });
 
-  const resolved = (data as any)?.data?.length ? (data as any) : mockSearchHistory;
-  const searches = resolved?.data || [];
+  const isApiData = !!(data as any)?.data?.length;
+  const resolved = isApiData ? (data as any) : mockSearchHistory;
+  const searches = cleared ? [] : (resolved?.data || []);
 
+  // Always filter locally (API may not support it for mock)
   const filtered = searches.filter((item: any) => {
     if (filter !== "all" && item.type !== filter) return false;
     if (search) {
@@ -45,13 +48,15 @@ const DashboardSearchHistory = () => {
     try {
       await api.delete('/dashboard/search-history');
     } catch {}
+    setCleared(true);
     toast({ title: "Cleared", description: "Search history has been cleared" });
-    refetch();
   };
 
   const repeatSearch = (item: any) => {
     if (item.type === "flight") navigate(`/flights?from=${item.params?.from || ""}&to=${item.params?.to || ""}`);
     else if (item.type === "hotel") navigate(`/hotels?city=${item.params?.city || ""}`);
+    else if (item.type === "holiday") navigate(`/holidays?dest=${item.params?.dest || ""}`);
+    else if (item.type === "visa") navigate(`/visa`);
     else toast({ title: "Searching...", description: `Repeating: ${item.summary}` });
   };
 
@@ -60,9 +65,9 @@ const DashboardSearchHistory = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">Search History</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">{searches.length} searches recorded</p>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">{filtered.length} searches recorded</p>
         </div>
-        <Button variant="destructive" size="sm" className="w-full sm:w-auto" onClick={clearAll} disabled={searches.length === 0}>
+        <Button variant="destructive" size="sm" className="w-full sm:w-auto" onClick={clearAll} disabled={filtered.length === 0}>
           <Trash2 className="w-4 h-4 mr-1.5" /> Clear All
         </Button>
       </div>

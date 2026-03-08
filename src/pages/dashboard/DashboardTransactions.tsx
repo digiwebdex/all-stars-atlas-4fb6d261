@@ -18,6 +18,8 @@ const entryTypeColors: Record<string, string> = {
   Nagad: "bg-success/10 text-success",
   "Card Payment": "bg-success/10 text-success",
   "Bank Deposit": "bg-success/10 text-success",
+  Hotel: "bg-primary/10 text-primary",
+  Visa: "bg-primary/10 text-primary",
   Refund: "bg-accent/10 text-accent",
 };
 
@@ -34,12 +36,27 @@ const DashboardTransactions = () => {
     page, limit: Number(perPage),
   });
 
-  const resolved = (data as any)?.transactions?.length ? (data as any) : mockTransactions;
-  const transactions = resolved?.transactions || [];
+  const isApiData = !!(data as any)?.transactions?.length;
+  const resolved = isApiData ? (data as any) : mockTransactions;
+  const allTransactions = resolved?.transactions || [];
   const summary = resolved?.summary || {};
-  const total = resolved?.total || 0;
+
+  // Local filtering for mock data
+  const transactions = allTransactions.filter((txn: any) => {
+    if (!isApiData) {
+      if (filter !== "all" && txn.entryType !== filter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return (txn.reference || "").toLowerCase().includes(q) || (txn.description || "").toLowerCase().includes(q) || (txn.id || "").toLowerCase().includes(q);
+      }
+    }
+    return true;
+  });
+
+  const total = isApiData ? (resolved?.total || 0) : transactions.length;
   const totalPages = Math.ceil(total / Number(perPage)) || 1;
-  const effectiveError = error && transactions.length === 0 ? error : null;
+  const effectiveError = error && allTransactions.length === 0 ? error : null;
+  const paginatedTransactions = isApiData ? transactions : transactions.slice((page - 1) * Number(perPage), page * Number(perPage));
 
   return (
     <div className="space-y-6">
@@ -74,6 +91,8 @@ const DashboardTransactions = () => {
               <SelectItem value="Nagad">Nagad</SelectItem>
               <SelectItem value="Card Payment">Card Payment</SelectItem>
               <SelectItem value="Bank Deposit">Bank Deposit</SelectItem>
+              <SelectItem value="Hotel">Hotel</SelectItem>
+              <SelectItem value="Visa">Visa</SelectItem>
               <SelectItem value="Refund">Refund</SelectItem>
             </SelectContent>
           </Select>
@@ -94,10 +113,10 @@ const DashboardTransactions = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {transactions.length === 0 ? (
+                {paginatedTransactions.length === 0 ? (
                   <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-12">No transactions found</TableCell></TableRow>
-                ) : transactions.map((txn: any) => {
-                  const isCredit = txn.type === "credit" || txn.amount > 0 || ['BKash', 'Nagad', 'Card Payment', 'Bank Deposit', 'Refund'].includes(txn.entryType);
+                ) : paginatedTransactions.map((txn: any) => {
+                  const isCredit = txn.type === "credit" || txn.numAmount > 0 || ['BKash', 'Nagad', 'Card Payment', 'Bank Deposit', 'Refund'].includes(txn.entryType);
                   return (
                     <TableRow key={txn.id} className="hover:bg-muted/50">
                       <TableCell>

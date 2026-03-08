@@ -40,6 +40,7 @@ const DashboardBookings = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("All");
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [perPage, setPerPage] = useState("10");
   const [page, setPage] = useState(1);
   const [viewBooking, setViewBooking] = useState<any>(null);
@@ -51,12 +52,40 @@ const DashboardBookings = () => {
     page,
   });
 
-  const resolved = (data as any)?.bookings?.length ? (data as any) : mockDashboardBookings;
-  const bookings = resolved?.bookings || [];
-  const total = resolved?.total || 0;
-  const tabCounts = resolved?.tabCounts || {};
+  const isApiData = !!(data as any)?.bookings?.length;
+  const resolved = isApiData ? (data as any) : mockDashboardBookings;
+  const allBookings = resolved?.bookings || [];
+
+  // Local filtering for mock data (API handles its own filtering)
+  const bookings = allBookings.filter((b: any) => {
+    if (!isApiData) {
+      if (activeTab !== "All" && b.status?.toLowerCase() !== activeTab.toLowerCase()) return false;
+      if (typeFilter !== "all" && b.type !== typeFilter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return b.id?.toLowerCase().includes(q) || b.title?.toLowerCase().includes(q) || b.pnr?.toLowerCase().includes(q);
+      }
+    }
+    return true;
+  });
+
+  // Compute tab counts from all data
+  const tabCounts: Record<string, number> = isApiData ? (resolved?.tabCounts || {}) : {};
+  if (!isApiData) {
+    tabCounts["All"] = allBookings.length;
+    statusTabs.forEach(tab => {
+      if (tab !== "All") {
+        tabCounts[tab] = allBookings.filter((b: any) => b.status?.toLowerCase() === tab.toLowerCase()).length;
+      }
+    });
+  }
+
+  const total = isApiData ? (resolved?.total || 0) : bookings.length;
   const totalPages = Math.ceil(total / Number(perPage)) || 1;
-  const effectiveError = error && bookings.length === 0 ? error : null;
+  const effectiveError = error && allBookings.length === 0 ? error : null;
+
+  // Paginate locally for mock data
+  const paginatedBookings = isApiData ? bookings : bookings.slice((page - 1) * Number(perPage), page * Number(perPage));
 
   return (
     <div className="space-y-6">
@@ -67,7 +96,7 @@ const DashboardBookings = () => {
         </div>
         <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => {
           downloadCSV('bookings', ['ID', 'Type', 'Route', 'Date', 'Status', 'Amount'],
-            bookings.map((b: any) => [b.id, b.type, b.route, b.date, b.status, b.amount]));
+            bookings.map((b: any) => [b.id, b.type, b.title, b.date, b.status, b.amount]));
           toast({ title: "Exported", description: "Bookings CSV downloaded." });
         }}><Download className="w-4 h-4 mr-1.5" /> Export</Button>
       </div>
@@ -93,7 +122,8 @@ const DashboardBookings = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search by booking ID, destination, PNR..." className="pl-10" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
         </div>
-        <Select><SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="Type" /></SelectTrigger>
+        <Select value={typeFilter} onValueChange={v => { setTypeFilter(v); setPage(1); }}>
+          <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="Type" /></SelectTrigger>
           <SelectContent><SelectItem value="all">All Types</SelectItem><SelectItem value="flight">Flights</SelectItem><SelectItem value="hotel">Hotels</SelectItem><SelectItem value="visa">Visa</SelectItem><SelectItem value="holiday">Holidays</SelectItem></SelectContent>
         </Select>
       </div>
@@ -111,11 +141,11 @@ const DashboardBookings = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {bookings.length === 0 ? (
+                {paginatedBookings.length === 0 ? (
                   <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-12">
                     <Plane className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />No bookings found
                   </TableCell></TableRow>
-                ) : bookings.map((booking: any) => {
+                ) : paginatedBookings.map((booking: any) => {
                   const Icon = typeIcons[booking.type] || Plane;
                   return (
                     <TableRow key={booking.id} className="cursor-pointer hover:bg-muted/50">

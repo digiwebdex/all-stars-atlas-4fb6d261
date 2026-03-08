@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Clock, AlertCircle, CreditCard, CheckCircle2, ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -32,10 +31,23 @@ const DashboardPayLater = () => {
     }),
   });
 
-  const resolved = (data as any)?.items?.length || (data as any)?.data?.length ? (data as any) : mockPayLater;
-  const items = resolved?.items || resolved?.data || [];
+  const isApiData = !!((data as any)?.items?.length || (data as any)?.data?.length);
+  const resolved = isApiData ? (data as any) : mockPayLater;
+  const allItems = resolved?.items || resolved?.data || [];
   const summary = resolved?.summary || {};
-  const effectiveError = error && items.length === 0 ? error : null;
+  const effectiveError = error && allItems.length === 0 ? error : null;
+
+  // Local filtering for mock data
+  const items = allItems.filter((item: any) => {
+    if (!isApiData) {
+      if (activeTab !== "All" && item.status !== activeTab) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return (item.reference || "").toLowerCase().includes(q) || (item.bookingRef || "").toLowerCase().includes(q);
+      }
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-6">

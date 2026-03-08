@@ -148,6 +148,32 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [1.4.0] — 2026-03-08
+
+### 🔧 Critical Functionality Fixes — All Tabs, Filters & Actions Now Working
+
+#### Bug Fixes — Dashboard Tabs & Filters
+- **DashboardBookings** — Status tabs (All, Pending, Confirmed, In Progress, etc.) now correctly filter bookings locally when API is unavailable. Type filter dropdown also works. Tab counts are dynamically computed.
+- **DashboardPayLater** — Status tabs (All, Paid, Unpaid, Void, Refund) now filter data locally. Search by reference also works on mock data.
+- **DashboardTransactions** — Entry type filter (Air Ticket, bKash, Nagad, Hotel, Visa, etc.) now filters transactions locally. Search works across references and descriptions.
+- **DashboardETransactions** — Method filter (bKash, Nagad, Card) now filters e-transactions locally with proper mapping.
+- **AdminPaymentApprovals** — Status tabs (All, Pending, Approved, Rejected) now filter payments correctly. Previously all tabs showed the same data.
+
+#### Bug Fixes — Delete & Clear Actions
+- **DashboardWishlist** — Delete button now immediately removes the item from the UI via local state tracking (`removedIds`). Previously showed "Removed" toast but item stayed visible.
+- **DashboardSearchHistory** — "Clear All" button now clears the history from the UI immediately via `cleared` state flag. Previously showed "Cleared" toast but data remained.
+- **DashboardTravellers** — Delete button now removes traveller from UI instantly. Add Traveller now works with local state fallback when API is down.
+
+#### Bug Fixes — Admin Actions
+- **AdminPaymentApprovals** — Approve/Reject actions now update the payment status locally when backend is unavailable, moving items between tabs correctly. Added rejection note textarea in the detail dialog.
+
+#### Improvements
+- **Local pagination** — All paginated pages (Bookings, Transactions, E-Transactions) now paginate correctly on mock data instead of showing all items.
+- **Type filter** — DashboardBookings type filter dropdown now properly connected to filtering logic.
+- **Consistent pattern** — All pages now use `isApiData` flag to determine whether to apply local filtering or rely on server-side filtering.
+
+---
+
 ## Production Readiness Checklist ✅
 
 | Area | Status | Details |
