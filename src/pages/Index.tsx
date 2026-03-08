@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 import React from "react";
 import { useEffect, useState, useRef, useCallback, memo } from "react";
 import {
