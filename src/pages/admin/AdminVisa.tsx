@@ -74,9 +74,9 @@ const AdminVisa = () => {
   }) || [];
 
   const stats = (data as any)?.stats;
-  const resolved = apiApps.length > 0 ? { applications: apiApps, countries: [] } : mockAdminVisa;
+  const resolved = { applications: apiApps, countries: [] };
   const applications = resolved?.applications || [];
-  const countries = (data as any)?.countries || resolved?.countries || [];
+  const countries = (data as any)?.countries || [];
 
   // REAL approve/reject via API
   const handleStatusChange = async (app: any, newStatus: string) => {
