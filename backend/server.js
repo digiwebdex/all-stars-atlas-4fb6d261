@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 
 const authRoutes = require('./src/routes/auth');
+const socialAuthRoutes = require('./src/routes/social-auth');
 const flightRoutes = require('./src/routes/flights');
 const hotelRoutes = require('./src/routes/hotels');
 const serviceRoutes = require('./src/routes/services');
