@@ -46,7 +46,7 @@ const AdminDashboard = () => {
         </Badge>
       </motion.div>
 
-      <DataLoader isLoading={isLoading} error={error} skeleton="dashboard" retry={refetch}>
+      <DataLoader isLoading={isLoading} error={effectiveError} skeleton="dashboard" retry={refetch}>
         {/* Stats */}
         <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat: any, i: number) => {
