@@ -318,22 +318,44 @@ All configurable in `src/lib/config.ts`.
 
 ---
 
-## 🔌 API Integrations (Admin-Configurable)
+## 🔌 API Integrations — Admin Setup Guide
 
-All 3rd-party API keys are managed via Admin → Settings → API Integrations:
+All 3rd-party API keys are managed via **Admin → Settings → API Integrations**. Each integration includes inline documentation and a "View Docs" link.
 
-| Integration               | Category        | Purpose                              |
-| ------------------------- | --------------- | ------------------------------------ |
-| Flight GDS (BDFare)       | Travel          | Real-time flight search & booking    |
-| Hotel Supplier API        | Travel          | Hotel inventory & rates              |
-| eSIM Provider             | Digital         | International eSIM provisioning      |
-| Mobile Recharge Gateway   | Digital         | BD telecom operator recharge         |
-| Bill Payment Gateway      | Digital         | Utility bill processing              |
-| bKash Payment Gateway     | Payment         | Mobile payment integration           |
-| Nagad Payment Gateway     | Payment         | Mobile payment integration           |
-| SSLCommerz (Cards)        | Payment         | Visa/Mastercard/AMEX processing      |
-| SMS Gateway               | Communication   | OTP & transactional SMS              |
-| **Google Drive**          | **Cloud Storage** | **One-click visa doc upload to Drive** |
+### Travel APIs
+
+| Integration | Where to Get API Key | Setup Steps |
+|---|---|---|
+| **Flight GDS (BDFare)** | [docs.bdfare.com](https://docs.bdfare.com) | 1. Sign up as BDFare agent → 2. Get API Key + Secret from dashboard → 3. Enter in Admin → Settings → Travel APIs → Flight GDS |
+| **Hotel Supplier (Hotelbeds)** | [developer.hotelbeds.com](https://developer.hotelbeds.com) | 1. Register as Hotelbeds partner → 2. Get API Key + Shared Secret → 3. Enter in Admin → Settings → Travel APIs → Hotel Supplier |
+
+### Digital Services
+
+| Integration | Where to Get API Key | Setup Steps |
+|---|---|---|
+| **eSIM Provider** | [docs.esimgo.com](https://docs.esimgo.com) | 1. Create eSIMGo merchant account → 2. Get API Key from developer dashboard → 3. Enter in Admin → Settings |
+| **Mobile Recharge** | SSLCommerz or direct operator API | 1. Contact SSLCommerz/operator for merchant credentials → 2. Get Merchant ID + API Key + Secret |
+| **Bill Payment** | SSLCommerz bill pay module | 1. Activate bill pay module with SSLCommerz → 2. Use same merchant credentials |
+
+### Payment Gateways
+
+| Integration | Where to Get API Key | Setup Steps |
+|---|---|---|
+| **bKash** | [developer.bka.sh](https://developer.bka.sh) | 1. Apply for bKash merchant account → 2. Get App Key, App Secret, Username, Password → 3. Start with Sandbox mode ON → 4. Toggle off for production |
+| **Nagad** | [nagad.com.bd/merchant](https://nagad.com.bd/merchant) | 1. Apply for Nagad merchant account → 2. Get Merchant ID, Public Key, Private Key → 3. Start with Sandbox ON |
+| **SSLCommerz (Cards)** | [developer.sslcommerz.com](https://developer.sslcommerz.com) | 1. Register at SSLCommerz → 2. Get Store ID + Store Password → 3. Start with Sandbox ON for testing |
+
+### Communication
+
+| Integration | Where to Get API Key | Setup Steps |
+|---|---|---|
+| **SMS Gateway** | Any BD SMS provider (sms.net.bd, BulkSMSBD, etc.) | 1. Register with provider → 2. Get API Key + Sender ID → 3. Enter API URL, Key, and Sender ID in settings |
+
+### Cloud Storage
+
+| Integration | Where to Get API Key | Setup Steps |
+|---|---|---|
+| **Google Drive** | [Google Cloud Console](https://console.cloud.google.com/apis/credentials) | See detailed steps below ↓ |
 
 ### Google Drive Setup (Admin → Settings → Google Drive)
 
@@ -346,6 +368,31 @@ All 3rd-party API keys are managed via Admin → Settings → API Integrations:
 7. Done! The "Save to Google Drive" button in Visa Management will now work
 
 > **Note:** The Client ID is a public/publishable key and is safe to store in the browser.
+
+### SMTP Email Setup (Admin → Settings → Email Configuration)
+
+| Field | Example Value | Notes |
+|---|---|---|
+| SMTP Host | `smtp.gmail.com` | Or your mail server |
+| SMTP Port | `587` | Use 587 for TLS, 465 for SSL |
+| Username | `noreply@seventrip.com.bd` | Your sending email |
+| Password | `your-app-password` | For Gmail: use App Password, not account password |
+
+> **Gmail Tip:** Enable 2FA → Go to Security → App Passwords → Generate for "Mail"
+
+### Payment Methods (Admin → Settings → Payment Methods)
+
+Toggle on/off which payment methods users can choose during checkout:
+- **Bank Deposit** — User deposits cash at your bank branch
+- **Bank Transfer** — User wires money from their bank
+- **Cheque Deposit** — User deposits cheque
+- **bKash / Nagad / Rocket** — Mobile financial services
+- **Visa/Mastercard** — Card payments via SSLCommerz
+
+### Bank Accounts (Admin → Settings → Company Bank Accounts)
+
+Add your company bank details that are shown to users when they select "Bank Deposit" or "Bank Transfer":
+- Bank Name, Account Name, Account Number, Branch, Routing Number
 
 ---
 
