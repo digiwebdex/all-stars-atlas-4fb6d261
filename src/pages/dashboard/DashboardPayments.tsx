@@ -32,6 +32,7 @@ const allPaymentMethods = [
 
 const DashboardPayments = () => {
   const [showMakePayment, setShowMakePayment] = useState(false);
+  const [viewPayment, setViewPayment] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [selectedBank, setSelectedBank] = useState("");
   const [amount, setAmount] = useState("");
