@@ -146,7 +146,7 @@ const DashboardHome = () => {
             </div>
           )}
         </motion.div>
-      </DataLoader>
+      </div>
 
       {/* Quick Actions */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
