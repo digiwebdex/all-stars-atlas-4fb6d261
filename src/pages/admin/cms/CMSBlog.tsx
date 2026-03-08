@@ -233,13 +233,13 @@ const CMSBlog = () => {
     if (!post.seoDescription) post.seoDescription = post.excerpt;
 
     if (post.id && posts.some(p => p.id === post.id)) {
-      const updated = updateInCollection(STORE_KEY, BLOG_POSTS.map(p => ({ ...p, id: String(p.id), content: "", tags: [] as string[], seoTitle: "", seoDescription: "", seoKeywords: "", slug: slugify(p.title), featured: false, allowComments: true })), post.id, post);
+      const updated = updateInCollection(STORE_KEY, defaultPosts(), post.id, post as any) as BlogPost[];
       setPosts([...updated]);
       toast({ title: "✓ Post Saved", description: `"${post.title}" has been updated.` });
     } else {
       post.id = `post-${Date.now()}`;
       post.date = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-      const updated = addToCollection(STORE_KEY, BLOG_POSTS.map(p => ({ ...p, id: String(p.id), content: "", tags: [] as string[], seoTitle: "", seoDescription: "", seoKeywords: "", slug: slugify(p.title), featured: false, allowComments: true })), post);
+      const updated = addToCollection(STORE_KEY, defaultPosts(), post as any) as BlogPost[];
       setPosts([...updated]);
       toast({ title: "✓ Post Created", description: `"${post.title}" has been created.` });
     }
