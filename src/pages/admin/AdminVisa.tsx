@@ -212,7 +212,7 @@ const AdminVisa = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-xl sm:text-2xl font-bold">Visa Management</h1>
-        {tab !== "form-settings" && <Button className="w-full sm:w-auto"><Plus className="w-4 h-4 mr-1.5" /> Add Country</Button>}
+        {tab !== "form-settings" && <Button className="w-full sm:w-auto" onClick={() => setTab("form-settings")}><Plus className="w-4 h-4 mr-1.5" /> Add Country</Button>}
       </div>
 
       {/* Stats cards */}
@@ -318,7 +318,7 @@ const AdminVisa = () => {
                       <TableCell className="text-sm">{c.processing}</TableCell>
                       <TableCell className="text-sm font-semibold">{c.fee}</TableCell>
                       <TableCell><Badge variant="outline" className={`text-[10px] capitalize ${c.status === "active" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>{c.status}</Badge></TableCell>
-                      <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast({ title: "Edit Country", description: `Editing ${c.country} settings` })}><Edit2 className="w-4 h-4" /></Button></TableCell>
+                      <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setTab("form-settings"); toast({ title: "Edit Country", description: `Switch to Form Settings to edit ${c.country}` }); }}><Edit2 className="w-4 h-4" /></Button></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

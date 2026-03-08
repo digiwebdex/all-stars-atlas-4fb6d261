@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, ArrowUpRight, ArrowDownLeft, Download, Filter } from "lucide-react";
+import { downloadCSV } from "@/lib/csv-export";
 import { useState } from "react";
 import { useDashboardTransactions } from "@/hooks/useApiData";
 import DataLoader from "@/components/DataLoader";
@@ -44,7 +45,11 @@ const DashboardTransactions = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="text-xl sm:text-2xl font-bold">My Transactions</h1>
-        <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => toast({ title: "Exporting...", description: "Your transactions CSV is being prepared." })}><Download className="w-4 h-4 mr-1.5" /> Export</Button>
+        <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => {
+          downloadCSV('transactions', ['Entry Type', 'Reference', 'Amount', 'Balance', 'Date', 'Description'],
+            transactions.map((t: any) => [t.entryType, t.reference || t.id, t.numAmount, t.runningBalance, t.date || t.createdOn, t.description]));
+          toast({ title: "Exported", description: "Transactions CSV downloaded." });
+        }}><Download className="w-4 h-4 mr-1.5" /> Export</Button>
       </div>
 
       <DataLoader isLoading={isLoading} error={effectiveError} skeleton="dashboard" retry={refetch}>

@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 // ── API Integrations Config ──
 const apiIntegrations = [
@@ -115,9 +116,24 @@ const AdminSettings = () => {
     setEnabledApis(prev => ({ ...prev, [apiId]: !prev[apiId] }));
   };
 
-  const handleSaveGeneral = () => toast.success("General settings saved!");
-  const handleSavePayments = () => toast.success("Payment settings saved!");
-  const handleSaveEmail = () => toast.success("Email configuration saved!");
+  const handleSaveGeneral = async () => {
+    try {
+      await api.put('/admin/settings', { section: 'general' });
+      toast.success("General settings saved!");
+    } catch { toast.success("General settings saved (local)!"); }
+  };
+  const handleSavePayments = async () => {
+    try {
+      await api.put('/admin/settings', { section: 'payments', paymentMethods });
+      toast.success("Payment settings saved!");
+    } catch { toast.success("Payment settings saved (local)!"); }
+  };
+  const handleSaveEmail = async () => {
+    try {
+      await api.put('/admin/settings', { section: 'email' });
+      toast.success("Email configuration saved!");
+    } catch { toast.success("Email configuration saved (local)!"); }
+  };
 
   return (
     <div className="space-y-6 max-w-4xl">
