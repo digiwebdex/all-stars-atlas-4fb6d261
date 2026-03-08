@@ -198,14 +198,44 @@ const AdminVisa = () => {
     }
   };
 
-  // Open Google Drive upload (opens drive upload page with file)
-  const openInGoogleDrive = (app: any) => {
-    // Google Drive doesn't have a direct "upload from URL" public API via browser
-    // Best UX: open Google Drive in new tab so admin can upload the downloaded zip
-    downloadDocsZip(app).then(() => {
-      window.open('https://drive.google.com/drive/my-drive', '_blank');
-      toast({ title: "Google Drive", description: "ZIP downloaded. Upload it to the Google Drive tab that opened." });
-    });
+  // Download full application as ZIP (PDF + documents)
+  const downloadFullApplication = async (app: any) => {
+    try {
+      // First try backend ZIP (contains uploaded documents)
+      const apiBase = config.apiBaseUrl;
+      const token = localStorage.getItem('auth_token');
+      let hasBackendDocs = false;
+      
+      try {
+        const resp = await fetch(`${apiBase}/admin/visa/${app.id}/download-documents`, {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        });
+        if (resp.ok) {
+          const blob = await resp.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `visa-full-${app.firstName || 'applicant'}-${app.lastName || ''}-${app.id.substring(0, 8)}.zip`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          hasBackendDocs = true;
+        }
+      } catch { /* no backend docs available */ }
+
+      // Always also generate PDF
+      downloadPDF(app);
+      
+      toast({ 
+        title: "Application Downloaded", 
+        description: hasBackendDocs 
+          ? "ZIP with documents + PDF application downloaded." 
+          : "PDF application downloaded. No uploaded documents found on server."
+      });
+    } catch (err: any) {
+      toast({ title: "Download Failed", description: err?.message || "Could not download.", variant: "destructive" });
+    }
   };
 
   return (
@@ -489,13 +519,11 @@ const AdminVisa = () => {
                     <Button variant="outline" size="sm" onClick={() => downloadPDF(viewApp)}>
                       <Printer className="w-3.5 h-3.5 mr-1" /> Download PDF
                     </Button>
-                    {viewApp.documents?.some((d: any) => typeof d === 'object' && d.url) && (
-                      <Button variant="outline" size="sm" onClick={() => downloadDocsZip(viewApp)}>
-                        <Archive className="w-3.5 h-3.5 mr-1" /> Download All Docs (ZIP)
-                      </Button>
-                    )}
-                    <Button variant="outline" size="sm" onClick={() => openInGoogleDrive(viewApp)}>
-                      <ExternalLink className="w-3.5 h-3.5 mr-1" /> Save to Google Drive
+                    <Button variant="outline" size="sm" onClick={() => downloadDocsZip(viewApp)}>
+                      <Archive className="w-3.5 h-3.5 mr-1" /> Download Docs (ZIP)
+                    </Button>
+                    <Button variant="default" size="sm" onClick={() => downloadFullApplication(viewApp)}>
+                      <Download className="w-3.5 h-3.5 mr-1" /> Download Full Application
                     </Button>
                   </div>
                   {/* Status actions */}
