@@ -13,7 +13,7 @@ import { useAdminPayments } from "@/hooks/useApiData";
 import { api } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import DataLoader from "@/components/DataLoader";
-import { mockAdminPayments } from "@/lib/mock-data";
+
 
 const statusMap: Record<string, { label: string; class: string }> = {
   completed: { label: "Completed", class: "bg-success/10 text-success" },
