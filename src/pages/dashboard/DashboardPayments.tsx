@@ -340,7 +340,11 @@ const DashboardPayments = () => {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">Payments List</CardTitle>
-              <Button size="sm" variant="outline"><Download className="w-4 h-4 mr-1" /> Export</Button>
+              <Button size="sm" variant="outline" onClick={() => {
+                downloadCSV('payments', ['Reference', 'Method', 'Amount', 'Status', 'Date'],
+                  paymentHistory.map((t: any) => [t.id, t.method, t.amount, t.status, t.date]));
+                toast({ title: "Exported", description: "Payments CSV downloaded." });
+              }}><Download className="w-4 h-4 mr-1" /> Export</Button>
             </div>
           </CardHeader>
           <CardContent className="p-0 table-responsive">

@@ -132,7 +132,14 @@ const DashboardLayout = () => {
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
-            onClick={() => navigate("/")}
+            onClick={() => {
+              localStorage.removeItem('seven_trip_user');
+              localStorage.removeItem('auth_token');
+              localStorage.removeItem('refresh_token');
+              localStorage.removeItem('user');
+              window.dispatchEvent(new Event('auth:logout'));
+              navigate("/");
+            }}
           >
             <LogOut className="w-4 h-4" />
           </Button>
