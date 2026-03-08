@@ -554,6 +554,12 @@ const AdminVisa = () => {
                     <Button variant="default" size="sm" onClick={() => downloadFullApplication(viewApp)}>
                       <Download className="w-3.5 h-3.5 mr-1" /> Download Full Application
                     </Button>
+                    <Button variant="outline" size="sm" onClick={() => saveToGoogleDrive(viewApp)}
+                      disabled={actionLoading === `drive-${viewApp.id}`}
+                      className="border-blue-300 text-blue-600 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950">
+                      {actionLoading === `drive-${viewApp.id}` ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <CloudUpload className="w-3.5 h-3.5 mr-1" />}
+                      Save to Google Drive
+                    </Button>
                   </div>
                   {/* Status actions */}
                   <div className="flex items-center gap-2">
