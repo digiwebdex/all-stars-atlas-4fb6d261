@@ -1,5 +1,40 @@
 import jsPDF from "jspdf";
 
+const LOGO_URL = "/images/seven-trip-logo.png";
+let cachedLogoBase64: string | null = null;
+
+async function loadLogoBase64(): Promise<string | null> {
+  if (cachedLogoBase64) return cachedLogoBase64;
+  try {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject();
+      img.src = LOGO_URL;
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0);
+    cachedLogoBase64 = canvas.toDataURL("image/png");
+    return cachedLogoBase64;
+  } catch {
+    return null;
+  }
+}
+
+function addLogo(doc: jsPDF, logo: string | null, x: number, y: number, h: number) {
+  if (!logo) return;
+  try {
+    // Calculate width from aspect ratio (logo is roughly 4:1)
+    const w = h * 4;
+    doc.addImage(logo, "PNG", x, y, w, h);
+  } catch { /* logo failed, text fallback already present */ }
+}
+
 interface InvoiceData {
   invoiceNo: string;
   date: string;
@@ -14,19 +49,23 @@ interface InvoiceData {
   serviceType?: string;
 }
 
-export function generateInvoicePDF(inv: InvoiceData) {
+export async function generateInvoicePDF(inv: InvoiceData) {
   const doc = new jsPDF();
   const w = doc.internal.pageSize.getWidth();
+  const logo = await loadLogoBase64();
 
-  // Header
-  doc.setFontSize(22);
+  // Logo + Header
+  addLogo(doc, logo, 20, 12, 10);
+  const textStartY = logo ? 28 : 25;
+
+  doc.setFontSize(logo ? 10 : 22);
   doc.setFont("helvetica", "bold");
-  doc.text("Seven Trip", 20, 25);
+  if (!logo) doc.text("Seven Trip", 20, 25);
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100);
-  doc.text("Seven Trip Bangladesh Ltd", 20, 32);
-  doc.text("Dhaka, Bangladesh | support@seventrip.com", 20, 37);
+  doc.text("Seven Trip Bangladesh Ltd", 20, textStartY + 4);
+  doc.text("Dhaka, Bangladesh | support@seventrip.com.bd", 20, textStartY + 9);
 
   // Invoice info (right)
   doc.setFontSize(11);
@@ -118,24 +157,28 @@ export function generateInvoicePDF(inv: InvoiceData) {
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(150);
-  doc.text("Thank you for choosing Seven Trip. For queries, contact support@seventrip.com", w / 2, y, { align: "center" });
+  doc.text("Thank you for choosing Seven Trip. For queries, contact support@seventrip.com.bd", w / 2, y, { align: "center" });
   doc.text("This is a computer-generated invoice and does not require a signature.", w / 2, y + 6, { align: "center" });
 
   doc.save(`${inv.invoiceNo}.pdf`);
 }
 
-export function printInvoicePDF(inv: InvoiceData) {
+export async function printInvoicePDF(inv: InvoiceData) {
   const doc = new jsPDF();
   const w = doc.internal.pageSize.getWidth();
+  const logo = await loadLogoBase64();
 
-  doc.setFontSize(22);
+  addLogo(doc, logo, 20, 12, 10);
+  const textStartY = logo ? 28 : 25;
+
+  doc.setFontSize(logo ? 10 : 22);
   doc.setFont("helvetica", "bold");
-  doc.text("Seven Trip", 20, 25);
+  if (!logo) doc.text("Seven Trip", 20, 25);
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100);
-  doc.text("Seven Trip Bangladesh Ltd", 20, 32);
-  doc.text("Dhaka, Bangladesh | support@seventrip.com", 20, 37);
+  doc.text("Seven Trip Bangladesh Ltd", 20, textStartY + 4);
+  doc.text("Dhaka, Bangladesh | support@seventrip.com.bd", 20, textStartY + 9);
 
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
@@ -211,7 +254,6 @@ export function printInvoicePDF(inv: InvoiceData) {
   doc.setTextColor(150);
   doc.text("Thank you for choosing Seven Trip.", w / 2, y, { align: "center" });
 
-  // Open in new window for printing
   const pdfBlob = doc.output("blob");
   const url = URL.createObjectURL(pdfBlob);
   const printWindow = window.open(url);
@@ -220,17 +262,34 @@ export function printInvoicePDF(inv: InvoiceData) {
   }
 }
 
-export function printTicketPDF(ticket: TicketData) {
+interface TicketData {
+  id: string;
+  airline: string;
+  flightNo: string;
+  from: string;
+  to: string;
+  date: string;
+  time: string;
+  passenger: string;
+  pnr: string;
+  seat: string;
+  class: string;
+}
+
+export async function printTicketPDF(ticket: TicketData) {
   const doc = new jsPDF();
   const w = doc.internal.pageSize.getWidth();
+  const logo = await loadLogoBase64();
+
+  addLogo(doc, logo, 20, 12, 10);
 
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
-  doc.text("E-Ticket", 20, 25);
+  doc.text("E-Ticket", logo ? 62 : 20, 25);
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100);
-  doc.text("Seven Trip Bangladesh Ltd", 20, 32);
+  doc.text("Seven Trip Bangladesh Ltd", logo ? 62 : 20, 32);
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
@@ -285,31 +344,20 @@ export function printTicketPDF(ticket: TicketData) {
   }
 }
 
-interface TicketData {
-  id: string;
-  airline: string;
-  flightNo: string;
-  from: string;
-  to: string;
-  date: string;
-  time: string;
-  passenger: string;
-  pnr: string;
-  seat: string;
-  class: string;
-}
-
-export function generateTicketPDF(ticket: TicketData) {
+export async function generateTicketPDF(ticket: TicketData) {
   const doc = new jsPDF();
   const w = doc.internal.pageSize.getWidth();
+  const logo = await loadLogoBase64();
+
+  addLogo(doc, logo, 20, 12, 10);
 
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
-  doc.text("E-Ticket", 20, 25);
+  doc.text("E-Ticket", logo ? 62 : 20, 25);
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100);
-  doc.text("Seven Trip Bangladesh Ltd", 20, 32);
+  doc.text("Seven Trip Bangladesh Ltd", logo ? 62 : 20, 32);
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
@@ -319,7 +367,6 @@ export function generateTicketPDF(ticket: TicketData) {
   doc.setDrawColor(200);
   doc.line(20, 40, w - 20, 40);
 
-  // Flight info
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(0);
@@ -342,7 +389,6 @@ export function generateTicketPDF(ticket: TicketData) {
 
   doc.line(20, 88, w - 20, 88);
 
-  // Details grid
   const details = [
     ["Passenger", ticket.passenger],
     ["PNR", ticket.pnr],
@@ -370,7 +416,7 @@ export function generateTicketPDF(ticket: TicketData) {
   doc.setFontSize(8);
   doc.setTextColor(150);
   doc.text("Please arrive at the airport at least 2 hours before departure.", w / 2, y, { align: "center" });
-  doc.text("Powered by Seven Trip — www.seventrip.com", w / 2, y + 6, { align: "center" });
+  doc.text("Powered by Seven Trip — www.seventrip.com.bd", w / 2, y + 6, { align: "center" });
 
   doc.save(`E-Ticket-${ticket.pnr}.pdf`);
 }
