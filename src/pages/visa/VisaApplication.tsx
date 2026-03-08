@@ -21,6 +21,8 @@ const VisaApplication = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { toast } = useToast();
   const { data: page, isLoading } = useCmsPageContent("/visa/apply");
   const config = page?.visaConfig;
 
