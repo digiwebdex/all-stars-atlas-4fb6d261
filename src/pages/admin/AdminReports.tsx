@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { useAdminReports } from "@/hooks/useApiData";
 import DataLoader from "@/components/DataLoader";
-import { mockAdminReports } from "@/lib/mock-data";
+
 import { downloadCSV } from "@/lib/csv-export";
 
 const AdminReports = () => {
