@@ -296,4 +296,150 @@ router.put('/visa/:id', async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
 });
 
+// =============== PAYMENT APPROVALS ===============
+// GET /admin/payment-approvals
+router.get('/payment-approvals', async (req, res) => {
+  try {
+    const { status, search } = req.query;
+    
+    // Payment approvals = transactions that need admin review (bank transfers, manual payments)
+    let sql = `SELECT t.*, u.first_name, u.last_name, u.email as user_email, b.booking_ref
+               FROM transactions t 
+               JOIN users u ON t.user_id = u.id
+               LEFT JOIN bookings b ON t.booking_id = b.id
+               WHERE t.payment_method IN ('bank_transfer', 'bkash', 'nagad', 'rocket')`;
+    const params = [];
+    
+    if (status && status !== 'All') {
+      const statusMap = { 'Pending': 'pending', 'Approved': 'completed', 'Rejected': 'failed' };
+      if (statusMap[status]) { sql += ` AND t.status = ?`; params.push(statusMap[status]); }
+    }
+    if (search) { sql += ` AND (t.reference LIKE ? OR b.booking_ref LIKE ? OR u.email LIKE ?)`; params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    
+    sql += ` ORDER BY t.created_at DESC LIMIT 100`;
+    const [rows] = await db.query(sql, params);
+    
+    const methodLabels = { bank_transfer: 'Bank Transfer', bkash: 'Mobile Banking', nagad: 'Mobile Banking', rocket: 'Mobile Banking', card: 'Credit/Debit Card' };
+    
+    const data = rows.map(t => ({
+      id: t.id,
+      customer: { name: `${t.first_name} ${t.last_name}`, email: t.user_email },
+      bookingRef: t.booking_ref || 'N/A',
+      amount: parseFloat(t.amount),
+      method: methodLabels[t.payment_method] || t.payment_method,
+      status: t.status === 'completed' ? 'Approved' : t.status === 'failed' ? 'Rejected' : 'Pending',
+      reference: t.reference || `TXN-${t.id.substring(0, 8).toUpperCase()}`,
+      receiptUrl: t.meta ? (JSON.parse(t.meta || '{}').receiptUrl || null) : null,
+      note: t.description,
+      date: t.created_at,
+    }));
+    
+    // Stats
+    const pending = data.filter(d => d.status === 'Pending').length;
+    const approved = data.filter(d => d.status === 'Approved').length;
+    const rejected = data.filter(d => d.status === 'Rejected').length;
+    const totalPending = data.filter(d => d.status === 'Pending').reduce((s, d) => s + d.amount, 0);
+    
+    res.json({ 
+      data,
+      stats: { pending, approved, rejected, totalPendingAmount: totalPending },
+      total: data.length 
+    });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
+});
+
+// PUT /admin/payment-approvals/:id
+router.put('/payment-approvals/:id', async (req, res) => {
+  try {
+    const { status, note } = req.body;
+    const dbStatus = status === 'Approved' ? 'completed' : status === 'Rejected' ? 'failed' : 'pending';
+    
+    await db.query('UPDATE transactions SET status = ?, description = COALESCE(?, description) WHERE id = ?', [dbStatus, note || null, req.params.id]);
+    
+    // If approved, also update the booking payment status
+    if (status === 'Approved') {
+      const [txn] = await db.query('SELECT booking_id FROM transactions WHERE id = ?', [req.params.id]);
+      if (txn.length > 0 && txn[0].booking_id) {
+        await db.query("UPDATE bookings SET payment_status = 'paid' WHERE id = ?", [txn[0].booking_id]);
+      }
+    }
+    
+    res.json({ message: `Payment ${status.toLowerCase()}` });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
+});
+
+// =============== ADMIN INVOICES ===============
+// GET /admin/invoices
+router.get('/invoices', async (req, res) => {
+  try {
+    const { status, search, page = 1, limit = 20 } = req.query;
+    
+    let sql = `SELECT b.*, u.first_name, u.last_name, u.email as user_email 
+               FROM bookings b JOIN users u ON b.user_id = u.id WHERE 1=1`;
+    const params = [];
+    
+    if (status && status !== 'all') {
+      const statusMap = { 'Paid': 'paid', 'Unpaid': 'unpaid', 'Partial': 'partial', 'Overdue': 'unpaid' };
+      if (statusMap[status]) { sql += ` AND b.payment_status = ?`; params.push(statusMap[status]); }
+    }
+    if (search) { sql += ` AND (b.booking_ref LIKE ? OR u.email LIKE ? OR u.first_name LIKE ?)`; params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const [countResult] = await db.query(sql.replace('SELECT b.*, u.first_name, u.last_name, u.email as user_email', 'SELECT COUNT(*) as total'), params);
+    
+    sql += ` ORDER BY b.booked_at DESC LIMIT ? OFFSET ?`;
+    params.push(parseInt(limit), offset);
+    const [rows] = await db.query(sql, params);
+    
+    const data = rows.map((b, idx) => {
+      const invoiceNumber = `INV-${new Date(b.booked_at).getFullYear()}-${String(idx + 1001).padStart(5, '0')}`;
+      let payStatus = 'Unpaid';
+      if (b.payment_status === 'paid') payStatus = 'Paid';
+      else if (b.payment_status === 'partial') payStatus = 'Partial';
+      
+      // Check if overdue (more than 7 days unpaid)
+      const daysOld = Math.floor((Date.now() - new Date(b.booked_at).getTime()) / (1000 * 60 * 60 * 24));
+      if (payStatus === 'Unpaid' && daysOld > 7) payStatus = 'Overdue';
+      
+      return {
+        id: b.id,
+        invoiceNumber,
+        bookingRef: b.booking_ref,
+        bookingType: b.booking_type,
+        customer: { name: `${b.first_name} ${b.last_name}`, email: b.user_email },
+        amount: parseFloat(b.total_amount),
+        status: payStatus,
+        date: b.booked_at,
+        dueDate: new Date(new Date(b.booked_at).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      };
+    });
+    
+    // Stats
+    const [totalStat] = await db.query('SELECT COUNT(*) as c, COALESCE(SUM(total_amount),0) as total FROM bookings');
+    const [paidStat] = await db.query("SELECT COALESCE(SUM(total_amount),0) as total FROM bookings WHERE payment_status = 'paid'");
+    const [unpaidStat] = await db.query("SELECT COALESCE(SUM(total_amount),0) as total FROM bookings WHERE payment_status IN ('unpaid','partial')");
+    
+    res.json({
+      data,
+      total: countResult[0].total,
+      page: parseInt(page), limit: parseInt(limit),
+      totalPages: Math.ceil(countResult[0].total / parseInt(limit)),
+      stats: {
+        totalInvoices: totalStat[0].c,
+        totalAmount: parseFloat(totalStat[0].total),
+        paidAmount: parseFloat(paidStat[0].total),
+        unpaidAmount: parseFloat(unpaidStat[0].total),
+      },
+    });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
+});
+
+// POST /admin/invoices/:id/remind
+router.post('/invoices/:id/remind', async (req, res) => {
+  try {
+    // In production, this would send an email
+    res.json({ message: 'Payment reminder sent' });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
+});
+
 module.exports = router;

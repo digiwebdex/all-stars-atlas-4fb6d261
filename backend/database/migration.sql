@@ -385,6 +385,20 @@ CREATE TABLE IF NOT EXISTS system_settings (
   updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Search history
+CREATE TABLE IF NOT EXISTS search_history (
+  id          CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+  user_id     CHAR(36) NOT NULL,
+  search_type VARCHAR(20) NOT NULL,
+  origin      VARCHAR(100),
+  destination VARCHAR(100),
+  dates       VARCHAR(100),
+  params      JSON,
+  created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_user (user_id)
+);
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =============================================

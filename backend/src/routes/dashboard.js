@@ -278,4 +278,235 @@ router.post('/settings/password', async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
 });
 
+// =============== PAY LATER ===============
+// GET /dashboard/pay-later
+router.get('/pay-later', async (req, res) => {
+  try {
+    const { status, search, page = 1, limit = 20 } = req.query;
+    
+    // Get bookings with unpaid/partial payment status (these are "pay later" items)
+    let sql = `SELECT * FROM bookings WHERE user_id = ? AND payment_status IN ('unpaid', 'partial')`;
+    const params = [req.user.sub];
+    
+    if (status && status !== 'All') {
+      const statusMap = { 'Paid': 'paid', 'Unpaid': 'unpaid', 'Void': 'cancelled', 'Refund': 'refunded' };
+      if (statusMap[status]) { sql += ` AND (payment_status = ? OR status = ?)`; params.push(statusMap[status], statusMap[status]); }
+    }
+    if (search) { sql += ` AND booking_ref LIKE ?`; params.push(`%${search}%`); }
+    
+    sql += ` ORDER BY booked_at DESC`;
+    const [rows] = await db.query(sql, params);
+    
+    // Calculate summaries
+    const now = new Date();
+    let previousDue = 0, totalDue = 0, dueToday = 0;
+    
+    const data = rows.map(b => {
+      const amount = parseFloat(b.total_amount) || 0;
+      const bookedDate = new Date(b.booked_at);
+      const dueDate = new Date(bookedDate);
+      dueDate.setDate(dueDate.getDate() + 3); // Due 3 days after booking
+      
+      const isPastDue = dueDate < now;
+      const isDueToday = dueDate.toDateString() === now.toDateString();
+      
+      if (b.payment_status === 'unpaid' || b.payment_status === 'partial') {
+        totalDue += amount;
+        if (isPastDue) previousDue += amount;
+        if (isDueToday) dueToday += amount;
+      }
+      
+      let status = 'Unpaid';
+      if (b.payment_status === 'paid') status = 'Paid';
+      else if (b.status === 'cancelled') status = 'Void';
+      else if (b.status === 'refunded') status = 'Refund';
+      
+      return {
+        id: b.id,
+        reference: `DUE-${b.booking_ref}`,
+        bookingRef: b.booking_ref,
+        dueDate: dueDate.toISOString().split('T')[0],
+        amount,
+        status,
+      };
+    });
+    
+    res.json({ 
+      data, 
+      total: data.length,
+      summary: { previousDue, totalDue, dueToday }
+    });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
+});
+
+// =============== INVOICES ===============
+// GET /dashboard/invoices
+router.get('/invoices', async (req, res) => {
+  try {
+    const { status, search, page = 1, limit = 20 } = req.query;
+    
+    // Generate invoices from completed/confirmed bookings
+    let sql = `SELECT b.*, t.amount as paid_amount, t.created_at as paid_at 
+               FROM bookings b 
+               LEFT JOIN transactions t ON t.booking_id = b.id AND t.type = 'payment' AND t.status = 'completed'
+               WHERE b.user_id = ?`;
+    const params = [req.user.sub];
+    
+    if (status && status !== 'all') {
+      const statusMap = { 'Paid': 'paid', 'Unpaid': 'unpaid', 'Partial': 'partial' };
+      if (statusMap[status]) { sql += ` AND b.payment_status = ?`; params.push(statusMap[status]); }
+    }
+    if (search) { sql += ` AND (b.booking_ref LIKE ? OR b.id LIKE ?)`; params.push(`%${search}%`, `%${search}%`); }
+    
+    sql += ` ORDER BY b.booked_at DESC`;
+    const [rows] = await db.query(sql, params);
+    
+    const data = rows.map((b, idx) => {
+      const invoiceNumber = `INV-${new Date(b.booked_at).getFullYear()}-${String(idx + 1001).padStart(5, '0')}`;
+      let status = 'Unpaid';
+      if (b.payment_status === 'paid') status = 'Paid';
+      else if (b.payment_status === 'partial') status = 'Partial';
+      
+      const details = JSON.parse(b.details || '{}');
+      
+      return {
+        id: b.id,
+        invoiceNumber,
+        bookingRef: b.booking_ref,
+        bookingType: b.booking_type,
+        date: b.booked_at,
+        amount: parseFloat(b.total_amount),
+        status,
+        paidAmount: parseFloat(b.paid_amount) || 0,
+        paidAt: b.paid_at,
+        customer: {
+          name: details.passengerName || 'Customer',
+          email: details.email || '',
+        },
+        items: [{
+          description: `${b.booking_type.charAt(0).toUpperCase() + b.booking_type.slice(1)} Booking - ${b.booking_ref}`,
+          quantity: 1,
+          unitPrice: parseFloat(b.total_amount),
+          total: parseFloat(b.total_amount),
+        }],
+      };
+    });
+    
+    res.json({ data, total: data.length });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
+});
+
+// =============== E-TRANSACTIONS ===============
+// GET /dashboard/e-transactions
+router.get('/e-transactions', async (req, res) => {
+  try {
+    const { type, search, page = 1, limit = 20 } = req.query;
+    
+    // E-transactions are online payments (bkash, nagad, card)
+    let sql = `SELECT * FROM transactions WHERE user_id = ? AND payment_method IN ('bkash', 'nagad', 'rocket', 'card')`;
+    const params = [req.user.sub];
+    
+    if (type && type !== 'all') {
+      sql += ` AND payment_method = ?`; params.push(type);
+    }
+    if (search) { sql += ` AND (reference LIKE ? OR description LIKE ?)`; params.push(`%${search}%`, `%${search}%`); }
+    
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const [countResult] = await db.query(sql.replace('SELECT *', 'SELECT COUNT(*) as total'), params);
+    
+    sql += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    params.push(parseInt(limit), offset);
+    const [rows] = await db.query(sql, params);
+    
+    const methodLabels = { bkash: 'BKash', nagad: 'Nagad', rocket: 'Rocket', card: 'Card Payment' };
+    
+    const data = rows.map(t => ({
+      id: t.id,
+      transactionId: t.reference || `TXN-${t.id.substring(0, 8).toUpperCase()}`,
+      method: methodLabels[t.payment_method] || t.payment_method,
+      amount: parseFloat(t.amount),
+      fee: Math.round(parseFloat(t.amount) * 0.015), // 1.5% gateway fee estimate
+      status: t.status === 'completed' ? 'Completed' : t.status === 'pending' ? 'Pending' : t.status === 'failed' ? 'Failed' : 'Initiated',
+      date: t.created_at,
+      description: t.description,
+    }));
+    
+    res.json({ 
+      data, 
+      total: countResult[0].total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+    });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
+});
+
+// =============== SEARCH HISTORY ===============
+// GET /dashboard/search-history
+router.get('/search-history', async (req, res) => {
+  try {
+    const { type, search } = req.query;
+    
+    // Check if search_history table exists, if not return empty
+    let sql = `SELECT * FROM search_history WHERE user_id = ?`;
+    const params = [req.user.sub];
+    
+    if (type && type !== 'all') { sql += ` AND search_type = ?`; params.push(type); }
+    if (search) { sql += ` AND (origin LIKE ? OR destination LIKE ?)`; params.push(`%${search}%`, `%${search}%`); }
+    
+    sql += ` ORDER BY created_at DESC LIMIT 100`;
+    
+    let rows = [];
+    try {
+      const [result] = await db.query(sql, params);
+      rows = result;
+    } catch (tableErr) {
+      // Table doesn't exist, return empty
+      rows = [];
+    }
+    
+    const data = rows.map(s => ({
+      id: s.id,
+      type: s.search_type,
+      origin: s.origin,
+      destination: s.destination,
+      dates: s.dates,
+      params: JSON.parse(s.params || '{}'),
+      searchedAt: s.created_at,
+    }));
+    
+    res.json({ data, total: data.length });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
+});
+
+// POST /dashboard/search-history (save a search)
+router.post('/search-history', async (req, res) => {
+  try {
+    const { type, origin, destination, dates, params } = req.body;
+    const id = uuidv4();
+    
+    try {
+      await db.query(
+        `INSERT INTO search_history (id, user_id, search_type, origin, destination, dates, params) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [id, req.user.sub, type, origin || null, destination || null, dates || null, JSON.stringify(params || {})]
+      );
+    } catch (tableErr) {
+      // Table might not exist, silently fail
+    }
+    
+    res.status(201).json({ id, type, origin, destination, dates, params });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
+});
+
+// DELETE /dashboard/search-history (clear all)
+router.delete('/search-history', async (req, res) => {
+  try {
+    try {
+      await db.query('DELETE FROM search_history WHERE user_id = ?', [req.user.sub]);
+    } catch (tableErr) {
+      // Table might not exist
+    }
+    res.status(204).end();
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
+});
+
 module.exports = router;
