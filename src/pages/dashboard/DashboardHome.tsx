@@ -33,23 +33,12 @@ const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } 
 const item = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] as const } } };
 
 const DashboardHome = () => {
-  const { data: statsData, isLoading: statsLoading, error: statsError, refetch: retryStats } = useDashboardStats();
-  const { data: bookingsData, isLoading: bookingsLoading, error: bookingsError, refetch: retryBookings } = useDashboardBookings({ limit: 4 });
-
-  // Use API data or fallback to mock data when API is unreachable
-  const resolvedStats = (statsData as any)?.stats?.length ? (statsData as any) : mockDashboardStats;
-  const resolvedBookings = (bookingsData as any)?.bookings?.length ? (bookingsData as any) : mockDashboardBookings;
-
-  const stats = resolvedStats?.stats || [];
-  const upcomingTrip = resolvedStats?.upcomingTrip;
-  const spendingData = resolvedStats?.spendingData || [];
-  const pieData = resolvedStats?.bookingBreakdown || [];
-  const recentBookings = resolvedBookings?.bookings || [];
-  const user = resolvedStats?.user;
-
-  // If there's an error but we have mock data, don't show the error state
-  const effectiveStatsError = statsError && stats.length === 0 ? statsError : null;
-  const effectiveBookingsError = bookingsError && recentBookings.length === 0 ? bookingsError : null;
+  const stats = mockDashboardStats.stats;
+  const upcomingTrip = mockDashboardStats.upcomingTrip;
+  const spendingData = mockDashboardStats.spendingData;
+  const pieData = mockDashboardStats.bookingBreakdown;
+  const recentBookings = mockDashboardBookings.bookings.slice(0, 4);
+  const user = mockDashboardStats.user;
 
   return (
     <motion.div className="space-y-6" variants={container} initial="hidden" animate="show">
