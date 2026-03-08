@@ -22,6 +22,8 @@ const toggleWishlistItem = (id: string): boolean => {
 const includeIcons: Record<string, typeof Plane> = { Plane, Building2, UtensilsCrossed, Camera, Users, flight: Plane, hotel: Building2, meals: UtensilsCrossed, sightseeing: Camera };
 
 const HolidayPackages = () => {
+  const { toast } = useToast();
+  const [wishlistedIds, setWishlistedIds] = useState<string[]>(getWishlist);
   const [sortBy, setSortBy] = useState("recommended");
   const [filter, setFilter] = useState("all");
   const { data: page } = useCmsPageContent("/holidays");
