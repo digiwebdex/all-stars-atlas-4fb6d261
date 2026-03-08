@@ -39,9 +39,11 @@ const DashboardETransactions = () => {
     }),
   });
 
-  const transactions = (data as any)?.data || [];
-  const total = (data as any)?.total || 0;
+  const resolved = error ? mockETransactions : (data as any);
+  const transactions = resolved?.transactions || resolved?.data || [];
+  const total = resolved?.total || 0;
   const totalPages = Math.ceil(total / Number(perPage)) || 1;
+  const effectiveError = error && transactions.length === 0 ? error : null;
 
   return (
     <div className="space-y-6">

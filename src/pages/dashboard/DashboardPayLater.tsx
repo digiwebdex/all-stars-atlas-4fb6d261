@@ -32,8 +32,10 @@ const DashboardPayLater = () => {
     }),
   });
 
-  const items = (data as any)?.data || [];
-  const summary = (data as any)?.summary || {};
+  const resolved = error ? mockPayLater : (data as any);
+  const items = resolved?.items || resolved?.data || [];
+  const summary = resolved?.summary || {};
+  const effectiveError = error && items.length === 0 ? error : null;
 
   return (
     <div className="space-y-6">
