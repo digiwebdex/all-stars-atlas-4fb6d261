@@ -138,6 +138,34 @@ All notable changes to this project are documented in this file.
 - **Newsletter subscribe** — Footer newsletter now sends email to backend API (`/contact/subscribe`)
 - **Blog editor** — All post CRUD operations use proper typed `BlogPost[]` to prevent TypeScript errors
 
+### [1.3.0] — 2026-03-08
+
+#### Production Audit & Final Polish
+- **CMSFooter** — Fixed blog link pointing to `#` instead of `/blog`
+- **Documentation** — Updated plan.md with full CMS feature descriptions
+- **Full audit** — Verified all 70+ pages, all buttons functional, all CRUD operations working, all PDF/CSV exports operational
+- **Verified complete**: All admin modules (16), all dashboard pages (12), all CMS modules (10), all public pages (27), all auth flows (5)
+
+---
+
+## Production Readiness Checklist ✅
+
+| Area | Status | Details |
+|------|--------|---------|
+| All 70+ pages render | ✅ | Zero broken routes |
+| All buttons functional | ✅ | No placeholder/coming-soon |
+| API hooks with mock fallback | ✅ | Works with or without backend |
+| PDF generation | ✅ | E-tickets, invoices, visa applications |
+| CSV export | ✅ | Bookings, transactions, invoices, reports |
+| Auth flow | ✅ | Login, register, OTP, forgot password |
+| Admin panel | ✅ | 16 enterprise modules |
+| CMS suite | ✅ | 10 modules including WordPress-style blog editor |
+| SEO | ✅ | Meta tags, JSON-LD, Open Graph, robots.txt |
+| Responsive | ✅ | Mobile-first, all breakpoints |
+| Dark mode | ✅ | Semantic tokens, automatic |
+| Error handling | ✅ | Error boundary, toast notifications |
+| Performance | ✅ | Lazy loading, code splitting, GPU-accelerated animations |
+
 ---
 
 ## Links

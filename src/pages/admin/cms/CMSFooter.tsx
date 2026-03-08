@@ -42,7 +42,7 @@ const defaultServiceLinks = [
 const defaultCompanyLinks = [
   { id: "1", label: "About Us", href: "/about", visible: true },
   { id: "2", label: "Contact", href: "/contact", visible: true },
-  { id: "3", label: "Blog", href: "#", visible: true },
+  { id: "3", label: "Blog", href: "/blog", visible: true },
   { id: "4", label: "Careers", href: "/careers", visible: true },
   { id: "5", label: "FAQ", href: "/faq", visible: true },
   { id: "6", label: "Terms & Conditions", href: "/terms", visible: true },
