@@ -24,6 +24,8 @@ const toggleWishlistItem = (id: string): boolean => {
 const amenityIcons: Record<string, typeof Wifi> = { wifi: Wifi, pool: Waves, restaurant: UtensilsCrossed, parking: Car };
 
 const HotelResults = () => {
+  const { toast } = useToast();
+  const [wishlistedIds, setWishlistedIds] = useState<string[]>(getWishlist);
   const { data: page } = useCmsPageContent("/hotels");
   const listing = page?.listingConfig;
   const [searchParams] = useSearchParams();
