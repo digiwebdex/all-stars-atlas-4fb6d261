@@ -6,9 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, Lock, User, Phone, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { Mail, Lock, User, Phone, Eye, EyeOff, CheckCircle2, Upload, FileText, X, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -19,9 +23,25 @@ const Register = () => {
   const [password, setPassword] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [idDocument, setIdDocument] = useState<File | null>(null);
+  const [idDocType, setIdDocType] = useState<"nid" | "passport">("nid");
   const { register } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast({ title: "Invalid File", description: "Please upload JPG, PNG, WebP, or PDF only.", variant: "destructive" });
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast({ title: "File Too Large", description: "Maximum file size is 5MB.", variant: "destructive" });
+      return;
+    }
+    setIdDocument(file);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +53,10 @@ const Register = () => {
       toast({ title: "Error", description: "Password must be at least 8 characters", variant: "destructive" });
       return;
     }
+    if (!idDocument) {
+      toast({ title: "ID Required", description: "Please upload your National ID Card or Passport copy for verification.", variant: "destructive" });
+      return;
+    }
     if (!agreed) {
       toast({ title: "Error", description: "Please agree to the Terms & Privacy Policy", variant: "destructive" });
       return;
@@ -40,7 +64,19 @@ const Register = () => {
     setLoading(true);
     try {
       await register({ firstName, lastName, email, phone, password });
-      toast({ title: "Account Created!", description: "Welcome to Seven Trip" });
+
+      // Upload ID document after registration
+      try {
+        const formData = new FormData();
+        formData.append("document", idDocument);
+        formData.append("documentType", idDocType);
+        await api.upload("/auth/upload-id-document", formData);
+      } catch {
+        // Non-blocking — registration succeeded even if upload fails
+        console.warn("ID document upload deferred");
+      }
+
+      toast({ title: "Account Created!", description: "Welcome to Seven Trip. Your ID is under verification." });
       navigate("/dashboard", { replace: true });
     } catch (err: any) {
       toast({ title: "Registration Failed", description: err?.message || "Please try again", variant: "destructive" });
@@ -116,6 +152,49 @@ const Register = () => {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+              </div>
+
+              {/* NID / Passport Upload */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <Shield className="w-4 h-4 text-primary" />
+                  Identity Verification <span className="text-destructive">*</span>
+                </Label>
+                <div className="flex gap-2 mb-2">
+                  <button type="button" onClick={() => setIdDocType("nid")}
+                    className={`flex-1 text-xs font-medium py-2 px-3 rounded-lg border transition-colors ${idDocType === "nid" ? "bg-primary/10 border-primary text-primary" : "bg-muted border-border text-muted-foreground"}`}>
+                    🪪 National ID (NID)
+                  </button>
+                  <button type="button" onClick={() => setIdDocType("passport")}
+                    className={`flex-1 text-xs font-medium py-2 px-3 rounded-lg border transition-colors ${idDocType === "passport" ? "bg-primary/10 border-primary text-primary" : "bg-muted border-border text-muted-foreground"}`}>
+                    🛂 Passport Copy
+                  </button>
+                </div>
+
+                {idDocument ? (
+                  <div className="flex items-center gap-2 bg-success/10 border border-success/30 rounded-lg p-3">
+                    <FileText className="w-5 h-5 text-success shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{idDocument.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{(idDocument.size / 1024).toFixed(0)} KB • {idDocType === "nid" ? "National ID" : "Passport"}</p>
+                    </div>
+                    <button type="button" onClick={() => setIdDocument(null)} className="text-muted-foreground hover:text-destructive">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center gap-2 border-2 border-dashed border-border rounded-lg p-4 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors">
+                    <Upload className="w-6 h-6 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground text-center">
+                      Upload {idDocType === "nid" ? "NID card" : "Passport"} (front side)<br />
+                      <span className="text-[10px]">JPG, PNG, WebP, or PDF — Max 5MB</span>
+                    </span>
+                    <input type="file" className="hidden" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={handleFileChange} />
+                  </label>
+                )}
+                <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <Shield className="w-3 h-3" /> Your ID is securely stored and only used for account verification.
+                </p>
               </div>
 
               <div className="flex items-start gap-2">
