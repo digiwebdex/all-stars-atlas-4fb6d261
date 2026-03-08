@@ -51,7 +51,7 @@ const DashboardPayments = () => {
   const { toast } = useToast();
 
   const resolved = (data as any) || {};
-  const paymentHistory = resolved?.payments || resolved?.paymentHistory || [];
+  const paymentHistory = resolved?.data || resolved?.payments || resolved?.paymentHistory || [];
   const bankAccounts = resolved?.bankAccounts || [];
   const enabledMethodIds: string[] = resolved?.enabledPaymentMethods || allPaymentMethods.map(m => m.id);
   const availableMethods = allPaymentMethods.filter(m => enabledMethodIds.includes(m.id));

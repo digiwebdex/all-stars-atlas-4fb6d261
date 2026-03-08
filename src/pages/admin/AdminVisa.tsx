@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { config } from "@/lib/config";
-import { mockAdminVisa } from "@/lib/mock-data";
+
 import { uploadToGoogleDrive, isGoogleDriveConfigured } from "@/lib/google-drive";
 import type { VisaCountryOption, CmsPageContent } from "@/lib/cms-defaults";
 
@@ -74,9 +74,9 @@ const AdminVisa = () => {
   }) || [];
 
   const stats = (data as any)?.stats;
-  const resolved = apiApps.length > 0 ? { applications: apiApps, countries: [] } : mockAdminVisa;
+  const resolved = { applications: apiApps, countries: [] };
   const applications = resolved?.applications || [];
-  const countries = (data as any)?.countries || resolved?.countries || [];
+  const countries = (data as any)?.countries || [];
 
   // REAL approve/reject via API
   const handleStatusChange = async (app: any, newStatus: string) => {

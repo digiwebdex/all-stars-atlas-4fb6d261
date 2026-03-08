@@ -14,8 +14,17 @@ const ESIMPlans = () => {
   const { data: page } = useCmsPageContent("/esim");
   const listing = page?.listingConfig;
 
-  const { data, isLoading, error, refetch } = useESIMPlans({ country: selectedCountry !== "all" ? selectedCountry : undefined });
-  const countries = (data as any)?.countries || [];
+  const { data: rawData, isLoading, error, refetch } = useESIMPlans({ country: selectedCountry !== "all" ? selectedCountry : undefined });
+  const apiData = (rawData as any) || {};
+  const plans = apiData.data || [];
+  // Group plans by country for display
+  const groupedByCountry = plans.reduce((acc: any, plan: any) => {
+    const key = plan.country || 'Other';
+    if (!acc[key]) acc[key] = { id: key, country: key, flag: '', plans: [] };
+    acc[key].plans.push(plan);
+    return acc;
+  }, {} as Record<string, any>);
+  const countries = Object.values(groupedByCountry);
 
   const countryFilters = listing?.esimCountries || [
     { value: "thailand", label: "Thailand" }, { value: "malaysia", label: "Malaysia" },
@@ -53,7 +62,7 @@ const ESIMPlans = () => {
                     <CardContent className="p-5 text-center space-y-3">
                       {i === (country.plans?.length || 0) - 1 && <Badge className="bg-primary text-primary-foreground">Best Value</Badge>}
                       <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto"><Signal className="w-6 h-6 text-primary" /></div>
-                      <h3 className="text-2xl font-black">{plan.data}</h3>
+                      <h3 className="text-2xl font-black">{plan.dataAmount || plan.data}</h3>
                       <p className="text-sm text-muted-foreground">{plan.duration}</p>
                       <div className="space-y-1 text-xs text-muted-foreground">
                         <div className="flex items-center justify-center gap-1"><Check className="w-3 h-3 text-success" /> 4G/5G Data</div>
@@ -62,7 +71,7 @@ const ESIMPlans = () => {
                       </div>
                       <p className="text-2xl font-black text-primary">৳{plan.price?.toLocaleString()}</p>
                       <Button className="w-full font-bold" size="sm" asChild>
-                        <Link to={`/esim/purchase?country=${country.country?.toLowerCase()}&plan=${plan.data}`}>Buy Now <ArrowRight className="w-4 h-4 ml-1" /></Link>
+                        <Link to={`/esim/purchase?country=${plan.country?.toLowerCase()}&plan=${plan.dataAmount || plan.data}`}>Buy Now <ArrowRight className="w-4 h-4 ml-1" /></Link>
                       </Button>
                     </CardContent>
                   </Card>

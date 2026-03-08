@@ -44,9 +44,10 @@ const HotelResults = () => {
     priceMax: priceRange[1],
   };
 
-  const { data, isLoading, error, refetch } = useHotelSearch(params);
-  const hotels = (data as any)?.hotels || [];
-  const searchMeta = (data as any)?.searchMeta || {};
+  const { data: rawData, isLoading, error, refetch } = useHotelSearch(params);
+  const apiData = (rawData as any) || {};
+  const hotels = apiData.data || apiData.hotels || [];
+  const searchMeta = apiData.searchMeta || { total: apiData.total || hotels.length };
 
   const FilterPanel = () => (
     <div className="space-y-6">

@@ -25,7 +25,7 @@ const DashboardTravellers = () => {
   const deleteTraveller = useDeleteTraveller();
 
   const resolved = (data as any) || {};
-  const baseTravellers = resolved?.travellers || [];
+  const baseTravellers = resolved?.data || resolved?.travellers || [];
   const travellers = [...localTravellers, ...baseTravellers].filter((t: any) => !removedIds.has(t.id));
 
   const resetForm = () => {

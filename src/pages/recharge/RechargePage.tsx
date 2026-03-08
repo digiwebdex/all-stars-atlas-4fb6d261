@@ -22,7 +22,7 @@ const RechargePage = () => {
   const { data: operatorsData, isLoading, error, refetch } = useRechargeOperators();
   const submitRecharge = useSubmitRecharge();
 
-  const operators = (operatorsData as any)?.operators || [];
+  const operators = (operatorsData as any)?.data || (operatorsData as any)?.operators || [];
 
   const handleSubmit = async () => {
     if (!operator || !number || !amount) {

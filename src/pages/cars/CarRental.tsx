@@ -17,13 +17,13 @@ const CarRental = () => {
   const { data: page } = useCmsPageContent("/cars");
   const listing = page?.listingConfig;
 
-  const { data, isLoading, error, refetch } = useCarSearch({
+  const { data: rawData, isLoading, error, refetch } = useCarSearch({
     pickup: searchParams.get("pickup") || undefined,
     dropoff: searchParams.get("dropoff") || undefined,
     type: carType !== "all" ? carType : undefined,
     sort: sortBy,
   });
-  const cars = (data as any)?.cars || [];
+  const cars = (rawData as any)?.data || (rawData as any)?.cars || [];
 
   const sortOptions = listing?.carSortOptions || [
     { value: "price", label: "Lowest Price" },

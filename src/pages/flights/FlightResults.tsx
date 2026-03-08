@@ -33,11 +33,12 @@ const FlightResults = () => {
     priceMax: priceRange[1],
   };
 
-  const { data, isLoading, error, refetch } = useFlightSearch(params);
-  const flights = (data as any)?.flights || [];
-  const airlines = (data as any)?.airlines || [];
-  const cheapest = (data as any)?.cheapest || 0;
-  const searchMeta = (data as any)?.searchMeta || {};
+  const { data: rawData, isLoading, error, refetch } = useFlightSearch(params);
+  const apiData = (rawData as any) || {};
+  const flights = apiData.data || apiData.flights || [];
+  const airlines = apiData.airlines || [...new Set(flights.map((f: any) => f.airline))];
+  const cheapest = apiData.cheapest || (flights.length > 0 ? Math.min(...flights.map((f: any) => f.price)) : 0);
+  const searchMeta = apiData.searchMeta || { total: apiData.total || flights.length };
 
   const toggleAirline = (a: string) => {
     setSelectedAirlines(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);

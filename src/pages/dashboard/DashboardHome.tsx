@@ -53,7 +53,7 @@ const DashboardHome = () => {
   const upcomingTrip = resolvedStats.upcomingTrip;
   const spendingData = resolvedStats.spendingData || [];
   const pieData = resolvedStats.bookingBreakdown || [];
-  const recentBookings = resolvedBookings.bookings?.slice(0, 4) || [];
+  const recentBookings = resolvedBookings.data?.slice(0, 4) || resolvedBookings.bookings?.slice(0, 4) || [];
   const displayName = user?.name || resolvedStats.user?.name || '';
   const greeting = getGreeting();
 

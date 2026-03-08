@@ -27,8 +27,8 @@ const MedicalServices = () => {
   const { data: page } = useCmsPageContent("/medical");
   const listing = page?.listingConfig;
 
-  const { data, isLoading, error, refetch } = useMedicalHospitals({ country: country !== "all" ? country : undefined, treatment: treatment !== "all" ? treatment : undefined });
-  const hospitals = (data as any)?.hospitals || [];
+  const { data: rawData, isLoading, error, refetch } = useMedicalHospitals({ country: country !== "all" ? country : undefined, treatment: treatment !== "all" ? treatment : undefined });
+  const hospitals = (rawData as any)?.data || (rawData as any)?.hospitals || [];
 
   const countries = listing?.medicalCountries || [
     { value: "india", label: "India" }, { value: "thailand", label: "Thailand" },

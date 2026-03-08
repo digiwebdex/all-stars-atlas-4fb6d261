@@ -37,7 +37,7 @@ const DashboardTransactions = () => {
   });
 
   const resolved = (data as any) || {};
-  const allTransactions = resolved?.transactions || [];
+  const allTransactions = resolved?.data || resolved?.transactions || [];
   const summary = resolved?.summary || {};
 
   const transactions = allTransactions;

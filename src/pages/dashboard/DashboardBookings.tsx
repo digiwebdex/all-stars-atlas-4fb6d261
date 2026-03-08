@@ -53,7 +53,7 @@ const DashboardBookings = () => {
   });
 
   const resolved = (data as any) || {};
-  const allBookings = resolved?.bookings || [];
+  const allBookings = resolved?.data || resolved?.bookings || [];
 
   const bookings = allBookings;
 

@@ -29,8 +29,9 @@ const HolidayPackages = () => {
   const { data: page } = useCmsPageContent("/holidays");
   const listing = page?.listingConfig;
 
-  const { data, isLoading, error, refetch } = useHolidaySearch({ sort: sortBy, filter });
-  const packages = (data as any)?.packages || [];
+  const { data: rawData, isLoading, error, refetch } = useHolidaySearch({ sort: sortBy, filter });
+  const apiData = (rawData as any) || {};
+  const packages = apiData.data || apiData.packages || [];
 
   const includes = listing?.holidayIncludes || [
     { icon: "Plane", label: "Flights" }, { icon: "Building2", label: "Hotels" },

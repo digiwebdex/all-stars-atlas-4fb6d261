@@ -24,7 +24,7 @@ const DashboardTickets = () => {
 
   const { data, isLoading, error, refetch } = useDashboardTickets({ search: search || undefined });
   const resolved = (data as any) || {};
-  const tickets = resolved?.tickets || [];
+  const tickets = resolved?.data || resolved?.tickets || [];
 
   const filtered = tickets.filter((t: any) => {
     if (!search) return true;

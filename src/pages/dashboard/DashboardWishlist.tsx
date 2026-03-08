@@ -19,7 +19,7 @@ const DashboardWishlist = () => {
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
 
   const resolved = (data as any) || {};
-  const allItems = resolved?.items || [];
+  const allItems = resolved?.data || resolved?.items || [];
   const items = allItems.filter((item: any) => !removedIds.has(item.id));
 
   const removeItem = async (id: string) => {

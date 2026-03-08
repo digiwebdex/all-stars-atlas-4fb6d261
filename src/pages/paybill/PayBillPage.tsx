@@ -22,7 +22,7 @@ const PayBillPage = () => {
   const { data: catData, isLoading, error, refetch } = useBillCategories();
   const submitBill = useSubmitBillPayment();
 
-  const categories = (catData as any)?.categories || [];
+  const categories = (catData as any)?.data || (catData as any)?.categories || [];
 
   const handleSubmit = async () => {
     if (!category || !biller || !account || !amount) {
