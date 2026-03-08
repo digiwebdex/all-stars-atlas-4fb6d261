@@ -256,7 +256,7 @@ const CMSBlog = () => {
 
   const handleDelete = (post: any) => {
     if (!confirm(`Delete "${post.title}"? This cannot be undone.`)) return;
-    const updated = removeFromCollection(STORE_KEY, BLOG_POSTS.map(p => ({ ...p, id: String(p.id), content: "", tags: [] as string[], seoTitle: "", seoDescription: "", seoKeywords: "", slug: slugify(p.title), featured: false, allowComments: true })), post.id);
+    const updated = removeFromCollection(STORE_KEY, defaultPosts(), post.id) as BlogPost[];
     setPosts([...updated]);
     toast({ title: "Deleted", description: `"${post.title}" has been removed.`, variant: "destructive" });
   };
