@@ -359,11 +359,33 @@ const VisaApplication = () => {
               {step < steps.length ? (
                 <Button onClick={() => setStep(step + 1)} className="font-bold">Continue <ArrowRight className="w-4 h-4 ml-1" /></Button>
               ) : (
-                <Button className="font-bold shadow-lg shadow-primary/20" disabled={!agreed} onClick={() => {
+                <Button className="font-bold shadow-lg shadow-primary/20" disabled={!agreed || submitting} onClick={async () => {
                   if (!isAuthenticated) { setAuthOpen(true); return; }
-                  navigate("/booking/confirmation");
+                  setSubmitting(true);
+                  try {
+                    await api.post('/visa/apply', {
+                      country: country?.name || selectedCountry,
+                      visaType: selectedType,
+                      processingFee: grandTotal,
+                      applicantInfo: {
+                        ...form,
+                        selectedCountry,
+                        selectedType,
+                        processingType,
+                        travellers,
+                        countryName: country?.name,
+                        baseFee, serviceFee, expressExtra, grandTotal,
+                      },
+                    });
+                    toast({ title: "Application Submitted", description: "Your visa application has been submitted successfully." });
+                    navigate("/booking/confirmation");
+                  } catch (err: any) {
+                    toast({ title: "Submission Failed", description: err?.message || "Could not submit application. Please try again.", variant: "destructive" });
+                  } finally {
+                    setSubmitting(false);
+                  }
                 }}>
-                  <Shield className="w-4 h-4 mr-1" /> Submit Application & Pay ৳{grandTotal.toLocaleString()}
+                  <Shield className="w-4 h-4 mr-1" /> {submitting ? "Submitting..." : `Submit Application & Pay ৳${grandTotal.toLocaleString()}`}
                 </Button>
               )}
             </div>
