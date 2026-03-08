@@ -144,19 +144,72 @@ router.delete('/travellers/:id', async (req, res) => {
 router.get('/payments', async (req, res) => {
   try {
     const [rows] = await db.query("SELECT * FROM transactions WHERE user_id = ? AND type = 'payment' ORDER BY created_at DESC LIMIT 50", [req.user.sub]);
-    const data = rows.map(t => ({
-      id: t.id, amount: parseFloat(t.amount), currency: t.currency, status: t.status,
-      paymentMethod: t.payment_method, reference: t.reference, description: t.description, createdAt: t.created_at,
+    
+    const methodLabels = { bkash: 'bKash', nagad: 'Nagad', rocket: 'Rocket', card: 'Card Payment', bank_transfer: 'Bank Transfer' };
+    
+    const paymentHistory = rows.map(t => ({
+      id: t.id, 
+      amount: parseFloat(t.amount), 
+      currency: t.currency, 
+      status: t.status === 'completed' ? 'Approved' : t.status === 'pending' ? 'Pending' : 'Rejected',
+      paymentMethod: methodLabels[t.payment_method] || t.payment_method,
+      reference: t.reference, 
+      description: t.description, 
+      createdAt: t.created_at,
+      bookingRef: t.reference || 'N/A',
     }));
-    res.json({ data });
+    
+    // Get admin-configured bank accounts from system_settings
+    let bankAccounts = [];
+    try {
+      const [settings] = await db.query("SELECT setting_value FROM system_settings WHERE setting_key = 'bank_accounts'");
+      if (settings.length > 0 && settings[0].setting_value) {
+        bankAccounts = JSON.parse(settings[0].setting_value);
+      }
+    } catch {}
+    
+    // Default bank accounts if none configured
+    if (bankAccounts.length === 0) {
+      bankAccounts = [
+        { id: '1', bankName: 'Dutch-Bangla Bank', accName: 'Seven Trip Ltd', accNo: '1234567890123', branch: 'Banani Branch', routingNo: '090261396' },
+        { id: '2', bankName: 'BRAC Bank', accName: 'Seven Trip Ltd', accNo: '9876543210123', branch: 'Gulshan Branch', routingNo: '060261876' },
+      ];
+    }
+    
+    // Enabled payment methods
+    const enabledPaymentMethods = ['bank_deposit', 'bank_transfer', 'cheque_deposit', 'mobile_bkash', 'mobile_nagad', 'card'];
+    
+    res.json({ paymentHistory, bankAccounts, enabledPaymentMethods });
   } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
 });
 
 // POST /dashboard/payments
 router.post('/payments', async (req, res) => {
   try {
-    const { method, details } = req.body;
-    res.status(201).json({ id: uuidv4(), method, details, message: 'Payment method saved' });
+    const { paymentMethod, amount, paymentDate, bookingRef, depositBank, chequeNo, chequeBank, chequeDate, transactionId } = req.body;
+    
+    const id = uuidv4();
+    const methodMap = {
+      'bank_deposit': 'bank_transfer', 'bank_transfer': 'bank_transfer', 'cheque_deposit': 'bank_transfer',
+      'mobile_bkash': 'bkash', 'mobile_nagad': 'nagad', 'mobile_rocket': 'rocket', 'card': 'card'
+    };
+    const dbMethod = methodMap[paymentMethod] || 'bank_transfer';
+    
+    // Find matching booking
+    let bookingId = null;
+    if (bookingRef) {
+      const [bookings] = await db.query('SELECT id FROM bookings WHERE booking_ref = ? AND user_id = ?', [bookingRef, req.user.sub]);
+      if (bookings.length > 0) bookingId = bookings[0].id;
+    }
+    
+    const meta = JSON.stringify({ paymentMethod, depositBank, chequeNo, chequeBank, chequeDate, transactionId, paymentDate });
+    
+    await db.query(
+      `INSERT INTO transactions (id, user_id, booking_id, type, amount, status, payment_method, reference, description, meta) VALUES (?, ?, ?, 'payment', ?, 'pending', ?, ?, ?, ?)`,
+      [id, req.user.sub, bookingId, parseFloat(amount) || 0, dbMethod, transactionId || `PAY-${id.substring(0,8).toUpperCase()}`, `Payment via ${paymentMethod}`, meta]
+    );
+    
+    res.status(201).json({ id, message: 'Payment submitted for review', status: 'pending' });
   } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
 });
 

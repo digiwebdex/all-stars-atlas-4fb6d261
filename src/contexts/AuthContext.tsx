@@ -46,7 +46,7 @@ interface AuthContextType extends AuthState {
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => void;
   forgotPassword: (email: string) => Promise<void>;
-  verifyOtp: (email: string, otp: string) => Promise<void>;
+  verifyOtp: (email: string, otp: string) => Promise<string>;
   resetPassword: (token: string, password: string) => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
 }
@@ -131,8 +131,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await api.post(API_ENDPOINTS.AUTH_FORGOT_PASSWORD, { email });
   }, []);
 
-  const verifyOtp = useCallback(async (email: string, otp: string) => {
-    await api.post(API_ENDPOINTS.AUTH_VERIFY_OTP, { email, otp });
+  const verifyOtp = useCallback(async (email: string, otp: string): Promise<string> => {
+    const response = await api.post<{ message: string; resetToken: string }>(API_ENDPOINTS.AUTH_VERIFY_OTP, { email, otp });
+    return response.resetToken;
   }, []);
 
   const resetPassword = useCallback(async (token: string, password: string) => {
