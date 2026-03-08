@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, RefreshCw, WifiOff, ServerCrash, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface DataLoaderProps {
@@ -76,6 +76,62 @@ const skeletonMap = {
   detail: DetailSkeleton,
 };
 
+function getErrorInfo(error: unknown) {
+  const err = error as { message?: string; status?: number; code?: string } | null;
+  const status = err?.status || 0;
+  const code = err?.code || '';
+  const message = err?.message || 'Something went wrong';
+
+  if (code === 'NETWORK_ERROR' || status === 0) {
+    return {
+      icon: WifiOff,
+      title: 'Server Unreachable',
+      description: message,
+      hint: 'The backend API server may be offline or your network is disconnected.',
+      color: 'text-warning',
+      bgColor: 'bg-warning/10',
+    };
+  }
+  if (status === 401 || status === 403) {
+    return {
+      icon: ShieldAlert,
+      title: status === 401 ? 'Authentication Required' : 'Access Denied',
+      description: message,
+      hint: status === 401 ? 'Your session may have expired. Please log in again.' : 'You don\'t have permission to access this resource.',
+      color: 'text-destructive',
+      bgColor: 'bg-destructive/10',
+    };
+  }
+  if (status >= 500) {
+    return {
+      icon: ServerCrash,
+      title: `Server Error (${status})`,
+      description: message,
+      hint: 'The server encountered an internal error. Please try again later or contact support.',
+      color: 'text-destructive',
+      bgColor: 'bg-destructive/10',
+    };
+  }
+  if (status === 404) {
+    return {
+      icon: AlertCircle,
+      title: 'Not Found (404)',
+      description: message,
+      hint: 'The requested resource or API endpoint does not exist.',
+      color: 'text-muted-foreground',
+      bgColor: 'bg-muted',
+    };
+  }
+  return {
+    icon: AlertCircle,
+    title: status ? `Error (${status})` : 'Failed to load data',
+    description: message,
+    hint: null,
+    color: 'text-destructive/60',
+    bgColor: 'bg-destructive/10',
+  };
+}
+
 export const DataLoader = ({ isLoading, error, children, skeleton = "table", retry }: DataLoaderProps) => {
   if (isLoading) {
     const SkeletonComponent = skeletonMap[skeleton];
@@ -83,16 +139,24 @@ export const DataLoader = ({ isLoading, error, children, skeleton = "table", ret
   }
 
   if (error) {
+    const info = getErrorInfo(error);
+    const Icon = info.icon;
     return (
       <Card className="border-dashed border-2 border-border/60 bg-muted/20">
         <CardContent className="py-12 text-center">
-          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-destructive/10 flex items-center justify-center">
-            <AlertCircle className="w-7 h-7 text-destructive/60" />
+          <div className={`w-14 h-14 mx-auto mb-4 rounded-2xl ${info.bgColor} flex items-center justify-center`}>
+            <Icon className={`w-7 h-7 ${info.color}`} />
           </div>
-          <h3 className="text-lg font-bold mb-1">Failed to load data</h3>
-          <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-            {(error as { message?: string })?.message || "Something went wrong"}
+          <h3 className="text-lg font-bold mb-1">{info.title}</h3>
+          <p className="text-sm text-muted-foreground mb-1 max-w-md mx-auto">
+            {info.description}
           </p>
+          {info.hint && (
+            <p className="text-xs text-muted-foreground/70 mb-4 max-w-sm mx-auto">
+              {info.hint}
+            </p>
+          )}
+          {!info.hint && <div className="mb-4" />}
           {retry && (
             <Button variant="outline" onClick={retry} className="gap-1.5 rounded-xl">
               <RefreshCw className="w-4 h-4" /> Retry

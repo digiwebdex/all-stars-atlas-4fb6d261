@@ -89,7 +89,16 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    let response = await fetch(url, { ...fetchOptions, headers });
+    let response: Response;
+    try {
+      response = await fetch(url, { ...fetchOptions, headers });
+    } catch (networkErr: any) {
+      throw {
+        message: `Cannot reach server (${this.baseUrl}). Please check your internet connection or try again later.`,
+        status: 0,
+        code: 'NETWORK_ERROR',
+      } as ApiError & { code: string };
+    }
 
     // If 401, try to refresh token and retry
     if (response.status === 401 && token) {
