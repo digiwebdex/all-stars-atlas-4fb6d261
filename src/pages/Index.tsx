@@ -180,8 +180,8 @@ const Index = () => {
             <div className="hidden sm:block absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-[100px]" />
             <div className="hidden sm:block absolute bottom-20 right-10 w-96 h-96 bg-secondary/10 rounded-full blur-[120px]" />
             <div className="hidden sm:block absolute top-40 right-1/3 w-48 h-48 bg-accent/10 rounded-full blur-[80px]" />
-            <motion.div style={{ opacity: smoothOpacity }} className="relative container mx-auto px-4 pt-24 sm:pt-28 md:pt-36 lg:pt-40 pb-8 sm:pb-10">
-              <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }} className="text-center mb-6 sm:mb-8 md:mb-10">
+            <div className="relative container mx-auto px-4 pt-24 sm:pt-28 md:pt-36 lg:pt-40 pb-8 sm:pb-10">
+              <motion.div style={{ opacity: smoothOpacity }} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }} className="text-center mb-6 sm:mb-8 md:mb-10">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -202,7 +202,7 @@ const Index = () => {
               <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }} className="max-w-[1100px] mx-auto">
                 <SearchWidget />
               </motion.div>
-            </motion.div>
+            </div>
           </section>
         );
 
