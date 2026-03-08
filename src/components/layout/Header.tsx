@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Menu, User, Plane, Building2, FileText, Palmtree,
-  ChevronDown, Phone, Globe, Headphones, LogOut, LayoutDashboard, Settings, Ticket
+  ChevronDown, Phone, Globe, Headphones, LogOut, LayoutDashboard, Settings, Ticket, Car, Receipt, Stethoscope
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
