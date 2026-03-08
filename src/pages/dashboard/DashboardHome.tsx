@@ -179,7 +179,7 @@ const DashboardHome = () => {
         <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {quickActions.map((action, i) => (
             <Link key={i} to={action.href}>
-              <div className={`dash-card group cursor-pointer p-5 hover:border-primary/20`}>
+              <div className={`dash-card group cursor-pointer p-5 hover:border-primary/20 spotlight`}>
                 <div className="flex items-center gap-3">
                   <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center text-white shadow-lg ${action.shadow}`}>
                     <action.icon className="w-5 h-5" />
