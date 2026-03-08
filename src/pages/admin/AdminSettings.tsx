@@ -389,7 +389,7 @@ const AdminSettings = () => {
                               <div key={field.key} className="space-y-1">
                                 <Label className="text-xs">{field.label}</Label>
                                 <div className="relative">
-                                  <Input type={field.type === 'password' && !visibleFields[`${apiItem.id}_${field.key}`] ? 'password' : 'text'} placeholder={field.placeholder} className="pr-10 text-sm h-9" />
+                                  <Input type={field.type === 'password' && !visibleFields[`${apiItem.id}_${field.key}`] ? 'password' : 'text'} placeholder={field.placeholder} className="pr-10 text-sm h-9" value={apiKeyValues[apiItem.id]?.[field.key] || ''} onChange={e => updateApiKey(apiItem.id, field.key, e.target.value)} />
                                   {field.type === 'password' && (
                                     <button type="button" onClick={() => toggleFieldVisibility(`${apiItem.id}_${field.key}`)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                                       {visibleFields[`${apiItem.id}_${field.key}`] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
