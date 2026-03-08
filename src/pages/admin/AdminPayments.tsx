@@ -9,11 +9,11 @@ import { Separator } from "@/components/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Search, MoreHorizontal, Eye, CheckCircle2, XCircle, Download, DollarSign, TrendingUp, Clock, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAdminPayments } from "@/hooks/useApiData";
+import { api } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
+import DataLoader from "@/components/DataLoader";
 import { mockAdminPayments } from "@/lib/mock-data";
-import { getCollection, updateInCollection } from "@/lib/local-store";
-
-const STORE_KEY = "admin_payments";
-const defaultPayments = mockAdminPayments.payments;
 
 const statusMap: Record<string, { label: string; class: string }> = {
   completed: { label: "Completed", class: "bg-success/10 text-success" },
@@ -27,35 +27,43 @@ const AdminPayments = () => {
   const [search, setSearch] = useState("");
   const [viewPayment, setViewPayment] = useState<any>(null);
   const { toast } = useToast();
-  const [payments, setPayments] = useState(() => getCollection(STORE_KEY, defaultPayments));
+  const qc = useQueryClient();
+
+  const { data, isLoading, error, refetch } = useAdminPayments(search ? { search } : undefined);
+
+  const apiPayments = (data as any)?.data?.map((t: any) => ({
+    id: t.reference || t.id,
+    rawId: t.id,
+    customer: t.user?.name || "Unknown",
+    email: t.user?.email || "",
+    booking: t.bookingRef || "—",
+    method: t.paymentMethod || "—",
+    date: t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB') : "—",
+    status: t.status,
+    amount: `৳${(t.amount || 0).toLocaleString()}`,
+    rawAmount: t.amount || 0,
+    type: t.type,
+    description: t.description || "",
+  })) || [];
+
+  const payments = apiPayments.length > 0 ? apiPayments : mockAdminPayments.payments;
 
   const stats = {
-    totalRevenue: `৳${payments.filter(p => p.status === "completed").reduce((s, p) => s + parseInt(String(p.amount).replace(/[^\d]/g, "") || "0"), 0).toLocaleString()}`,
+    totalRevenue: `৳${payments.filter((p: any) => p.status === "completed").reduce((s: number, p: any) => s + (p.rawAmount || parseInt(String(p.amount).replace(/[^\d]/g, "") || "0")), 0).toLocaleString()}`,
     thisMonth: mockAdminPayments.stats.thisMonth,
-    pending: `৳${payments.filter(p => p.status === "pending").reduce((s, p) => s + parseInt(String(p.amount).replace(/[^\d]/g, "") || "0"), 0).toLocaleString()}`,
-    needsVerification: String(payments.filter(p => p.status === "pending_verification").length),
+    pending: `৳${payments.filter((p: any) => p.status === "pending").reduce((s: number, p: any) => s + (p.rawAmount || parseInt(String(p.amount).replace(/[^\d]/g, "") || "0")), 0).toLocaleString()}`,
+    needsVerification: String(payments.filter((p: any) => p.status === "pending_verification").length),
   };
 
-  const filtered = search ? payments.filter(p => p.id.toLowerCase().includes(search.toLowerCase()) || p.customer.toLowerCase().includes(search.toLowerCase())) : payments;
+  const filtered = search ? payments.filter((p: any) => p.id?.toLowerCase().includes(search.toLowerCase()) || p.customer?.toLowerCase().includes(search.toLowerCase())) : payments;
 
   const handleExport = () => {
-    const csv = ["ID,Customer,Method,Amount,Status,Date", ...payments.map(p => `${p.id},${p.customer},${p.method},${p.amount},${p.status},${p.date}`)].join("\n");
+    const csv = ["ID,Customer,Method,Amount,Status,Date", ...payments.map((p: any) => `${p.id},${p.customer},${p.method},${p.amount},${p.status},${p.date}`)].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = "payments.csv"; a.click();
+    URL.revokeObjectURL(url);
     toast({ title: "Exported", description: "Payments CSV downloaded" });
-  };
-
-  const handleApprove = (p: any) => {
-    const updated = updateInCollection(STORE_KEY, defaultPayments, p.id, { status: "completed" });
-    setPayments([...updated]);
-    toast({ title: "Payment Approved", description: `Payment ${p.id} has been approved` });
-  };
-
-  const handleReject = (p: any) => {
-    const updated = updateInCollection(STORE_KEY, defaultPayments, p.id, { status: "failed" });
-    setPayments([...updated]);
-    toast({ title: "Payment Rejected", description: `Payment ${p.id} has been rejected` });
   };
 
   return (
@@ -70,65 +78,56 @@ const AdminPayments = () => {
         ))}
       </div>
       <div className="relative max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Search payments..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
-      <Card><CardContent className="p-0 table-responsive">
-        <Table>
-          <TableHeader><TableRow><TableHead>Payment ID</TableHead><TableHead>Customer</TableHead><TableHead className="hidden md:table-cell">Method</TableHead><TableHead className="hidden lg:table-cell">Date</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="w-10"></TableHead></TableRow></TableHeader>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-12">No payments found</TableCell></TableRow>
-            ) : filtered.map((p: any) => (
-              <TableRow key={p.id}>
-                <TableCell><p className="font-mono text-xs">{p.id}</p><p className="text-xs text-muted-foreground">{p.booking}</p></TableCell>
-                <TableCell className="text-sm font-medium">{p.customer}</TableCell>
-                <TableCell className="hidden md:table-cell text-sm">{p.method}</TableCell>
-                <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{p.date}</TableCell>
-                <TableCell><Badge variant="outline" className={`text-[10px] ${statusMap[p.status]?.class || ''}`}>{statusMap[p.status]?.label || p.status}</Badge></TableCell>
-                <TableCell className="text-right font-semibold text-sm">{p.amount}</TableCell>
-                <TableCell>
-                  <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setViewPayment(p)}><Eye className="w-4 h-4 mr-2" /> View Details</DropdownMenuItem>
-                      {p.status !== "completed" && <DropdownMenuItem onClick={() => handleApprove(p)}><CheckCircle2 className="w-4 h-4 mr-2" /> Approve</DropdownMenuItem>}
-                      {p.status !== "failed" && <DropdownMenuItem className="text-destructive" onClick={() => handleReject(p)}><XCircle className="w-4 h-4 mr-2" /> Reject</DropdownMenuItem>}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent></Card>
+      <DataLoader isLoading={isLoading} error={null} skeleton="table" retry={refetch}>
+        <Card><CardContent className="p-0 table-responsive">
+          <Table>
+            <TableHeader><TableRow><TableHead>Payment ID</TableHead><TableHead>Customer</TableHead><TableHead className="hidden md:table-cell">Method</TableHead><TableHead className="hidden lg:table-cell">Date</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="w-10"></TableHead></TableRow></TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-12">No payments found</TableCell></TableRow>
+              ) : filtered.map((p: any) => (
+                <TableRow key={p.id}>
+                  <TableCell><p className="font-mono text-xs">{typeof p.id === 'string' ? p.id.substring(0, 12) : p.id}</p><p className="text-xs text-muted-foreground">{p.booking}</p></TableCell>
+                  <TableCell className="text-sm font-medium">{p.customer}</TableCell>
+                  <TableCell className="hidden md:table-cell text-sm">{p.method}</TableCell>
+                  <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{p.date}</TableCell>
+                  <TableCell><Badge variant="outline" className={`text-[10px] ${statusMap[p.status]?.class || ''}`}>{statusMap[p.status]?.label || p.status}</Badge></TableCell>
+                  <TableCell className="text-right font-semibold text-sm">{p.amount}</TableCell>
+                  <TableCell>
+                    <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setViewPayment(p)}><Eye className="w-4 h-4 mr-2" /> View Details</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent></Card>
+      </DataLoader>
 
-      {/* Payment Detail Dialog */}
       <Dialog open={!!viewPayment} onOpenChange={() => setViewPayment(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Payment Details</DialogTitle></DialogHeader>
           {viewPayment && (
             <div className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><p className="text-xs text-muted-foreground">Payment ID</p><p className="font-bold font-mono">{viewPayment.id}</p></div>
+                <div><p className="text-xs text-muted-foreground">Payment ID</p><p className="font-bold font-mono">{typeof viewPayment.id === 'string' ? viewPayment.id.substring(0, 16) : viewPayment.id}</p></div>
                 <div><p className="text-xs text-muted-foreground">Customer</p><p className="font-bold">{viewPayment.customer}</p></div>
                 <div><p className="text-xs text-muted-foreground">Booking Ref</p><p className="font-bold font-mono">{viewPayment.booking}</p></div>
-                <div><p className="text-xs text-muted-foreground">Payment Method</p><p className="font-bold">{viewPayment.method}</p></div>
+                <div><p className="text-xs text-muted-foreground">Payment Method</p><p className="font-bold capitalize">{viewPayment.method}</p></div>
                 <div><p className="text-xs text-muted-foreground">Date</p><p className="font-bold">{viewPayment.date}</p></div>
                 <div><p className="text-xs text-muted-foreground">Amount</p><p className="font-bold text-lg text-primary">{viewPayment.amount}</p></div>
               </div>
+              {viewPayment.description && (
+                <>
+                  <Separator />
+                  <div><p className="text-xs text-muted-foreground">Description</p><p className="text-sm">{viewPayment.description}</p></div>
+                </>
+              )}
               <Separator />
-              <div className="flex items-center justify-between">
-                <Badge variant="outline" className={`${statusMap[viewPayment.status]?.class || ''}`}>{statusMap[viewPayment.status]?.label || viewPayment.status}</Badge>
-                <div className="flex gap-2">
-                  {viewPayment.status !== "completed" && (
-                    <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => { handleApprove(viewPayment); setViewPayment(null); }}>
-                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approve
-                    </Button>
-                  )}
-                  {viewPayment.status !== "failed" && (
-                    <Button size="sm" variant="destructive" onClick={() => { handleReject(viewPayment); setViewPayment(null); }}>
-                      <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
-                    </Button>
-                  )}
-                </div>
-              </div>
+              <Badge variant="outline" className={`${statusMap[viewPayment.status]?.class || ''}`}>{statusMap[viewPayment.status]?.label || viewPayment.status}</Badge>
             </div>
           )}
         </DialogContent>
