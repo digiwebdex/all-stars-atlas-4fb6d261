@@ -132,6 +132,12 @@ All notable changes to this project are documented in this file.
   - SMS Gateway
   - Google Drive OAuth
 
+#### Bug Fixes
+- **Blog post detail page** — Created `/blog/:slug` route with full article view, breadcrumbs, social sharing (Facebook, Twitter, LinkedIn, copy link), and related posts
+- **Blog listing** — All blog cards now link to individual article pages instead of being static
+- **Newsletter subscribe** — Footer newsletter now sends email to backend API (`/contact/subscribe`)
+- **Blog editor** — All post CRUD operations use proper typed `BlogPost[]` to prevent TypeScript errors
+
 ---
 
 ## Links

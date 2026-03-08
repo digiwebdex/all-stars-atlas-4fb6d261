@@ -4,8 +4,13 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Clock, User, Search } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Link } from "react-router-dom";
 import { useCmsPageContent } from "@/hooks/useCmsContent";
 import { Skeleton } from "@/components/ui/skeleton";
+
+function slugify(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
 
 const Blog = () => {
   const [search, setSearch] = useState("");
@@ -61,26 +66,28 @@ const Blog = () => {
           </div>
 
           {filtered.length > 0 && activeCategory === "All" && !search && (
-            <Card className="mb-8 overflow-hidden">
-              <div className="grid md:grid-cols-2">
-                <div className="aspect-[16/10] md:aspect-auto">
-                  <img src={filtered[0].img} alt={filtered[0].title} className="w-full h-full object-cover" />
-                </div>
-                <CardContent className="p-6 sm:p-8 flex flex-col justify-center">
-                  <Badge className="w-fit mb-3 text-xs">{filtered[0].category}</Badge>
-                  <h2 className="text-xl sm:text-2xl font-black mb-3 leading-tight">{filtered[0].title}</h2>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-4">{filtered[0].excerpt}</p>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
-                    <span className="flex items-center gap-1"><User className="w-3 h-3" /> {filtered[0].author}</span>
-                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {filtered[0].readTime}</span>
-                    <span>{filtered[0].date}</span>
+            <Link to={`/blog/${slugify(filtered[0].title)}`}>
+              <Card className="mb-8 overflow-hidden hover:shadow-lg transition-shadow">
+                <div className="grid md:grid-cols-2">
+                  <div className="aspect-[16/10] md:aspect-auto">
+                    <img src={filtered[0].img} alt={filtered[0].title} className="w-full h-full object-cover" />
                   </div>
-                  <Button className="w-fit font-bold">
-                    Read Article <ArrowRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </CardContent>
-              </div>
-            </Card>
+                  <CardContent className="p-6 sm:p-8 flex flex-col justify-center">
+                    <Badge className="w-fit mb-3 text-xs">{filtered[0].category}</Badge>
+                    <h2 className="text-xl sm:text-2xl font-black mb-3 leading-tight">{filtered[0].title}</h2>
+                    <p className="text-sm text-muted-foreground leading-relaxed mb-4">{filtered[0].excerpt}</p>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
+                      <span className="flex items-center gap-1"><User className="w-3 h-3" /> {filtered[0].author}</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {filtered[0].readTime}</span>
+                      <span>{filtered[0].date}</span>
+                    </div>
+                    <Button className="w-fit font-bold">
+                      Read Article <ArrowRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </CardContent>
+                </div>
+              </Card>
+            </Link>
           )}
 
           {filtered.length === 0 ? (
@@ -90,20 +97,22 @@ const Blog = () => {
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {(activeCategory === "All" && !search ? filtered.slice(1) : filtered).map(post => (
-                <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-all group">
-                  <div className="aspect-[16/10] overflow-hidden">
-                    <img src={post.img} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-                  </div>
-                  <CardContent className="p-5">
-                    <Badge variant="secondary" className="text-[10px] mb-2">{post.category}</Badge>
-                    <h3 className="font-bold text-sm mb-2 leading-snug line-clamp-2">{post.title}</h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-3">{post.excerpt}</p>
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-1"><User className="w-3 h-3" /> {post.author}</span>
-                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {post.readTime}</span>
+                <Link key={post.id} to={`/blog/${slugify(post.title)}`}>
+                  <Card className="overflow-hidden hover:shadow-lg transition-all group h-full">
+                    <div className="aspect-[16/10] overflow-hidden">
+                      <img src={post.img} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
                     </div>
-                  </CardContent>
-                </Card>
+                    <CardContent className="p-5">
+                      <Badge variant="secondary" className="text-[10px] mb-2">{post.category}</Badge>
+                      <h3 className="font-bold text-sm mb-2 leading-snug line-clamp-2">{post.title}</h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-3">{post.excerpt}</p>
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span className="flex items-center gap-1"><User className="w-3 h-3" /> {post.author}</span>
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {post.readTime}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
             </div>
           )}

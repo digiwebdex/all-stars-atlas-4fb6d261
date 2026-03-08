@@ -39,6 +39,7 @@ const RefundPolicy = lazy(() => import("@/pages/static/RefundPolicy"));
 const FAQ = lazy(() => import("@/pages/static/FAQ"));
 const Careers = lazy(() => import("@/pages/static/Careers"));
 const Blog = lazy(() => import("@/pages/static/Blog"));
+const BlogPost = lazy(() => import("@/pages/static/BlogPost"));
 const FlightBooking = lazy(() => import("@/pages/flights/FlightBooking"));
 const HotelDetail = lazy(() => import("@/pages/hotels/HotelDetail"));
 const HolidayDetail = lazy(() => import("@/pages/holidays/HolidayDetail"));
@@ -134,6 +135,7 @@ const App = () => (
                 <Route path="/faq" element={<FAQ />} />
                 <Route path="/careers" element={<Careers />} />
                 <Route path="/blog" element={<Blog />} />
+                <Route path="/blog/:slug" element={<BlogPost />} />
                 <Route path="/medical" element={<MedicalServices />} />
                 <Route path="/medical/book" element={<MedicalBooking />} />
                 <Route path="/cars" element={<CarRental />} />
