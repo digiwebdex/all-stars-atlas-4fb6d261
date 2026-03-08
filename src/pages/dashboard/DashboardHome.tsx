@@ -75,7 +75,7 @@ const DashboardHome = () => {
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">Here's your travel overview for today</p>
           </div>
-          <Button asChild className="w-full sm:w-auto bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 shadow-lg shadow-primary/25 border-0 group">
+          <Button asChild className="w-full sm:w-auto bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 shadow-lg shadow-primary/25 border-0 group btn-elastic">
             <Link to="/">
               <Plane className="w-4 h-4 mr-1.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" /> Book New Trip
             </Link>
