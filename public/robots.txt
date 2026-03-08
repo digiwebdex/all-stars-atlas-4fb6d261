@@ -17,4 +17,4 @@ Disallow: /admin/*
 Disallow: /dashboard
 Disallow: /dashboard/*
 
-Sitemap: https://travelhub.com.bd/sitemap.xml
+Sitemap: https://seventrip.com.bd/sitemap.xml
