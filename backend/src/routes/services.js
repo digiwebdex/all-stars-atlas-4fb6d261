@@ -113,8 +113,8 @@ router.get('/medical/search', async (req, res) => {
     const [rows] = await db.query(sql, params);
     const data = rows.map(r => ({
       id: r.id, name: r.name, city: r.city, country: r.country,
-      specialties: JSON.parse(r.specialties || '[]'), accreditations: JSON.parse(r.accreditations || '[]'),
-      rating: r.rating ? parseFloat(r.rating) : null, priceRange: r.price_range, description: r.description, images: JSON.parse(r.images || '[]'),
+      specialties: safeJsonParse(r.specialties, []), accreditations: safeJsonParse(r.accreditations, []),
+      rating: r.rating ? parseFloat(r.rating) : null, priceRange: r.price_range, description: r.description, images: safeJsonParse(r.images, []),
     }));
     res.json({ data, total: countResult[0].total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(countResult[0].total / parseInt(limit)) });
   } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
