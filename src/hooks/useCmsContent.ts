@@ -46,7 +46,7 @@ export const useCmsSavePage = () => {
   return useMutation({
     mutationFn: async (content: CmsPageContent) => {
       try {
-        return await api.put<CmsPageContent>(`/cms/pages/${encodeURIComponent(content.slug)}`, content);
+        return await api.put<CmsPageContent>(`/cms/pages${content.slug.startsWith('/') ? content.slug : `/${content.slug}`}`, content);
       } catch {
         // When API is unavailable, simulate save by updating cache
         return content;
