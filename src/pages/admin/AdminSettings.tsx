@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Settings, Globe, Mail, CreditCard, Shield, Bell, Database, Plug, Eye, EyeOff, Plus, Trash2, Building2 } from "lucide-react";
+import { Settings, Globe, Mail, CreditCard, Shield, Bell, Database, Plug, Eye, EyeOff, Plus, Trash2, Building2, CloudUpload, ExternalLink, Info } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { setGoogleDriveClientId, getGoogleDriveClientId, isGoogleDriveConfigured } from "@/lib/google-drive";
 
 // ── API Integrations Config ──
 const apiIntegrations = [
@@ -411,6 +412,58 @@ const AdminSettings = () => {
               </TabsContent>
             ))}
           </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Google Drive Integration */}
+      <Card className="border-blue-200 dark:border-blue-800">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center"><CloudUpload className="w-5 h-5 text-blue-600" /></div>
+            <div>
+              <CardTitle className="text-lg">Google Drive Integration</CardTitle>
+              <CardDescription>Enable one-click document upload to Google Drive from Visa Management</CardDescription>
+            </div>
+            <Badge variant={isGoogleDriveConfigured() ? "default" : "secondary"} className="ml-auto text-[10px] h-5">{isGoogleDriveConfigured() ? "Connected" : "Not Configured"}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 space-y-2">
+            <p className="text-sm font-semibold flex items-center gap-1.5"><Info className="w-4 h-4 text-blue-600" /> How to get your Google Client ID:</p>
+            <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+              <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">Google Cloud Console → Credentials</a></li>
+              <li>Click <strong>"Create Credentials"</strong> → <strong>"OAuth 2.0 Client ID"</strong></li>
+              <li>Set Application Type to <strong>"Web application"</strong></li>
+              <li>Add your domain (e.g. <code className="bg-muted px-1 rounded">https://seventrip.com.bd</code>) to <strong>"Authorized JavaScript origins"</strong></li>
+              <li>Copy the <strong>Client ID</strong> and paste it below</li>
+              <li>Enable the <strong>"Google Drive API"</strong> in your <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">API Library</a></li>
+            </ol>
+          </div>
+          <div className="space-y-1.5">
+            <Label>OAuth 2.0 Client ID</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="e.g. 123456789-abc123.apps.googleusercontent.com"
+                defaultValue={getGoogleDriveClientId()}
+                className="font-mono text-sm"
+                id="gdrive-client-id"
+              />
+              <Button onClick={() => {
+                const input = document.getElementById('gdrive-client-id') as HTMLInputElement;
+                const val = input?.value?.trim();
+                if (!val) { toast.error("Please enter a Client ID"); return; }
+                setGoogleDriveClientId(val);
+                toast.success("Google Drive Client ID saved! You can now use 'Save to Google Drive' in Visa Management.");
+              }}>Save & Connect</Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Your Client ID is stored locally in this browser. It is safe — this is a <strong>public/publishable</strong> key, not a secret.</p>
+          </div>
+          {isGoogleDriveConfigured() && (
+            <div className="flex items-center gap-2 bg-success/10 border border-success/20 rounded-lg p-3">
+              <Shield className="w-4 h-4 text-success" />
+              <p className="text-sm text-success font-medium">Google Drive is connected! Users will see a consent popup on first use.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

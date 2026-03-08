@@ -37,14 +37,14 @@ All notable changes to this project are documented in this file.
 
 #### Super Admin Panel (16 Modules)
 - Dashboard analytics (users, bookings, revenue, visa stats, charts)
-- User management (add, suspend, activate, delete, view details)
+- User management (add, suspend, activate, delete, view details, **ID verification approve/reject**)
 - Bookings management (status transitions: confirm, complete, cancel)
 - Payments overview
 - Payment Approvals (approve/reject with receipt viewer)
-- Invoices (create, PDF download, remind)
+- Invoices (create, PDF download, print, CSV export, remind)
 - Reports & Analytics (KPIs, revenue trend, booking charts, export)
 - Discounts & Pricing (discount codes CRUD, price rules CRUD)
-- Visa management (applications table, status updates, document ZIP download, form settings CMS)
+- Visa management (applications table, status updates, document ZIP download, **one-click Google Drive upload**, PDF export, form settings CMS)
 - **CMS Suite**:
   - Homepage editor (sections, visibility, ordering)
   - Footer editor
@@ -55,7 +55,7 @@ All notable changes to this project are documented in this file.
   - Media library (upload, delete, preview)
   - Email templates CRUD
   - Service-specific settings (Visa form, Booking forms)
-- Admin Settings (API integrations, notification toggles, payment method management, bank accounts)
+- Admin Settings (API integrations with setup guides, **Google Drive OAuth setup**, notification toggles, payment method management, bank accounts, SMTP config, danger zone)
 
 #### Architecture & Infrastructure
 - React 18 + TypeScript + Vite + Tailwind CSS
@@ -85,6 +85,24 @@ All notable changes to this project are documented in this file.
 - `Deployment.md` — Step-by-step VPS deployment (Nginx, SSL, PM2)
 - `BACKEND_API_SPEC.md` — Full API contract (86 endpoints, schemas, auth flow)
 - `CHANGELOG.md` — This file
+
+---
+
+## [1.1.0] — 2026-03-08
+
+### 🔐 Identity Verification & Cloud Storage
+
+#### New Features
+- **Mandatory ID Upload on Registration** — Users must upload NID or Passport copy during signup
+- **Admin ID Verification** — Admins can approve or reject user identity documents from User Profile dialog
+- **Google Drive Integration** — One-click upload of visa application documents to Google Drive
+- **Admin-configurable Google Drive** — Admins set up Google OAuth Client ID from Settings → Google Drive (no env vars needed)
+- **ID Status Column** — User list shows Verified / Pending / No ID badges
+
+#### Improvements
+- Improved error messages for Google Drive (guides admin to Settings page)
+- Backend now supports `idVerified` field updates via admin API
+- Updated all documentation files with v1.1.0 features
 
 ---
 

@@ -234,13 +234,13 @@ The output will be in the `dist/` folder — these are static files you serve wi
 
 ### Auth Pages (No Header/Footer)
 
-| Route                   | Description            |
-| ----------------------- | ---------------------- |
-| `/auth/login`           | Customer login         |
-| `/auth/register`        | Customer registration  |
-| `/auth/forgot-password` | Password reset request |
-| `/auth/verify-otp`      | OTP verification       |
-| `/admin/login`          | Admin login (hidden)   |
+| Route                   | Description                                    |
+| ----------------------- | ---------------------------------------------- |
+| `/auth/login`           | Customer login                                 |
+| `/auth/register`        | Customer registration (with NID/Passport upload) |
+| `/auth/forgot-password` | Password reset request                         |
+| `/auth/verify-otp`      | OTP verification                               |
+| `/admin/login`          | Admin login (hidden)                           |
 
 ### Customer Dashboard (Protected — Login Required)
 
@@ -265,14 +265,14 @@ The output will be in the `dist/` folder — these are static files you serve wi
 | ------------------------------ | ----------------------------------------- |
 | `/admin`                       | Analytics dashboard + revenue charts      |
 | `/admin/bookings`              | Manage all bookings + status transitions  |
-| `/admin/users`                 | User management (add/suspend/delete)      |
+| `/admin/users`                 | User management (add/suspend/delete/verify ID) |
 | `/admin/payments`              | All payment transactions + export         |
 | `/admin/payment-approvals`     | Approve/reject manual payments            |
-| `/admin/invoices`              | Create, download, remind invoices         |
+| `/admin/invoices`              | Create, download, print, remind invoices  |
 | `/admin/reports`               | Revenue reports + charts + CSV export     |
 | `/admin/discounts`             | Discount codes + price rules              |
-| `/admin/visa`                  | Visa applications (process/approve/PDF)   |
-| `/admin/settings`              | System settings + API integrations        |
+| `/admin/visa`                  | Visa apps (process/approve/PDF/Google Drive) |
+| `/admin/settings`              | System settings + API keys + Google Drive |
 | `/admin/cms/homepage`          | CMS — Homepage sections                  |
 | `/admin/cms/pages`             | CMS — Static pages                       |
 | `/admin/cms/blog`              | CMS — Blog posts                         |
@@ -333,6 +333,19 @@ All 3rd-party API keys are managed via Admin → Settings → API Integrations:
 | Nagad Payment Gateway     | Payment         | Mobile payment integration           |
 | SSLCommerz (Cards)        | Payment         | Visa/Mastercard/AMEX processing      |
 | SMS Gateway               | Communication   | OTP & transactional SMS              |
+| **Google Drive**          | **Cloud Storage** | **One-click visa doc upload to Drive** |
+
+### Google Drive Setup (Admin → Settings → Google Drive)
+
+1. Go to [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials)
+2. Click **"Create Credentials"** → **"OAuth 2.0 Client ID"**
+3. Set Application Type to **"Web application"**
+4. Add your domain to **"Authorized JavaScript origins"** (e.g. `https://seventrip.com.bd`)
+5. Copy the **Client ID** and paste it into Admin → Settings → Google Drive
+6. Enable the **[Google Drive API](https://console.cloud.google.com/apis/library/drive.googleapis.com)** in your project
+7. Done! The "Save to Google Drive" button in Visa Management will now work
+
+> **Note:** The Client ID is a public/publishable key and is safe to store in the browser.
 
 ---
 

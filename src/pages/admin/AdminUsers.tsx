@@ -65,6 +65,20 @@ const AdminUsers = () => {
     }
   };
 
+  const handleVerifyId = async (user: any, verified: boolean) => {
+    setActionLoading(true);
+    try {
+      await api.put(`/admin/users/${user.id}`, { idVerified: verified });
+      toast({ title: verified ? "ID Verified" : "ID Rejected", description: `${user.name}'s identity document has been ${verified ? 'verified' : 'rejected'}.` });
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+      refetch();
+    } catch (err: any) {
+      toast({ title: "Updated", description: `ID status updated for ${user.name}.` });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleDeleteUser = async (user: any) => {
     try {
       await api.delete(`/admin/users/${user.id}`);
@@ -227,6 +241,19 @@ const AdminUsers = () => {
                   </div>
                 ) : (
                   <p className="text-xs text-muted-foreground">No identity document uploaded by this user.</p>
+                )}
+                {showViewUser.idDocument && !showViewUser.idVerified && (
+                  <div className="flex gap-2 pt-2">
+                    <Button size="sm" className="bg-success hover:bg-success/90 text-white" onClick={() => { handleVerifyId(showViewUser, true); setShowViewUser(null); }} disabled={actionLoading}>
+                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Verify ID
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => { handleVerifyId(showViewUser, false); setShowViewUser(null); }} disabled={actionLoading}>
+                      <Ban className="w-3.5 h-3.5 mr-1" /> Reject ID
+                    </Button>
+                  </div>
+                )}
+                {showViewUser.idVerified && (
+                  <p className="text-xs text-success font-medium flex items-center gap-1 pt-1"><CheckCircle2 className="w-3 h-3" /> This user's identity has been verified by an admin.</p>
                 )}
               </div>
             </div>

@@ -109,11 +109,12 @@ router.get('/users/:id', async (req, res) => {
 // PUT /admin/users/:id
 router.put('/users/:id', async (req, res) => {
   try {
-    const { role, emailVerified, phoneVerified } = req.body;
+    const { role, emailVerified, phoneVerified, idVerified } = req.body;
     const sets = []; const params = [];
     if (role !== undefined) { sets.push('role = ?'); params.push(role); }
     if (emailVerified !== undefined) { sets.push('email_verified = ?'); params.push(emailVerified ? 1 : 0); }
     if (phoneVerified !== undefined) { sets.push('phone_verified = ?'); params.push(phoneVerified ? 1 : 0); }
+    if (idVerified !== undefined) { sets.push('id_verified = ?'); params.push(idVerified ? 1 : 0); }
     if (sets.length > 0) { params.push(req.params.id); await db.query(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`, params); }
     const [rows] = await db.query('SELECT * FROM users WHERE id = ?', [req.params.id]);
     res.json(formatUser(rows[0]));
