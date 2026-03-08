@@ -53,6 +53,7 @@ const FlightBooking = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { data: page, isLoading } = useCmsPageContent("/flights/book");
+  const { toast } = useToast();
   const config = page?.bookingConfig;
 
   const handleFinalAction = () => {
