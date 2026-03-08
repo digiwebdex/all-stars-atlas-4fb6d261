@@ -66,26 +66,28 @@ const Blog = () => {
           </div>
 
           {filtered.length > 0 && activeCategory === "All" && !search && (
-            <Card className="mb-8 overflow-hidden">
-              <div className="grid md:grid-cols-2">
-                <div className="aspect-[16/10] md:aspect-auto">
-                  <img src={filtered[0].img} alt={filtered[0].title} className="w-full h-full object-cover" />
-                </div>
-                <CardContent className="p-6 sm:p-8 flex flex-col justify-center">
-                  <Badge className="w-fit mb-3 text-xs">{filtered[0].category}</Badge>
-                  <h2 className="text-xl sm:text-2xl font-black mb-3 leading-tight">{filtered[0].title}</h2>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-4">{filtered[0].excerpt}</p>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
-                    <span className="flex items-center gap-1"><User className="w-3 h-3" /> {filtered[0].author}</span>
-                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {filtered[0].readTime}</span>
-                    <span>{filtered[0].date}</span>
+            <Link to={`/blog/${slugify(filtered[0].title)}`}>
+              <Card className="mb-8 overflow-hidden hover:shadow-lg transition-shadow">
+                <div className="grid md:grid-cols-2">
+                  <div className="aspect-[16/10] md:aspect-auto">
+                    <img src={filtered[0].img} alt={filtered[0].title} className="w-full h-full object-cover" />
                   </div>
-                  <Button className="w-fit font-bold">
-                    Read Article <ArrowRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </CardContent>
-              </div>
-            </Card>
+                  <CardContent className="p-6 sm:p-8 flex flex-col justify-center">
+                    <Badge className="w-fit mb-3 text-xs">{filtered[0].category}</Badge>
+                    <h2 className="text-xl sm:text-2xl font-black mb-3 leading-tight">{filtered[0].title}</h2>
+                    <p className="text-sm text-muted-foreground leading-relaxed mb-4">{filtered[0].excerpt}</p>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
+                      <span className="flex items-center gap-1"><User className="w-3 h-3" /> {filtered[0].author}</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {filtered[0].readTime}</span>
+                      <span>{filtered[0].date}</span>
+                    </div>
+                    <Button className="w-fit font-bold">
+                      Read Article <ArrowRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </CardContent>
+                </div>
+              </Card>
+            </Link>
           )}
 
           {filtered.length === 0 ? (
