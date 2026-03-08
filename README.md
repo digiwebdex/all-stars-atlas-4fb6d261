@@ -94,7 +94,8 @@ seven-trip/
 │   │   ├── homepage-store.ts  # CMS homepage sync store
 │   │   ├── local-store.ts     # Generic localStorage CRUD helpers
 │   │   ├── mock-data.ts       # Fallback data for all pages when API is down
-│   │   ├── pdf-generator.ts   # PDF generation for tickets, invoices
+│   │   ├── pdf-generator.ts   # PDF generation for tickets, invoices (with logo)
+│   │   ├── google-drive.ts    # Google Drive API integration (OAuth2 + upload)
 │   │   └── utils.ts           # Utility functions (cn helper)
 │   ├── pages/
 │   │   ├── admin/             # 16 admin modules
@@ -131,7 +132,8 @@ seven-trip/
 │   └── index.css              # Global styles + Tailwind + CSS variables
 ├── .env.example               # Environment variable template
 ├── .lovable/plan.md           # Development plan & status tracking
-├── BACKEND_API_SPEC.md        # Complete 86-endpoint API specification
+├── BACKEND_API_SPEC.md        # Complete 87+ endpoint API specification
+├── CHANGELOG.md               # Version history and release notes
 ├── Deployment.md              # Step-by-step VPS deployment guide
 ├── developer_documentation.md # Architecture & developer reference
 ├── package.json               # Dependencies and scripts
@@ -173,6 +175,10 @@ Edit `.env` and set your API URL:
 
 ```env
 VITE_API_BASE_URL=http://localhost:3001/api
+
+# Optional: Google Drive integration for admin visa document management
+# Get from https://console.cloud.google.com/apis/credentials (OAuth 2.0 Client ID)
+VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 ```
 
 ### Step 4: Start Development Server
