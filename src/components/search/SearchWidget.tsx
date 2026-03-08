@@ -1173,20 +1173,22 @@ const SearchWidget = () => {
 
   return (
     <div className="glass-card-hero rounded-2xl">
-      {/* Tabs */}
-      <div className="flex items-center gap-0 px-2 sm:px-3 pt-2 sm:pt-3 overflow-x-auto scrollbar-none border-b border-border/40 -webkit-overflow-scrolling-touch">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`search-tab whitespace-nowrap shrink-0 px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm ${
-              activeTab === tab.id ? "search-tab-active" : ""
-            }`}
-          >
-            <tab.icon className="w-4 h-4" />
-            <span className="hidden xs:inline sm:inline">{tab.label}</span>
-          </button>
-        ))}
+      {/* Tabs - Centered and wider */}
+      <div className="flex items-center justify-center gap-0 px-2 sm:px-4 pt-2 sm:pt-3 overflow-x-auto scrollbar-none border-b border-border/40 -webkit-overflow-scrolling-touch">
+        <div className="flex items-center gap-0.5 sm:gap-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`search-tab whitespace-nowrap shrink-0 px-3 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm ${
+                activeTab === tab.id ? "search-tab-active" : ""
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              <span className="hidden xs:inline sm:inline">{tab.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Content */}
