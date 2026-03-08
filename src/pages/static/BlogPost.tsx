@@ -4,11 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Clock, User, Calendar, Share2, Facebook, Twitter, Linkedin, Copy, ArrowRight, Tag } from "lucide-react";
-import { BLOG_POSTS } from "@/lib/content-data";
-import { getCollection } from "@/lib/local-store";
 import { useToast } from "@/hooks/use-toast";
-
-const STORE_KEY = "cms_blog_posts";
+import { useCmsPageContent } from "@/hooks/useCmsContent";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -17,14 +15,13 @@ function slugify(text: string): string {
 const BlogPost = () => {
   const { slug } = useParams<{ slug: string }>();
   const { toast } = useToast();
+  const { data: content, isLoading } = useCmsPageContent("/blog");
 
-  const allPosts = getCollection(STORE_KEY, BLOG_POSTS.map(p => ({
-    ...p, id: String(p.id), content: "", tags: [] as string[], slug: slugify(p.title),
-  })));
+  const allPosts = content?.blogPosts || [];
 
-  const post = allPosts.find(p => (p as any).slug === slug || slugify(p.title) === slug);
+  const post = allPosts.find((p: any) => slugify(p.title) === slug);
   const relatedPosts = allPosts
-    .filter(p => p.id !== post?.id && p.status === "published" && p.category === post?.category)
+    .filter((p: any) => p.id !== post?.id && p.category === post?.category)
     .slice(0, 3);
 
   const handleShare = (platform: string) => {
@@ -44,6 +41,19 @@ const BlogPost = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-muted/30 pt-24 lg:pt-32 pb-16">
+        <div className="container mx-auto px-4 max-w-3xl space-y-6">
+          <Skeleton className="h-80 w-full rounded-xl" />
+          <Skeleton className="h-8 w-2/3" />
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-48 w-full" />
+        </div>
+      </div>
+    );
+  }
+
   if (!post) {
     return (
       <div className="min-h-screen bg-muted/30 pt-24 lg:pt-32 pb-16">
@@ -56,7 +66,7 @@ const BlogPost = () => {
     );
   }
 
-  const content = (post as any).content || `
+  const articleContent = post.content || `
     <p>${post.excerpt}</p>
     <h2>Introduction</h2>
     <p>${post.title} is a comprehensive guide that covers everything you need to know. Whether you're a first-time visitor or a seasoned traveller, this article will help you make the most of your experience.</p>
@@ -109,10 +119,10 @@ const BlogPost = () => {
         </div>
 
         {/* Tags */}
-        {(post as any).tags?.length > 0 && (
+        {post.tags?.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-6">
             <Tag className="w-4 h-4 text-muted-foreground" />
-            {(post as any).tags.map((tag: string) => (
+            {post.tags.map((tag: string) => (
               <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
             ))}
           </div>
@@ -123,7 +133,7 @@ const BlogPost = () => {
           <CardContent className="p-6 sm:p-8 md:p-10">
             <div
               className="prose prose-sm sm:prose dark:prose-invert max-w-none prose-headings:font-bold prose-a:text-primary prose-img:rounded-lg"
-              dangerouslySetInnerHTML={{ __html: content }}
+              dangerouslySetInnerHTML={{ __html: articleContent }}
             />
           </CardContent>
         </Card>
@@ -144,8 +154,8 @@ const BlogPost = () => {
           <div>
             <h2 className="text-xl font-bold mb-5">Related Articles</h2>
             <div className="grid sm:grid-cols-3 gap-4">
-              {relatedPosts.map(rp => (
-                <Link key={rp.id} to={`/blog/${(rp as any).slug || slugify(rp.title)}`}>
+              {relatedPosts.map((rp: any) => (
+                <Link key={rp.id} to={`/blog/${slugify(rp.title)}`}>
                   <Card className="overflow-hidden hover:shadow-lg transition-all group h-full">
                     <div className="aspect-[16/10] overflow-hidden">
                       <img src={rp.img} alt={rp.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />

@@ -47,8 +47,8 @@ const BookingConfirmation = () => {
       const { api } = await import("@/lib/api");
       await api.post('/dashboard/bookings/send-confirmation', { bookingRef });
       toast({ title: "Email Sent", description: "Booking confirmation has been sent to your email." });
-    } catch {
-      toast({ title: "Email Sent", description: "Booking confirmation has been sent to your email." });
+    } catch (err: any) {
+      toast({ title: "Email Failed", description: err?.message || "Could not send confirmation email. Please try again.", variant: "destructive" });
     }
   };
 

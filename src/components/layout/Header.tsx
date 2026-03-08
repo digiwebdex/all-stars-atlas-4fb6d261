@@ -171,8 +171,9 @@ const Header = () => {
                       { label: "Visa", href: "/visa", icon: FileText },
                       { label: "eSIM", href: "/esim", icon: Globe },
                       { label: "Recharge", href: "/recharge", icon: Phone },
+                      { label: "Pay Bill", href: "/paybill", icon: Ticket },
                       { label: "Medical", href: "/medical", icon: Headphones },
-                      { label: "Cars", href: "/cars", icon: Plane },
+                      { label: "Cars", href: "/cars", icon: LayoutDashboard },
                     ].map((item) => (
                       <Link key={item.href} to={item.href} onClick={() => setMobileOpen(false)}
                         className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-foreground hover:bg-muted transition-colors font-medium">
