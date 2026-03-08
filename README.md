@@ -94,7 +94,8 @@ seven-trip/
 │   │   ├── homepage-store.ts  # CMS homepage sync store
 │   │   ├── local-store.ts     # Generic localStorage CRUD helpers
 │   │   ├── mock-data.ts       # Fallback data for all pages when API is down
-│   │   ├── pdf-generator.ts   # PDF generation for tickets, invoices
+│   │   ├── pdf-generator.ts   # PDF generation for tickets, invoices (with logo)
+│   │   ├── google-drive.ts    # Google Drive API integration (OAuth2 + upload)
 │   │   └── utils.ts           # Utility functions (cn helper)
 │   ├── pages/
 │   │   ├── admin/             # 16 admin modules
