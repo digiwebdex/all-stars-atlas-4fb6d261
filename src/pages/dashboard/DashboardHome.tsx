@@ -169,7 +169,7 @@ const DashboardHome = () => {
       </motion.div>
 
       {/* Recent Bookings */}
-      <DataLoader isLoading={bookingsLoading} error={effectiveBookingsError} skeleton="table" retry={retryBookings}>
+      <div>
         {recentBookings.length > 0 && (
           <motion.div variants={item} className="chart-card overflow-hidden">
             <div className="flex items-center justify-between p-5 pb-3">
