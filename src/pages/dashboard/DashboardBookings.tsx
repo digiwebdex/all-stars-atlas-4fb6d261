@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Separator } from "@/components/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Plane, Building2, Search, Eye, Download, MoreHorizontal, RotateCcw, XCircle, FileText, Globe, Palmtree, CreditCard } from "lucide-react";
+import { downloadCSV } from "@/lib/csv-export";
 import { useDashboardBookings } from "@/hooks/useApiData";
 import DataLoader from "@/components/DataLoader";
 import { useToast } from "@/hooks/use-toast";
