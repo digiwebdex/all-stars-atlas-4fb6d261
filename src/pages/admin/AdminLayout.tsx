@@ -11,45 +11,46 @@ import { useState } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { motion, AnimatePresence } from "framer-motion";
 
+// Using inline gradient styles since Tailwind can't generate dynamic classes
 const sidebarGroups = [
   {
     label: "Main",
     items: [
-      { label: "Dashboard", href: "/admin", icon: LayoutDashboard, color: "from-blue-500 to-indigo-600" },
-      { label: "Bookings", href: "/admin/bookings", icon: Ticket, color: "from-violet-500 to-purple-600" },
-      { label: "Users", href: "/admin/users", icon: Users, color: "from-cyan-500 to-blue-500" },
+      { label: "Dashboard", href: "/admin", icon: LayoutDashboard, gradient: "linear-gradient(135deg, #3b82f6, #4f46e5)" },
+      { label: "Bookings", href: "/admin/bookings", icon: Ticket, gradient: "linear-gradient(135deg, #8b5cf6, #7c3aed)" },
+      { label: "Users", href: "/admin/users", icon: Users, gradient: "linear-gradient(135deg, #06b6d4, #3b82f6)" },
     ],
   },
   {
     label: "Finance",
     items: [
-      { label: "Payments", href: "/admin/payments", icon: CreditCard, color: "from-emerald-500 to-green-600" },
-      { label: "Payment Approvals", href: "/admin/payment-approvals", icon: FileText, color: "from-teal-400 to-emerald-500" },
-      { label: "Discounts & Pricing", href: "/admin/discounts", icon: Megaphone, color: "from-amber-500 to-orange-600" },
-      { label: "Invoices", href: "/admin/invoices", icon: FileText, color: "from-pink-500 to-rose-600" },
-      { label: "Reports", href: "/admin/reports", icon: BarChart3, color: "from-indigo-500 to-violet-600" },
+      { label: "Payments", href: "/admin/payments", icon: CreditCard, gradient: "linear-gradient(135deg, #10b981, #059669)" },
+      { label: "Payment Approvals", href: "/admin/payment-approvals", icon: FileText, gradient: "linear-gradient(135deg, #2dd4bf, #10b981)" },
+      { label: "Discounts & Pricing", href: "/admin/discounts", icon: Megaphone, gradient: "linear-gradient(135deg, #f59e0b, #ea580c)" },
+      { label: "Invoices", href: "/admin/invoices", icon: FileText, gradient: "linear-gradient(135deg, #ec4899, #f43f5e)" },
+      { label: "Reports", href: "/admin/reports", icon: BarChart3, gradient: "linear-gradient(135deg, #6366f1, #8b5cf6)" },
     ],
   },
   {
     label: "CMS",
     items: [
-      { label: "All Pages", href: "/admin/cms/pages", icon: FileText, color: "from-sky-400 to-blue-500" },
-      { label: "Booking Forms", href: "/admin/cms/booking-forms", icon: PenLine, color: "from-fuchsia-500 to-pink-600" },
-      { label: "Homepage", href: "/admin/cms/homepage", icon: Home, color: "from-orange-400 to-red-500" },
-      { label: "Footer", href: "/admin/cms/footer", icon: PanelBottom, color: "from-slate-500 to-gray-600" },
-      { label: "SEO", href: "/admin/cms/seo", icon: SearchIcon, color: "from-lime-500 to-green-600" },
-      { label: "Blog", href: "/admin/cms/blog", icon: PenLine, color: "from-rose-400 to-pink-500" },
-      { label: "Promotions", href: "/admin/cms/promotions", icon: Megaphone, color: "from-yellow-500 to-amber-600" },
-      { label: "Destinations", href: "/admin/cms/destinations", icon: MapPin, color: "from-emerald-400 to-teal-500" },
-      { label: "Media", href: "/admin/cms/media", icon: Image, color: "from-purple-400 to-violet-500" },
-      { label: "Email Templates", href: "/admin/cms/email-templates", icon: Mail, color: "from-blue-400 to-indigo-500" },
+      { label: "All Pages", href: "/admin/cms/pages", icon: FileText, gradient: "linear-gradient(135deg, #38bdf8, #3b82f6)" },
+      { label: "Booking Forms", href: "/admin/cms/booking-forms", icon: PenLine, gradient: "linear-gradient(135deg, #d946ef, #ec4899)" },
+      { label: "Homepage", href: "/admin/cms/homepage", icon: Home, gradient: "linear-gradient(135deg, #fb923c, #ef4444)" },
+      { label: "Footer", href: "/admin/cms/footer", icon: PanelBottom, gradient: "linear-gradient(135deg, #64748b, #475569)" },
+      { label: "SEO", href: "/admin/cms/seo", icon: SearchIcon, gradient: "linear-gradient(135deg, #84cc16, #22c55e)" },
+      { label: "Blog", href: "/admin/cms/blog", icon: PenLine, gradient: "linear-gradient(135deg, #fb7185, #ec4899)" },
+      { label: "Promotions", href: "/admin/cms/promotions", icon: Megaphone, gradient: "linear-gradient(135deg, #eab308, #f59e0b)" },
+      { label: "Destinations", href: "/admin/cms/destinations", icon: MapPin, gradient: "linear-gradient(135deg, #34d399, #14b8a6)" },
+      { label: "Media", href: "/admin/cms/media", icon: Image, gradient: "linear-gradient(135deg, #a78bfa, #8b5cf6)" },
+      { label: "Email Templates", href: "/admin/cms/email-templates", icon: Mail, gradient: "linear-gradient(135deg, #60a5fa, #6366f1)" },
     ],
   },
   {
     label: "Services",
     items: [
-      { label: "Visa", href: "/admin/visa", icon: Globe, color: "from-teal-500 to-cyan-600" },
-      { label: "Settings", href: "/admin/settings", icon: Settings, color: "from-gray-500 to-slate-600" },
+      { label: "Visa", href: "/admin/visa", icon: Globe, gradient: "linear-gradient(135deg, #14b8a6, #06b6d4)" },
+      { label: "Settings", href: "/admin/settings", icon: Settings, gradient: "linear-gradient(135deg, #6b7280, #4b5563)" },
     ],
   },
 ];
@@ -77,12 +78,13 @@ const SidebarNav = ({ location, onNav }: { location: ReturnType<typeof useLocati
                   active ? "sidebar-nav-active" : "sidebar-nav-inactive"
                 )}
               >
-                <div className={cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300",
-                  active
-                    ? "bg-white/20 shadow-inner"
-                    : `bg-gradient-to-br ${item.color} shadow-lg`
-                )}>
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300 shadow-lg"
+                  style={{
+                    background: active ? "rgba(255,255,255,0.2)" : item.gradient,
+                    boxShadow: active ? "inset 0 2px 4px rgba(0,0,0,0.1)" : "0 4px 12px rgba(0,0,0,0.15)",
+                  }}
+                >
                   <item.icon className="w-4 h-4 text-white" />
                 </div>
                 <span className="font-medium text-[13px]">{item.label}</span>
@@ -129,7 +131,7 @@ const AdminLayout = () => {
         </button>
         <Link to="/admin" className="flex items-center gap-3 mr-8">
           <img src="/images/seven-trip-logo.png" alt="Seven Trip" className="h-7 w-auto brightness-0 invert" />
-          <span className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-white/90 px-2.5 py-1 rounded-lg bg-gradient-to-r from-violet-500/20 to-blue-500/20 border border-white/10 shadow-[0_0_12px_hsl(280,70%,55%,0.15)]">
+          <span className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-white/90 px-2.5 py-1 rounded-lg bg-gradient-to-r from-violet-500/20 to-blue-500/20 border border-white/10 shadow-[0_0_12px_rgba(139,92,246,0.15)]">
             <Shield className="w-3 h-3" />
             Super Admin
           </span>
@@ -157,7 +159,10 @@ const AdminLayout = () => {
           <div className="px-4 mb-4">
             <div className="gradient-border-card p-3 bg-gradient-to-br from-violet-500/5 to-blue-500/5 rounded-xl">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-violet-500/30">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg"
+                  style={{ background: "linear-gradient(135deg, #8b5cf6, #3b82f6)", boxShadow: "0 4px 16px rgba(139,92,246,0.3)" }}
+                >
                   <Zap className="w-5 h-5" />
                 </div>
                 <div>
@@ -202,7 +207,7 @@ const AdminLayout = () => {
               initial={{ opacity: 0, y: 12, scale: 0.99 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] as const }}
             >
               <Outlet />
             </motion.div>

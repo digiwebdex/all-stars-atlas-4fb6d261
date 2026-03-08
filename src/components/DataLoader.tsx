@@ -84,16 +84,18 @@ export const DataLoader = ({ isLoading, error, children, skeleton = "table", ret
 
   if (error) {
     return (
-      <Card>
+      <Card className="border-dashed border-2 border-border/60 bg-muted/20">
         <CardContent className="py-12 text-center">
-          <AlertCircle className="w-12 h-12 mx-auto mb-3 text-destructive/50" />
+          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-destructive/10 flex items-center justify-center">
+            <AlertCircle className="w-7 h-7 text-destructive/60" />
+          </div>
           <h3 className="text-lg font-bold mb-1">Failed to load data</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            {(error as { message?: string })?.message || "Please check your connection and try again."}
+          <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+            {(error as { message?: string })?.message || "Something went wrong"}
           </p>
           {retry && (
-            <Button variant="outline" onClick={retry}>
-              <RefreshCw className="w-4 h-4 mr-1.5" /> Retry
+            <Button variant="outline" onClick={retry} className="gap-1.5 rounded-xl">
+              <RefreshCw className="w-4 h-4" /> Retry
             </Button>
           )}
         </CardContent>

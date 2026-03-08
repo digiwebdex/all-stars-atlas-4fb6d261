@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Ticket, CreditCard, Receipt, Users, Settings, LogOut, Plane, Menu, X,
-  Heart, FileText, Search, Clock, Banknote, Smartphone, Sparkles, ChevronRight
+  Heart, FileText, Search, Clock, Smartphone, Sparkles, ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -9,32 +9,33 @@ import { useState } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { motion, AnimatePresence } from "framer-motion";
 
+// Using inline gradient styles since Tailwind can't generate dynamic classes
 const sidebarGroups = [
   {
     label: "Main",
     items: [
-      { label: "Overview", href: "/dashboard", icon: LayoutDashboard, color: "from-blue-500 to-indigo-600" },
-      { label: "My Bookings", href: "/dashboard/bookings", icon: Ticket, color: "from-violet-500 to-purple-600" },
-      { label: "E-Tickets", href: "/dashboard/tickets", icon: FileText, color: "from-cyan-500 to-blue-500" },
+      { label: "Overview", href: "/dashboard", icon: LayoutDashboard, gradient: "linear-gradient(135deg, #3b82f6, #4f46e5)" },
+      { label: "My Bookings", href: "/dashboard/bookings", icon: Ticket, gradient: "linear-gradient(135deg, #8b5cf6, #7c3aed)" },
+      { label: "E-Tickets", href: "/dashboard/tickets", icon: FileText, gradient: "linear-gradient(135deg, #06b6d4, #3b82f6)" },
     ],
   },
   {
     label: "Finance",
     items: [
-      { label: "Transactions", href: "/dashboard/transactions", icon: Receipt, color: "from-emerald-500 to-green-600" },
-      { label: "E-Transactions", href: "/dashboard/e-transactions", icon: Smartphone, color: "from-teal-500 to-emerald-600" },
-      { label: "Payments", href: "/dashboard/payments", icon: CreditCard, color: "from-amber-500 to-orange-600" },
-      { label: "Invoices", href: "/dashboard/invoices", icon: FileText, color: "from-pink-500 to-rose-600" },
-      { label: "Pay Later", href: "/dashboard/pay-later", icon: Clock, color: "from-fuchsia-500 to-pink-600" },
+      { label: "Transactions", href: "/dashboard/transactions", icon: Receipt, gradient: "linear-gradient(135deg, #10b981, #059669)" },
+      { label: "E-Transactions", href: "/dashboard/e-transactions", icon: Smartphone, gradient: "linear-gradient(135deg, #14b8a6, #10b981)" },
+      { label: "Payments", href: "/dashboard/payments", icon: CreditCard, gradient: "linear-gradient(135deg, #f59e0b, #ea580c)" },
+      { label: "Invoices", href: "/dashboard/invoices", icon: FileText, gradient: "linear-gradient(135deg, #ec4899, #f43f5e)" },
+      { label: "Pay Later", href: "/dashboard/pay-later", icon: Clock, gradient: "linear-gradient(135deg, #d946ef, #ec4899)" },
     ],
   },
   {
     label: "Personal",
     items: [
-      { label: "Travellers", href: "/dashboard/travellers", icon: Users, color: "from-sky-500 to-blue-600" },
-      { label: "Wishlist", href: "/dashboard/wishlist", icon: Heart, color: "from-rose-500 to-red-600" },
-      { label: "Search History", href: "/dashboard/search-history", icon: Search, color: "from-indigo-500 to-violet-600" },
-      { label: "Settings", href: "/dashboard/settings", icon: Settings, color: "from-slate-500 to-gray-600" },
+      { label: "Travellers", href: "/dashboard/travellers", icon: Users, gradient: "linear-gradient(135deg, #0ea5e9, #2563eb)" },
+      { label: "Wishlist", href: "/dashboard/wishlist", icon: Heart, gradient: "linear-gradient(135deg, #f43f5e, #dc2626)" },
+      { label: "Search History", href: "/dashboard/search-history", icon: Search, gradient: "linear-gradient(135deg, #6366f1, #8b5cf6)" },
+      { label: "Settings", href: "/dashboard/settings", icon: Settings, gradient: "linear-gradient(135deg, #64748b, #475569)" },
     ],
   },
 ];
@@ -47,7 +48,7 @@ const SidebarNav = ({ location, onNav }: { location: ReturnType<typeof useLocati
 
   return (
     <nav className="flex flex-col gap-1 px-2">
-      {sidebarGroups.map((group, gi) => (
+      {sidebarGroups.map((group) => (
         <div key={group.label}>
           <p className="sidebar-group-label">{group.label}</p>
           {group.items.map((item) => {
@@ -62,13 +63,14 @@ const SidebarNav = ({ location, onNav }: { location: ReturnType<typeof useLocati
                   active ? "sidebar-nav-active" : "sidebar-nav-inactive"
                 )}
               >
-                <div className={cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300",
-                  active
-                    ? "bg-white/20 shadow-inner"
-                    : `bg-gradient-to-br ${item.color} shadow-lg`
-                )}>
-                  <item.icon className={cn("w-4 h-4", active ? "text-white" : "text-white")} />
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300 shadow-lg"
+                  style={{
+                    background: active ? "rgba(255,255,255,0.2)" : item.gradient,
+                    boxShadow: active ? "inset 0 2px 4px rgba(0,0,0,0.1)" : `0 4px 12px ${item.gradient.includes('#3b82f6') ? 'rgba(59,130,246,0.3)' : 'rgba(0,0,0,0.15)'}`,
+                  }}
+                >
+                  <item.icon className="w-4 h-4 text-white" />
                 </div>
                 <span className="font-medium text-[13px]">{item.label}</span>
                 {active && (
@@ -142,7 +144,10 @@ const DashboardLayout = () => {
           <div className="px-4 mb-4">
             <div className="gradient-border-card p-3 bg-gradient-to-br from-primary/5 to-accent/5 rounded-xl">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-primary/30">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg"
+                  style={{ background: "linear-gradient(135deg, #3b82f6, #4f46e5)", boxShadow: "0 4px 16px rgba(59,130,246,0.3)" }}
+                >
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
@@ -188,7 +193,7 @@ const DashboardLayout = () => {
               initial={{ opacity: 0, y: 12, scale: 0.99 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] as const }}
             >
               <Outlet />
             </motion.div>
