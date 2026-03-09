@@ -25,19 +25,33 @@
 │   ├── src/
 │   │   ├── config/db.js      # MySQL connection pool
 │   │   ├── middleware/auth.js # JWT auth + role guards
+│   │   ├── services/
+│   │   │   ├── email.js       # Resend transactional emails
+│   │   │   ├── sms.js         # BulkSMSBD SMS notifications
+│   │   │   └── notify.js      # Unified notification triggers
 │   │   └── routes/
 │   │       ├── auth.js        # Register, login, OTP, password reset
 │   │       ├── social-auth.js # Google & Facebook OAuth
-│   │       ├── flights.js     # Flight search & booking
-│   │       ├── hotels.js      # Hotel search & booking
+│   │       ├── flights.js     # Multi-GDS flight search & booking
+│   │       ├── tti-flights.js # TTI/ZENITH (Air Astra) GDS
+│   │       ├── bdf-flights.js # BDFare GDS integration
+│   │       ├── flyhub-flights.js # FlyHub GDS integration
+│   │       ├── hotels.js      # Hotel search (DB + HotelBeds)
+│   │       ├── hotelbeds.js   # HotelBeds API integration
 │   │       ├── services.js    # Holidays, medical, cars, eSIM, recharge, paybill
+│   │       ├── airalo.js      # Airalo eSIM API integration
+│   │       ├── ssl-recharge.js # SSL Wireless recharge + bill pay
+│   │       ├── sslcommerz.js  # SSLCommerz payment gateway
+│   │       ├── bkash.js       # bKash payment gateway
+│   │       ├── nagad.js       # Nagad payment gateway
 │   │       ├── visa.js        # Visa applications
 │   │       ├── dashboard.js   # User dashboard APIs
 │   │       ├── admin.js       # Admin panel APIs
 │   │       └── cms.js         # CMS CRUD (public + admin)
 │   ├── database/
 │   │   ├── migration.sql            # Full schema (20 tables)
-│   │   └── social-auth-migration.sql # Social login columns
+│   │   ├── social-auth-migration.sql # Social login columns
+│   │   └── pay-later-migration.sql  # Pay-later due tracking
 │   └── uploads/              # Local file storage
 ├── src/                      # React frontend
 │   ├── App.tsx               # Root router (70+ routes)
@@ -55,6 +69,7 @@
 │   ├── hooks/                # Custom hooks
 │   │   ├── useAuth.ts        # Auth context consumer
 │   │   ├── useApiData.ts     # React Query hooks (all endpoints)
+│   │   ├── usePaymentGateways.ts # SSLCommerz, bKash, Nagad hooks
 │   │   └── useCmsContent.ts  # CMS page content hook
 │   ├── lib/                  # Utilities
 │   │   ├── api.ts            # HTTP client with auto-refresh
@@ -89,11 +104,10 @@
 │   ├── sitemap.xml           # SEO sitemap
 │   ├── robots.txt            # Crawler rules
 │   └── favicon.png           # App icon
-└── docs
-    ├── BACKEND_API_SPEC.md   # 86 API endpoint spec
-    ├── CHANGELOG.md          # Version history
-    ├── Deployment.md         # VPS deployment guide
-    └── developer_documentation.md # Dev handbook
+├── BACKEND_API_SPEC.md       # 90+ API endpoint spec
+├── CHANGELOG.md              # Version history
+├── Deployment.md             # VPS deployment guide
+└── developer_documentation.md # Dev handbook
 ```
 
 ---
