@@ -226,30 +226,46 @@ router.get('/reports', async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
 });
 
-// GET /admin/settings
+// GET /admin/settings — returns all settings including API keys (masked)
 router.get('/settings', async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM system_settings');
     const settings = {};
-    rows.forEach(r => { settings[r.setting_key] = r.setting_value; });
+    const apiKeys = {};
+    const socialOAuth = {};
+
+    rows.forEach(r => {
+      if (r.setting_key.startsWith('api_')) {
+        // API integration keys — parse JSON, mask secrets for display
+        const integrationId = r.setting_key.replace('api_', '');
+        try {
+          const parsed = JSON.parse(r.setting_value);
+          apiKeys[integrationId] = parsed;
+        } catch { apiKeys[integrationId] = {}; }
+      } else if (r.setting_key.startsWith('social_oauth_')) {
+        const provider = r.setting_key.replace('social_oauth_', '');
+        try { socialOAuth[provider] = JSON.parse(r.setting_value); } catch { socialOAuth[provider] = {}; }
+      } else if (r.setting_key === 'payment_methods') {
+        try { settings.paymentMethods = JSON.parse(r.setting_value); } catch {}
+      } else if (r.setting_key === 'bank_accounts') {
+        try { settings.bankAccounts = JSON.parse(r.setting_value); } catch {}
+      } else if (r.setting_key === 'notifications') {
+        try { settings.notifications = JSON.parse(r.setting_value); } catch {}
+      } else {
+        settings[r.setting_key] = r.setting_value;
+      }
+    });
+
     res.json({
       siteName: settings.site_name || 'Seven Trip',
       supportEmail: settings.support_email || '',
       supportPhone: settings.support_phone || '',
       defaultCurrency: settings.currency || 'BDT',
-      paymentGateways: [
-        { id: 'bkash', name: 'bKash', enabled: true },
-        { id: 'nagad', name: 'Nagad', enabled: true },
-        { id: 'rocket', name: 'Rocket', enabled: false },
-        { id: 'card', name: 'Credit/Debit Card', enabled: true },
-        { id: 'bank_transfer', name: 'Bank Transfer', enabled: true },
-      ],
-      smtpSettings: { host: 'smtp.gmail.com', port: 587, username: settings.support_email || '' },
-      notifications: [
-        { id: 'new_booking', label: 'New Booking Alert', enabled: true },
-        { id: 'payment_received', label: 'Payment Received', enabled: true },
-        { id: 'visa_update', label: 'Visa Status Change', enabled: true },
-      ],
+      apiKeys,
+      socialOAuth,
+      paymentMethods: settings.paymentMethods || null,
+      bankAccounts: settings.bankAccounts || null,
+      notificationPrefs: settings.notifications || null,
     });
   } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
 });
