@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, Download, Plane, ArrowRight, Printer, Mail, Home } from "lucide-react";
+import { CheckCircle2, Download, Plane, ArrowRight, Printer, Mail, Home, Car, Building2, Stethoscope, Smartphone, Globe } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { generateTicketPDF } from "@/lib/pdf-generator";
