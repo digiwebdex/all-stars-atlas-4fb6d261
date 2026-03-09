@@ -70,7 +70,7 @@ async function ttiRequest(method, body) {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ request: body }),  // WCF requires wrapping in "request"
         signal: controller.signal,
       });
       clearTimeout(timeout);
