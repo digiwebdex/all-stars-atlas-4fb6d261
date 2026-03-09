@@ -71,6 +71,18 @@ export const useUpdateProfile = () => {
 export const useChangePassword = () =>
   useMutation({ mutationFn: (data: Record<string, unknown>) => api.post(`${API_ENDPOINTS.DASHBOARD_SETTINGS}/password`, data) });
 
+export const useDashboardSearchHistory = (params?: Record<string, string | number | boolean | undefined>) =>
+  useQuery({ queryKey: ['dashboard', 'search-history', params], queryFn: () => api.get(API_ENDPOINTS.DASHBOARD_SEARCH_HISTORY, params) });
+
+export const useDashboardETransactions = (params?: Record<string, string | number | boolean | undefined>) =>
+  useQuery({ queryKey: ['dashboard', 'e-transactions', params], queryFn: () => api.get(API_ENDPOINTS.DASHBOARD_E_TRANSACTIONS, params) });
+
+export const useDashboardPayLater = (params?: Record<string, string | number | boolean | undefined>) =>
+  useQuery({ queryKey: ['dashboard', 'pay-later', params], queryFn: () => api.get(API_ENDPOINTS.DASHBOARD_PAY_LATER, params) });
+
+export const useDashboardInvoices = (params?: Record<string, string | number | boolean | undefined>) =>
+  useQuery({ queryKey: ['dashboard', 'invoices', params], queryFn: () => api.get(API_ENDPOINTS.DASHBOARD_INVOICES, params) });
+
 // ============ FLIGHTS ============
 
 export const useFlightSearch = (params?: Record<string, string | number | boolean | undefined>) =>
