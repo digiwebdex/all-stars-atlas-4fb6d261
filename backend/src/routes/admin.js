@@ -273,7 +273,7 @@ router.get('/settings', async (req, res) => {
 // PUT /admin/settings
 router.put('/settings', async (req, res) => {
   try {
-    const { section, siteName, supportEmail, supportPhone, defaultCurrency, provider, config, integration, keys } = req.body;
+    const { section, siteName, supportEmail, supportPhone, defaultCurrency, provider, config, integration, keys, paymentMethods, bankAccounts, notifications } = req.body;
 
     // Social OAuth config
     if (section === 'social_oauth' && provider && config) {
@@ -294,7 +294,32 @@ router.put('/settings', async (req, res) => {
         'INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()',
         [settingKey, settingValue, settingValue]
       );
+      // Clear TTI config cache if it's the TTI integration
+      if (integration === 'tti_astra') {
+        try { const { clearTTIConfigCache } = require('./tti-flights'); clearTTIConfigCache(); } catch {}
+      }
       return res.json({ message: `${integration} config saved` });
+    }
+
+    // Payment methods
+    if (section === 'payments' && paymentMethods) {
+      const val = JSON.stringify(paymentMethods);
+      await db.query('INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?', ['payment_methods', val, val]);
+      return res.json({ message: 'Payment methods saved' });
+    }
+
+    // Bank accounts
+    if (section === 'bank_accounts' && bankAccounts) {
+      const val = JSON.stringify(bankAccounts);
+      await db.query('INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?', ['bank_accounts', val, val]);
+      return res.json({ message: 'Bank accounts saved' });
+    }
+
+    // Notifications
+    if (section === 'notifications' && notifications) {
+      const val = JSON.stringify(notifications);
+      await db.query('INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?', ['notifications', val, val]);
+      return res.json({ message: 'Notification preferences saved' });
     }
 
     // General settings
