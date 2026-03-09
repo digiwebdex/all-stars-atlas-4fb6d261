@@ -109,7 +109,7 @@ export const useSubmitVisaApplication = () =>
 // ============ MEDICAL ============
 
 export const useMedicalHospitals = (params?: Record<string, string | number | boolean | undefined>) =>
-  useQuery({ queryKey: ['medical', 'hospitals', params], queryFn: () => api.get(API_ENDPOINTS.MEDICAL_HOSPITALS, params) });
+  useQuery({ queryKey: ['medical', 'hospitals', params], queryFn: () => api.get(API_ENDPOINTS.MEDICAL_HOSPITALS, params), enabled: !!params });
 
 // ============ CARS ============
 
