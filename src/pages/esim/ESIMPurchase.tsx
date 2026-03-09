@@ -91,7 +91,7 @@ const ESIMPurchase = () => {
         </div>
       </div>
 
-      <AuthGateModal open={authOpen} onOpenChange={setAuthOpen} onAuthenticated={() => { setAuthOpen(false); navigate("/booking/confirmation"); }} title="Sign in to purchase eSIM" />
+      <AuthGateModal open={authOpen} onOpenChange={setAuthOpen} onAuthenticated={() => { setAuthOpen(false); navigate("/booking/confirmation", { state: { booking: { type: "eSIM", route: `${country} — ${plan}`, total: config?.totalAmount || 0 } } }); }} title="Sign in to purchase eSIM" />
     </div>
   );
 };

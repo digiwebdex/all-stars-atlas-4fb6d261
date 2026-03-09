@@ -131,7 +131,7 @@ const CarBooking = () => {
         </div>
       </div>
 
-      <AuthGateModal open={authOpen} onOpenChange={setAuthOpen} onAuthenticated={() => { setAuthOpen(false); navigate("/booking/confirmation"); }} title="Sign in to book your car" />
+      <AuthGateModal open={authOpen} onOpenChange={setAuthOpen} onAuthenticated={() => { setAuthOpen(false); navigate("/booking/confirmation", { state: { booking: { type: "Car Rental", baseFare: config?.totalAmount || 0, total: Math.round((config?.totalAmount || 0) * 1.05) } } }); }} title="Sign in to book your car" />
     </div>
   );
 };

@@ -130,7 +130,7 @@ const MedicalBooking = () => {
         </div>
       </div>
 
-      <AuthGateModal open={authOpen} onOpenChange={setAuthOpen} onAuthenticated={() => { setAuthOpen(false); navigate("/booking/confirmation"); }} title="Sign in to submit your enquiry" />
+      <AuthGateModal open={authOpen} onOpenChange={setAuthOpen} onAuthenticated={() => { setAuthOpen(false); navigate("/booking/confirmation", { state: { booking: { type: "Medical", route: `Hospital #${hospitalId || "—"}` } } }); }} title="Sign in to submit your enquiry" />
     </div>
   );
 };
