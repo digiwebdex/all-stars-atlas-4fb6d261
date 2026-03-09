@@ -37,8 +37,8 @@ const defaultGlobalSeo = {
 const defaultRobots = {
   allowIndexing: true,
   allowFollowing: true,
-  sitemapUrl: "https://seventrip.com.bd/sitemap.xml",
-  customRules: "User-agent: *\nAllow: /\nDisallow: /dashboard/\nDisallow: /admin/\nDisallow: /auth/\n\nSitemap: https://seventrip.com.bd/sitemap.xml",
+  sitemapUrl: "https://seven-trip.com/sitemap.xml",
+  customRules: "User-agent: *\nAllow: /\nDisallow: /dashboard/\nDisallow: /admin/\nDisallow: /auth/\n\nSitemap: https://seven-trip.com/sitemap.xml",
 };
 
 const defaultJsonLd = {
