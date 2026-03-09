@@ -11,7 +11,7 @@ sudo tee $NGINX_CONF > /dev/null << 'NGINX'
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
-    server_name 187.77.137.249;
+    server_name seven-trip.com www.seven-trip.com;
 
     root /root/projects/all-stars-atlas/dist;
     index index.html;

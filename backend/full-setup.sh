@@ -101,7 +101,7 @@ echo "⚙️  Step 10: Configuring Nginx..."
 sudo tee /etc/nginx/sites-available/seventrip > /dev/null << 'NGINX'
 server {
     listen 80;
-    server_name 187.77.137.249;
+    server_name seven-trip.com www.seven-trip.com;
 
     root /var/www/seventrip;
     index index.html;
