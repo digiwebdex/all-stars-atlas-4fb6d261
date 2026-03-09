@@ -5,9 +5,64 @@ const { authenticate } = require('../middleware/auth');
 const { notifyBookingConfirm } = require('../services/notify');
 const { searchFlights: ttiSearch } = require('./tti-flights');
 
+const { authenticate, requireAdmin } = require('../middleware/auth');
+
 const router = express.Router();
 
-// GET /flights/search — merges DB flights + TTI/Air Astra API results
+// GET /flights/tti-diagnostic — admin-only endpoint to test TTI API connectivity
+router.get('/tti-diagnostic', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { getTTIConfig, ttiRequest } = require('./tti-flights');
+    const config = await getTTIConfig();
+    if (!config) {
+      return res.json({ success: false, error: 'TTI not configured in database. Go to Admin → Settings → API Integrations → Air Astra TTI', config: null });
+    }
+
+    // Test 1: Ping
+    let pingResult = null;
+    try {
+      pingResult = await ttiRequest('Ping', { RequestInfo: { AuthenticationKey: config.key } });
+    } catch (e) {
+      pingResult = { error: e.message };
+    }
+
+    // Test 2: Search DAC→CGP tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    let searchResult = null;
+    try {
+      const searchReq = {
+        RequestInfo: { AuthenticationKey: config.key },
+        Passengers: [{ PassengerTypeCode: 'ADT', PassengerQuantity: 1 }],
+        OriginDestinations: [{ OriginCode: 'DAC', DestinationCode: 'CGP', TargetDate: `/Date(${tomorrow.getTime()})/` }],
+        FareDisplaySettings: { SaleCurrencyCode: 'BDT' },
+      };
+      searchResult = await ttiRequest('SearchFlights', searchReq);
+    } catch (e) {
+      searchResult = { error: e.message };
+    }
+
+    res.json({
+      success: true,
+      environment: config.environment,
+      apiUrl: config.url,
+      agencyId: config.agencyId,
+      ping: pingResult,
+      testSearch: {
+        route: 'DAC → CGP',
+        date: tomorrow.toISOString().slice(0, 10),
+        segmentCount: searchResult?.Segments?.length || 0,
+        itineraryCount: searchResult?.FareInfo?.Itineraries?.length || 0,
+        errors: searchResult?.ResponseInfo?.Errors || [],
+        rawKeys: searchResult ? Object.keys(searchResult) : [],
+        error: searchResult?.error || null,
+      },
+    });
+  } catch (err) {
+    console.error('TTI diagnostic error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 router.get('/search', async (req, res) => {
   try {
     const {
