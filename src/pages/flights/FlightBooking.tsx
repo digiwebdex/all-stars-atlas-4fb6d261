@@ -13,13 +13,60 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plane, ArrowRight, User, Clock, Luggage, Shield, CreditCard,
   UtensilsCrossed, Armchair, Plus, Briefcase, Users, FileText,
-  ArrowLeftRight, AlertCircle,
+  ArrowLeftRight, AlertCircle, CheckCircle2, Timer, AlertTriangle,
 } from "lucide-react";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useCmsPageContent } from "@/hooks/useCmsContent";
 import { useAuth } from "@/hooks/useAuth";
 import AuthGateModal from "@/components/AuthGateModal";
+import { api } from "@/lib/api";
 import type { BookingFormField } from "@/lib/cms-defaults";
+
+// ─── Bangladesh domestic airports ───
+const BD_AIRPORTS = ["DAC", "CXB", "CGP", "ZYL", "JSR", "RJH", "SPD", "BZL", "IRD", "TKR"];
+
+function isDomesticRoute(origin?: string, destination?: string): boolean {
+  if (!origin || !destination) return true; // default domestic
+  return BD_AIRPORTS.includes(origin.toUpperCase()) && BD_AIRPORTS.includes(destination.toUpperCase());
+}
+
+function isBimanAirline(airlineCode?: string): boolean {
+  return airlineCode?.toUpperCase() === "BG";
+}
+
+/** Calculate payment deadline based on rules */
+function calculatePaymentDeadline(departureTime: string, isDomestic: boolean): { deadline: Date; label: string } {
+  const now = new Date();
+  const departure = new Date(departureTime);
+  const hoursUntilFlight = (departure.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+  if (isDomestic) {
+    if (hoursUntilFlight <= 48) {
+      // Flight within 48h → pay 3h before flight
+      const deadline = new Date(departure.getTime() - 3 * 60 * 60 * 1000);
+      return { deadline, label: `Pay within ${Math.max(1, Math.floor((deadline.getTime() - now.getTime()) / (1000 * 60 * 60)))} hours (3h before flight)` };
+    } else {
+      // Flight > 48h → booking valid 48h, pay 24h before flight
+      const deadline48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+      const deadline24hBefore = new Date(departure.getTime() - 24 * 60 * 60 * 1000);
+      const deadline = deadline48h < deadline24hBefore ? deadline48h : deadline24hBefore;
+      const hoursLeft = Math.max(1, Math.floor((deadline.getTime() - now.getTime()) / (1000 * 60 * 60)));
+      return { deadline, label: hoursLeft > 24 ? `Pay within ${Math.ceil(hoursLeft / 24)} days` : `Pay within ${hoursLeft} hours` };
+    }
+  } else {
+    // International
+    if (hoursUntilFlight <= 7 * 24) {
+      // Flight within 7 days → pay 24h before flight
+      const deadline = new Date(departure.getTime() - 24 * 60 * 60 * 1000);
+      const hoursLeft = Math.max(1, Math.floor((deadline.getTime() - now.getTime()) / (1000 * 60 * 60)));
+      return { deadline, label: hoursLeft > 24 ? `Pay within ${Math.ceil(hoursLeft / 24)} days` : `Pay within ${hoursLeft} hours` };
+    } else {
+      // Flight > 7 days → 7 day booking validity
+      const deadline = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      return { deadline, label: "Pay within 7 days" };
+    }
+  }
+}
 
 const RenderField = ({ field }: { field: BookingFormField }) => {
   if (!field.visible) return null;
@@ -184,6 +231,11 @@ const FlightSegmentCard = ({ flight, label, labelColor }: { flight: any; label: 
 const FlightBooking = () => {
   const [step, setStep] = useState(1);
   const [authOpen, setAuthOpen] = useState(false);
+  const [bookingComplete, setBookingComplete] = useState(false);
+  const [bookingResult, setBookingResult] = useState<any>(null);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { data: page, isLoading } = useCmsPageContent("/flights/book");
@@ -207,6 +259,10 @@ const FlightBooking = () => {
   const outboundFlight = locationState?.outboundFlight || null;
   const returnFlight = locationState?.returnFlight || null;
 
+  // Detect Biman Bangladesh Airlines
+  const isBiman = isBimanAirline(outboundFlight?.airlineCode) || isBimanAirline(returnFlight?.airlineCode);
+  const domestic = isDomesticRoute(outboundFlight?.origin, outboundFlight?.destination);
+
   // Costs
   const mealCost = MEAL_OPTIONS.find(m => m.id === selectedMeal)?.price || 0;
   const baggageCost = selectedBaggage.reduce((sum, id) => sum + (BAGGAGE_OPTIONS.find(b => b.id === id)?.price || 0), 0);
@@ -219,12 +275,59 @@ const FlightBooking = () => {
   const serviceCharge = 250;
   const grandTotal = baseFare + taxes + serviceCharge + addOnTotal;
 
-  const handleFinalAction = () => {
+  // Payment deadline info
+  const deadlineInfo = outboundFlight?.departureTime
+    ? calculatePaymentDeadline(outboundFlight.departureTime, domestic)
+    : null;
+
+  const createBooking = async (payLater: boolean) => {
+    setBookingLoading(true);
+    try {
+      const bookingData = {
+        flightData: outboundFlight,
+        returnFlightData: returnFlight,
+        passengers,
+        isRoundTrip,
+        isDomestic: domestic,
+        payLater,
+        paymentMethod: payLater ? "pay_later" : (selectedPaymentMethod || "card"),
+        totalAmount: grandTotal,
+        baseFare,
+        taxes,
+        serviceCharge,
+        addOns: {
+          meal: MEAL_OPTIONS.find(m => m.id === selectedMeal)?.name,
+          seat: SEAT_CLASSES.find(s => s.id === selectedSeat)?.name,
+          baggage: selectedBaggage.map(id => BAGGAGE_OPTIONS.find(b => b.id === id)?.name).filter(Boolean),
+          total: addOnTotal,
+        },
+        contactInfo: { email: passengers[0]?.email, phone: passengers[0]?.phone },
+      };
+
+      const result = await api.post<any>("/flights/book", bookingData);
+      setBookingResult(result);
+      setBookingComplete(true);
+      toast({
+        title: payLater ? "Booking Confirmed — Pay Later" : "Booking & Payment Confirmed",
+        description: `Booking Ref: ${result.bookingRef}`,
+      });
+    } catch (err: any) {
+      toast({ title: "Booking Failed", description: err.message || "Something went wrong", variant: "destructive" });
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
+  const handleConfirmBooking = () => {
     // Validate passenger
     const p = passengers[0];
     if (!p.firstName || !p.lastName) {
       toast({ title: "Missing Info", description: "Please fill in all passenger details.", variant: "destructive" });
       setStep(2);
+      return;
+    }
+    if (!agreedTerms) {
+      toast({ title: "Terms Required", description: "Please agree to the Terms & Conditions.", variant: "destructive" });
       return;
     }
 
@@ -233,37 +336,28 @@ const FlightBooking = () => {
       return;
     }
 
-    navigate("/booking/confirmation", {
-      state: {
-        booking: {
-          type: "Flight",
-          bookingRef: `ST-FL-${Date.now().toString(36).toUpperCase()}`,
-          route: isRoundTrip
-            ? `${outboundFlight?.origin || "—"} ⇄ ${outboundFlight?.destination || "—"}`
-            : `${outboundFlight?.origin || "—"} → ${outboundFlight?.destination || "—"}`,
-          flightNo: outboundFlight?.flightNumber || "—",
-          airline: outboundFlight?.airline || "—",
-          airlineCode: outboundFlight?.airlineCode,
-          class: outboundFlight?.cabinClass || "Economy",
-          departTime: fmtTime(outboundFlight?.departureTime),
-          arriveTime: fmtTime(outboundFlight?.arrivalTime),
-          date: fmtDate(outboundFlight?.departureTime),
-          stops: outboundFlight?.stops === 0 ? "Non-stop" : `${outboundFlight?.stops || 0} Stop`,
-          passenger: `${passengers[0].title} ${passengers[0].firstName} ${passengers[0].lastName}`.trim(),
-          pnr: `${Date.now().toString(36).toUpperCase().slice(-6)}`,
-          isRoundTrip,
-          outbound: outboundFlight,
-          returnFlight: returnFlight,
-          baseFare, taxes, serviceCharge,
-          addOns: addOnTotal,
-          meal: MEAL_OPTIONS.find(m => m.id === selectedMeal)?.name,
-          seat: SEAT_CLASSES.find(s => s.id === selectedSeat)?.name,
-          extraBaggage: selectedBaggage.map(id => BAGGAGE_OPTIONS.find(b => b.id === id)?.name).filter(Boolean),
-          total: grandTotal,
-          paymentMethod: "Card",
-          passengers,
-        },
-      },
+    // For Biman: must pay immediately (no pay later option)
+    if (isBiman) {
+      if (!selectedPaymentMethod) {
+        toast({ title: "Payment Required", description: "Biman Bangladesh Airlines requires immediate payment. Please select a payment method.", variant: "destructive" });
+        return;
+      }
+      createBooking(false);
+    } else {
+      // Non-Biman: create booking as pay-later by default
+      createBooking(true);
+    }
+  };
+
+  const handlePayNow = () => {
+    if (!selectedPaymentMethod) {
+      toast({ title: "Select Payment", description: "Please select a payment method.", variant: "destructive" });
+      return;
+    }
+    // In a real implementation this would open payment gateway
+    // For now, navigate to payments page with booking ref
+    navigate("/dashboard/payments", {
+      state: { bookingRef: bookingResult?.bookingRef, amount: grandTotal },
     });
   };
 
@@ -277,6 +371,114 @@ const FlightBooking = () => {
     { label: "Extras", icon: Plus },
     { label: "Review & Pay", icon: CreditCard },
   ];
+
+  // ─── POST-BOOKING SUCCESS STATE ───
+  if (bookingComplete && bookingResult) {
+    return (
+      <div className="min-h-screen bg-muted/30 pt-20 lg:pt-28 pb-10">
+        <div className="container mx-auto px-4 max-w-2xl">
+          <Card className="border-success/30 shadow-lg">
+            <CardContent className="pt-8 pb-8 text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-8 h-8 text-success" />
+              </div>
+              <h2 className="text-2xl font-black">Booking {bookingResult.payLater ? "On Hold" : "Confirmed"} ✓</h2>
+              <p className="text-muted-foreground">
+                {bookingResult.payLater
+                  ? "Your booking has been placed on hold. Complete payment before the deadline to confirm your ticket."
+                  : "Your booking and payment have been confirmed. Your e-ticket will be issued shortly."
+                }
+              </p>
+
+              <div className="bg-muted/50 rounded-xl p-4 text-left space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Booking Ref</span>
+                  <span className="font-bold font-mono">{bookingResult.bookingRef}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Status</span>
+                  <Badge className={bookingResult.payLater ? "bg-warning/10 text-warning border-warning/20" : "bg-success/10 text-success border-success/20"}>
+                    {bookingResult.payLater ? "On Hold" : "Confirmed"}
+                  </Badge>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Total Amount</span>
+                  <span className="font-bold text-primary">৳{grandTotal.toLocaleString()}</span>
+                </div>
+                {bookingResult.payLater && deadlineInfo && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Payment Deadline</span>
+                    <span className="font-bold text-destructive flex items-center gap-1">
+                      <Timer className="w-3.5 h-3.5" />
+                      {deadlineInfo.label}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment deadline warning */}
+              {bookingResult.payLater && deadlineInfo && (
+                <div className="flex items-start gap-3 p-4 bg-destructive/5 border border-destructive/20 rounded-xl text-left">
+                  <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-bold text-destructive">Payment Required</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {domestic
+                        ? "Domestic booking: Your booking will be automatically cancelled if payment is not received before the deadline."
+                        : "International booking: Your booking will be automatically cancelled if payment is not received within the deadline period."
+                      }
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <Separator />
+
+              {/* Action buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                {bookingResult.payLater ? (
+                  <>
+                    <Button className="flex-1 font-bold shadow-lg shadow-primary/20" onClick={handlePayNow}>
+                      <CreditCard className="w-4 h-4 mr-1.5" /> Pay Now ৳{grandTotal.toLocaleString()}
+                    </Button>
+                    <Button variant="outline" className="flex-1" onClick={() => navigate("/dashboard/bookings")}>
+                      <Timer className="w-4 h-4 mr-1.5" /> Pay Later — Go to Dashboard
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button className="flex-1 font-bold" onClick={() => navigate("/dashboard/bookings")}>
+                      <Plane className="w-4 h-4 mr-1.5" /> View My Bookings
+                    </Button>
+                    <Button variant="outline" className="flex-1" onClick={() => navigate("/")}>
+                      Book Another Flight
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              {/* Payment method selection for Pay Now */}
+              {bookingResult.payLater && (
+                <div className="mt-4 space-y-3 text-left">
+                  <p className="text-sm font-semibold">Select Payment Method</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {["bKash", "Nagad", "Visa/Master Card", "Bank Transfer"].map(m => (
+                      <label key={m} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                        selectedPaymentMethod === m ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+                      }`}>
+                        <input type="radio" name="payMethod" className="accent-primary" checked={selectedPaymentMethod === m} onChange={() => setSelectedPaymentMethod(m)} />
+                        <span className="text-sm font-medium">{m}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-muted/30 pt-20 lg:pt-28 pb-10">
@@ -304,6 +506,19 @@ const FlightBooking = () => {
             );
           })}
         </div>
+
+        {/* Biman Airlines notice */}
+        {isBiman && step === 4 && (
+          <div className="flex items-start gap-3 p-4 mb-6 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-amber-800 dark:text-amber-400">Biman Bangladesh Airlines — Immediate Payment Required</p>
+              <p className="text-xs text-amber-700 dark:text-amber-500 mt-1">
+                Biman Bangladesh Airlines does not support hold/booking. Payment must be made immediately to issue the ticket. No "Pay Later" option is available.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-5">
@@ -467,7 +682,7 @@ const FlightBooking = () => {
               </Card>
             )}
 
-            {/* ─── STEP 4: Review & Payment ─── */}
+            {/* ─── STEP 4: Review & Booking ─── */}
             {step === 4 && (
               <>
                 {/* Review summary */}
@@ -478,7 +693,7 @@ const FlightBooking = () => {
                     <div className="space-y-3">
                       <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Flight Itinerary</h4>
                       <div className="p-3 bg-muted/50 rounded-lg space-y-2">
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                           <Badge className="bg-primary/10 text-primary border-0 text-[10px]">Outbound</Badge>
                           <span className="text-sm font-semibold">{outboundFlight?.origin} → {outboundFlight?.destination}</span>
                           <span className="text-xs text-muted-foreground">{fmtDate(outboundFlight?.departureTime)}</span>
@@ -486,7 +701,7 @@ const FlightBooking = () => {
                           <span className="text-xs text-muted-foreground ml-auto">{outboundFlight?.airline} {outboundFlight?.flightNumber}</span>
                         </div>
                         {isRoundTrip && returnFlight && (
-                          <div className="flex items-center gap-3">
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                             <Badge className="bg-amber-500/10 text-amber-600 border-0 text-[10px]">Return</Badge>
                             <span className="text-sm font-semibold">{returnFlight.origin} → {returnFlight.destination}</span>
                             <span className="text-xs text-muted-foreground">{fmtDate(returnFlight.departureTime)}</span>
@@ -523,26 +738,58 @@ const FlightBooking = () => {
                   </CardContent>
                 </Card>
 
-                {/* Payment */}
-                <Card>
-                  <CardHeader><CardTitle className="text-lg flex items-center gap-2"><CreditCard className="w-5 h-5 text-primary" /> Payment</CardTitle></CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      {(config?.paymentMethods || ["Credit/Debit Card", "bKash", "Nagad", "Bank Transfer"]).map((m: string) => (
-                        <label key={m} className="flex items-center gap-3 p-4 rounded-xl border border-border hover:border-primary/40 cursor-pointer transition-colors">
-                          <Checkbox />
-                          <span className="text-sm font-medium">{m}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <div className="flex items-start gap-2 mt-3">
-                      <Checkbox id="agree" className="mt-0.5" />
-                      <label htmlFor="agree" className="text-xs text-muted-foreground">
-                        I agree to the <Link to="/terms" className="text-primary hover:underline">Terms & Conditions</Link> and <Link to="/refund-policy" className="text-primary hover:underline">Refund Policy</Link>
-                      </label>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* Payment section — only for Biman (instant pay required) */}
+                {isBiman ? (
+                  <Card>
+                    <CardHeader><CardTitle className="text-lg flex items-center gap-2"><CreditCard className="w-5 h-5 text-primary" /> Payment (Required)</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        {["bKash", "Nagad", "Visa/Master Card", "Bank Transfer"].map((m) => (
+                          <label key={m} className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
+                            selectedPaymentMethod === m ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+                          }`}>
+                            <input type="radio" name="payMethod" className="accent-primary" checked={selectedPaymentMethod === m} onChange={() => setSelectedPaymentMethod(m)} />
+                            <span className="text-sm font-medium">{m}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  /* Non-Biman: Pay Later info */
+                  <Card className="border-primary/20 bg-primary/[0.02]">
+                    <CardContent className="pt-5 pb-5">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                          <Timer className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm">Book Now, Pay Later</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Your booking will be placed on hold. You can pay anytime from your dashboard.
+                            {deadlineInfo && (
+                              <span className="text-destructive font-semibold"> {deadlineInfo.label}.</span>
+                            )}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-2">
+                            {domestic
+                              ? "Domestic flights: Booking valid for 48 hours. Must pay 24h before departure."
+                              : "International flights: Booking valid for 7 days. Must pay before deadline."
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Terms */}
+                <div className="flex items-start gap-2">
+                  <Checkbox id="agree" className="mt-0.5" checked={agreedTerms} onCheckedChange={(v) => setAgreedTerms(!!v)} />
+                  <label htmlFor="agree" className="text-xs text-muted-foreground">
+                    I agree to the <Link to="/terms" className="text-primary hover:underline">Terms & Conditions</Link> and <Link to="/refund-policy" className="text-primary hover:underline">Refund Policy</Link>
+                  </label>
+                </div>
               </>
             )}
 
@@ -551,9 +798,17 @@ const FlightBooking = () => {
               {step > 1 && <Button variant="outline" onClick={() => setStep(step - 1)}>Back</Button>}
               {step < 4 ? (
                 <Button onClick={() => setStep(step + 1)} className="font-bold">Continue <ArrowRight className="w-4 h-4 ml-1" /></Button>
+              ) : isBiman ? (
+                <Button className="font-bold shadow-lg shadow-primary/20" onClick={handleConfirmBooking} disabled={bookingLoading}>
+                  {bookingLoading ? "Processing..." : <>
+                    <Shield className="w-4 h-4 mr-1" /> Confirm & Pay ৳{grandTotal.toLocaleString()}
+                  </>}
+                </Button>
               ) : (
-                <Button className="font-bold shadow-lg shadow-primary/20" onClick={handleFinalAction}>
-                  <Shield className="w-4 h-4 mr-1" /> Confirm & Pay ৳{grandTotal.toLocaleString()}
+                <Button className="font-bold shadow-lg shadow-primary/20" onClick={handleConfirmBooking} disabled={bookingLoading}>
+                  {bookingLoading ? "Processing..." : <>
+                    <CheckCircle2 className="w-4 h-4 mr-1" /> Confirm Booking ৳{grandTotal.toLocaleString()}
+                  </>}
                 </Button>
               )}
             </div>
@@ -631,13 +886,24 @@ const FlightBooking = () => {
                 {isRoundTrip && (
                   <p className="text-[10px] text-muted-foreground text-center">Round-trip fare for 1 passenger</p>
                 )}
+
+                {/* Pay Later deadline in sidebar */}
+                {!isBiman && deadlineInfo && step === 4 && (
+                  <>
+                    <Separator />
+                    <div className="flex items-center gap-2 text-xs text-destructive font-semibold">
+                      <Timer className="w-3.5 h-3.5" />
+                      {deadlineInfo.label}
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
 
-      <AuthGateModal open={authOpen} onOpenChange={setAuthOpen} onAuthenticated={() => { setAuthOpen(false); handleFinalAction(); }} title="Sign in to complete your booking" />
+      <AuthGateModal open={authOpen} onOpenChange={setAuthOpen} onAuthenticated={() => { setAuthOpen(false); handleConfirmBooking(); }} title="Sign in to complete your booking" />
     </div>
   );
 };

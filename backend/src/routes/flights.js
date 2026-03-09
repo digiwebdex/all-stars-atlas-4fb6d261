@@ -303,41 +303,101 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Bangladesh domestic airports
+const BD_AIRPORTS = ['DAC', 'CXB', 'CGP', 'ZYL', 'JSR', 'RJH', 'SPD', 'BZL', 'IRD', 'TKR'];
+
+function calculatePaymentDeadline(departureTime, isDomestic) {
+  const now = new Date();
+  const departure = new Date(departureTime);
+  const hoursUntilFlight = (departure.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+  if (isDomestic) {
+    if (hoursUntilFlight <= 48) {
+      return new Date(departure.getTime() - 3 * 60 * 60 * 1000);
+    } else {
+      const deadline48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+      const deadline24hBefore = new Date(departure.getTime() - 24 * 60 * 60 * 1000);
+      return deadline48h < deadline24hBefore ? deadline48h : deadline24hBefore;
+    }
+  } else {
+    if (hoursUntilFlight <= 7 * 24) {
+      return new Date(departure.getTime() - 24 * 60 * 60 * 1000);
+    } else {
+      return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    }
+  }
+}
+
 // POST /flights/book
 router.post('/book', authenticate, async (req, res) => {
   try {
-    const { flightId, passengers, contactInfo, paymentMethod } = req.body;
+    const { flightData, returnFlightData, passengers, isRoundTrip, isDomestic, payLater, paymentMethod, totalAmount, baseFare, taxes, serviceCharge, addOns, contactInfo } = req.body;
     const bookingId = uuidv4();
     const bookingRef = `ST-FL-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${String(Math.floor(Math.random()*999)).padStart(3,'0')}`;
 
-    const [flights] = await db.query('SELECT * FROM flights WHERE id = ?', [flightId]);
-    const totalAmount = flights.length > 0 ? parseFloat(flights[0].price) * (passengers?.length || 1) : 0;
+    const origin = flightData?.origin || '';
+    const destination = flightData?.destination || '';
+    const departureTime = flightData?.departureTime || new Date().toISOString();
+
+    // Determine domestic/international
+    const domestic = isDomestic !== undefined ? isDomestic : (BD_AIRPORTS.includes(origin.toUpperCase()) && BD_AIRPORTS.includes(destination.toUpperCase()));
+
+    // Calculate payment deadline for pay-later bookings
+    let paymentDeadline = null;
+    if (payLater) {
+      paymentDeadline = calculatePaymentDeadline(departureTime, domestic);
+    }
+
+    const status = payLater ? 'on_hold' : 'confirmed';
+    const payStatus = payLater ? 'pending' : 'paid';
+
+    const details = {
+      outbound: flightData || {},
+      return: returnFlightData || null,
+      isRoundTrip: !!isRoundTrip,
+      isDomestic: domestic,
+      addOns: addOns || {},
+      baseFare, taxes, serviceCharge,
+    };
 
     await db.query(
-      `INSERT INTO bookings (id, user_id, booking_type, booking_ref, status, total_amount, payment_method, payment_status, details, passenger_info, contact_info)
-       VALUES (?, ?, 'flight', ?, 'confirmed', ?, ?, 'paid', ?, ?, ?)`,
-      [bookingId, req.user.sub, bookingRef, totalAmount, paymentMethod || 'card',
-       JSON.stringify(flights[0] || {}), JSON.stringify(passengers || []), JSON.stringify(contactInfo || {})]
+      `INSERT INTO bookings (id, user_id, booking_type, booking_ref, status, total_amount, payment_method, payment_status, details, passenger_info, contact_info, payment_deadline)
+       VALUES (?, ?, 'flight', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [bookingId, req.user.sub, bookingRef, totalAmount || 0, paymentMethod || 'pay_later', payStatus,
+       JSON.stringify(details), JSON.stringify(passengers || []), JSON.stringify(contactInfo || {}),
+       paymentDeadline]
     );
 
-    // Create transaction
-    await db.query(
-      `INSERT INTO transactions (id, user_id, booking_id, type, amount, status, payment_method, reference, description)
-       VALUES (?, ?, ?, 'payment', ?, 'completed', ?, ?, ?)`,
-      [uuidv4(), req.user.sub, bookingId, totalAmount, paymentMethod || 'card', bookingRef, `Flight booking ${flights[0]?.origin || ''} → ${flights[0]?.destination || ''}`]
-    );
+    // Create transaction only if paid
+    if (!payLater) {
+      await db.query(
+        `INSERT INTO transactions (id, user_id, booking_id, type, amount, status, payment_method, reference, description)
+         VALUES (?, ?, ?, 'payment', ?, 'completed', ?, ?, ?)`,
+        [uuidv4(), req.user.sub, bookingId, totalAmount || 0, paymentMethod || 'card', bookingRef, `Flight booking ${origin} → ${destination}`]
+      );
 
-    // Create ticket
-    const ticketNo = `098-${String(Math.floor(Math.random()*9999999999)).padStart(10,'0')}`;
-    await db.query(
-      `INSERT INTO tickets (id, booking_id, user_id, ticket_no, pnr, status, details)
-       VALUES (?, ?, ?, ?, ?, 'active', ?)`,
-      [uuidv4(), bookingId, req.user.sub, ticketNo, bookingRef.slice(-6).toUpperCase(),
-       JSON.stringify({ airline: flights[0]?.airline, flightNumber: flights[0]?.flight_number, origin: flights[0]?.origin, destination: flights[0]?.destination, departureTime: flights[0]?.departure_time, passenger: passengers?.[0]?.firstName + ' ' + passengers?.[0]?.lastName })]
-    );
+      // Create ticket only if paid immediately
+      const ticketNo = `098-${String(Math.floor(Math.random()*9999999999)).padStart(10,'0')}`;
+      await db.query(
+        `INSERT INTO tickets (id, booking_id, user_id, ticket_no, pnr, status, details)
+         VALUES (?, ?, ?, ?, ?, 'active', ?)`,
+        [uuidv4(), bookingId, req.user.sub, ticketNo, bookingRef.slice(-6).toUpperCase(),
+         JSON.stringify({ airline: flightData?.airline, flightNumber: flightData?.flightNumber, origin, destination, departureTime, passenger: passengers?.[0]?.firstName + ' ' + passengers?.[0]?.lastName })]
+      );
+    }
 
-    notifyBookingConfirm(req.user.sub, { bookingRef, type: 'Flight', amount: totalAmount }).catch(console.error);
-    res.status(201).json({ id: bookingId, bookingRef, status: 'confirmed', totalAmount, currency: 'BDT', bookingType: 'flight', createdAt: new Date().toISOString() });
+    notifyBookingConfirm(req.user.sub, { bookingRef, type: 'Flight', amount: totalAmount || 0 }).catch(console.error);
+    res.status(201).json({
+      id: bookingId,
+      bookingRef,
+      status,
+      payLater: !!payLater,
+      paymentDeadline: paymentDeadline ? paymentDeadline.toISOString() : null,
+      totalAmount: totalAmount || 0,
+      currency: 'BDT',
+      bookingType: 'flight',
+      createdAt: new Date().toISOString(),
+    });
   } catch (err) {
     console.error('Flight booking error:', err);
     res.status(500).json({ message: 'Something went wrong', status: 500 });
