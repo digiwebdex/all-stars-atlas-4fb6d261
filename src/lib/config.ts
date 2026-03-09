@@ -10,5 +10,5 @@ export const config = {
   supportEmail: 'support@seventrip.com.bd',
   address: 'Beena Kanon, Flat-4A, House-03, Road-17, Block-E, Banani, Dhaka-1213',
   addressShort: 'Banani, Dhaka-1213',
-  website: 'www.seventrip.com.bd',
+  website: 'www.seven-trip.com',
 } as const;
