@@ -5,6 +5,7 @@ const { authenticate, requireAdmin } = require('../middleware/auth');
 const { notifyBookingConfirm } = require('../services/notify');
 const { searchFlights: ttiSearch } = require('./tti-flights');
 const { searchFlights: bdfSearch } = require('./bdf-flights');
+const { searchFlights: flyhubSearch } = require('./flyhub-flights');
 
 const router = express.Router();
 
