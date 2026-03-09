@@ -335,7 +335,7 @@ const FlightBooking = () => {
     }
   };
 
-
+  const createBooking = async (payLater: boolean) => {
     setBookingLoading(true);
     try {
       const bookingData = {
