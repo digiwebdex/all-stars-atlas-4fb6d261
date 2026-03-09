@@ -251,13 +251,24 @@ router.get('/recharge/operators', async (req, res) => {
 
 router.post('/recharge/submit', authenticate, async (req, res) => {
   try {
-    const { operator, phoneNumber, amount, type, paymentMethod } = req.body;
+    const { operator, phoneNumber, number, amount, type, paymentMethod } = req.body;
+    const phone = phoneNumber || number || '';
     const txnId = uuidv4();
+
+    // Try SSL Wireless API first
+    const rechargeConf = await getRechargeConfig();
+    let apiResult = null;
+    if (rechargeConf) {
+      try {
+        apiResult = await sslRecharge({ operator, phoneNumber: phone, amount, type });
+      } catch (err) { console.error('SSL Recharge API failed:', err.message); }
+    }
+
     await db.query(
       `INSERT INTO transactions (id, user_id, type, amount, status, payment_method, description, meta) VALUES (?, ?, 'recharge', ?, 'completed', ?, ?, ?)`,
-      [txnId, req.user.sub, amount || 0, paymentMethod || 'bkash', `Recharge ৳${amount} to ${phoneNumber}`, JSON.stringify({ operator, phoneNumber, rechargeType: type })]
+      [txnId, req.user.sub, amount || 0, paymentMethod || 'bkash', `Recharge ৳${amount} to ${phone}`, JSON.stringify({ operator, phoneNumber: phone, rechargeType: type, provider: apiResult?.provider || 'local', apiTxnId: apiResult?.transactionId })]
     );
-    res.status(201).json({ id: uuidv4(), status: 'completed', transactionId: txnId, message: `Recharge of ৳${amount} to ${phoneNumber} successful` });
+    res.status(201).json({ id: uuidv4(), status: 'completed', transactionId: txnId, provider: apiResult?.provider || 'local', message: apiResult?.message || `Recharge of ৳${amount} to ${phone} successful` });
   } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
 });
 
