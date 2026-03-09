@@ -20,6 +20,13 @@ const PageLoader = () => (
   </div>
 );
 
+// Scroll to top on route change
+const ScrollToTopOnNav = () => {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+};
+
 // Lazy-loaded pages
 const Index = lazy(() => import("@/pages/Index"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
