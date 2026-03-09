@@ -413,8 +413,9 @@ const SearchWidget = () => {
   };
 
   const handleEsimSearch = () => {
+    if (!esimDate) { toast.error("Please select an activation date"); return; }
     const params = new URLSearchParams({ country: esimCountry, plan: esimPlan });
-    if (esimDate) params.set('activation', format(esimDate, 'yyyy-MM-dd'));
+    params.set('activation', format(esimDate, 'yyyy-MM-dd'));
     navigate(`/esim?${params.toString()}`);
   };
 
