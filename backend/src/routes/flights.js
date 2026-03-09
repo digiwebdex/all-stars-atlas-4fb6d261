@@ -152,6 +152,20 @@ router.get('/search', async (req, res) => {
       flights.push(...(ttiFlights.value || []));
     }
 
+    if (bdfFlights.status === 'fulfilled') {
+      flights.push(...(bdfFlights.value || []));
+    }
+
+    // Deduplicate flights from multiple providers (same flight number + same departure)
+    const seen = new Set();
+    flights = flights.filter(f => {
+      const key = `${f.flightNumber}-${f.departureTime}`;
+      if (key === '-null' || key === '-') return true; // no dedup key
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
     // Apply client-side filters
     if (priceMin) flights = flights.filter(f => f.price >= parseFloat(priceMin));
     if (priceMax) flights = flights.filter(f => f.price <= parseFloat(priceMax));
