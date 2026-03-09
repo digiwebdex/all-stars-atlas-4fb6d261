@@ -119,6 +119,8 @@
 - **Flight Search** — One-way, round-trip, multi-city (2-5 segments), domestic/international toggle, 740+ airports, cabin class, passenger count, fare types (Regular/Student/Umrah). **Real-time GDS via TTI/ZENITH API (Air Astra) + BDFare** + local database results merged via `Promise.allSettled`. Google Flights-style cards with airline logos (60+ airlines via Kiwi CDN), timeline segments, layover badges, and advanced filters (stops, price, time, airline). **Round-trip results split into Outbound/Return sections with paired selection and sticky total bar.**
 - **Flight Booking** — Enterprise 4-step flow: (1) Itinerary Review → (2) Passenger Info (Title, Passport, DOB, Nationality per pax) → (3) Extras (Meal selection with 7 options, Extra Baggage 5-30kg, Seat selection) → (4) Review & Pay with real-time fare breakdown. Auth gate for unauthenticated users.
 - **E-Ticket PDF** — Professional airline-standard PDF with company branding, airline logos, segment boxes (Terminal/Aircraft/Flight No), passenger names in LAST/FIRST format, generated via jsPDF
+- **Invoice PDF** — Multi-line item invoice matching professional format with QR code, grand total in words, auto-pagination for large invoices
+- **Money Receipt PDF** — Professional receipt matching banking format with line items, totals, "received with gratitude" text, signature area, QR code verification
 - **Hotel Search** — Location, dates, guests, grid/list view, wishlist hearts, star rating & price filters
 - **Visa Services** — 20 countries, step-by-step application, document upload
 - **Holiday Packages** — Tour grid with detail pages, pricing, itineraries
