@@ -167,7 +167,7 @@
 | Payments | Payment tracking & history |
 | Payment Approvals | Receipt image viewer, approve/reject workflow |
 | Discounts & Pricing | Coupon codes, seasonal pricing rules (DB-backed) |
-| Invoices | Invoice management & reminders |
+| Invoices | Invoice management, Money Receipt download, reminders |
 | Reports | Revenue, booking, user analytics with export |
 | Visa | Application management, status updates |
 | CMS: All Pages | 40+ page content management with defaults |
