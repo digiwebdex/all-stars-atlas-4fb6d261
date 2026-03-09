@@ -80,7 +80,7 @@
 │   │   ├── constants.ts      # API endpoints, enums
 │   │   ├── keep-alive.ts    # Server warm-up on first visit
 │   │   ├── prefetch.ts      # Route prefetching on hover
-│   │   ├── pdf-generator.ts  # E-ticket PDF generation
+│   │   ├── pdf-generator.ts  # Invoice, Money Receipt & E-ticket PDFs (with QR codes)
 │   │   └── cms-defaults.ts   # CMS page defaults
 │   └── pages/                # Route pages
 │       ├── Index.tsx          # Homepage (CMS-driven, 11 sections)
