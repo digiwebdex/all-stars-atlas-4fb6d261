@@ -15,10 +15,10 @@ import {
 import { toast } from "sonner";
 
 const defaultContactInfo = {
-  address: "123 Travel Street, Dhaka 1205, Bangladesh",
-  phone: "+880 1234-567890",
-  email: "support@seventrip.com",
-  whatsapp: "+880 1234-567890",
+  address: "Beena Kanon, Flat-4A, House-03, Road-17, Block-E, Banani, Dhaka-1213",
+  phone: "+880 1749-373748",
+  email: "support@seventrip.com.bd",
+  whatsapp: "+880 1749-373748",
 };
 
 const defaultSocialLinks = [

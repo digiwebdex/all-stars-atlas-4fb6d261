@@ -52,7 +52,7 @@ const Footer = React.forwardRef<HTMLElement>((_, ref) => {
               <img src="/images/seven-trip-logo.png" alt="Seven Trip" className="h-12 w-auto brightness-0 invert drop-shadow-[0_0_12px_rgba(29,106,229,0.5)]" />
             </Link>
             <p className="text-[13px] sm:text-sm text-white/45 leading-relaxed max-w-sm">
-              Bangladesh's most trusted travel platform. Book flights, hotels, visa & holidays with best prices, instant confirmation, and 24/7 customer support.
+              A concern of Evan International. Bangladesh's most trusted travel platform. Book flights, hotels, visa & holidays with best prices, instant confirmation, and 24/7 customer support.
             </p>
             <div className="flex gap-2">
               {[
@@ -122,11 +122,11 @@ const Footer = React.forwardRef<HTMLElement>((_, ref) => {
             <ul className="space-y-3 sm:space-y-3.5 text-[13px] sm:text-sm text-white/45">
               <li className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-primary/60" />
-                <span>123 Travel Street, Dhaka 1205, Bangladesh</span>
+                <span>Beena Kanon, Flat-4A, House-03, Road-17, Block-E, Banani, Dhaka-1213</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 shrink-0 text-primary/60" />
-                <a href="tel:+8801234567890" className="hover:text-white transition-colors">+880 1234-567890</a>
+                <a href="tel:+8801749373748" className="hover:text-white transition-colors">+880 1749-373748</a>
               </li>
               <li className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 shrink-0 text-primary/60" />
@@ -148,7 +148,7 @@ const Footer = React.forwardRef<HTMLElement>((_, ref) => {
 
       <div className="border-t border-white/6">
         <div className="container mx-auto px-4 py-4 sm:py-5 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 text-[10px] sm:text-[11px] text-white/25">
-          <p>© {new Date().getFullYear()} Seven Trip. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Seven Trip — A concern of Evan International. All rights reserved.</p>
           <div className="flex items-center gap-3 sm:gap-5 flex-wrap justify-center">
             <span className="flex items-center gap-1.5">✈️ IATA Accredited</span>
             <span className="flex items-center gap-1.5">🏆 ATAB Member</span>

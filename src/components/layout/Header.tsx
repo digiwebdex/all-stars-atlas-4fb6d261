@@ -41,11 +41,11 @@ const Header = () => {
       }`}>
         <div className="container mx-auto px-4 flex items-center justify-between h-8">
           <div className={`flex items-center gap-4 text-[11px] font-medium ${transparent ? "text-white/60" : "text-muted-foreground"}`}>
-            <a href="tel:+8801234567890" className="flex items-center gap-1 hover:text-primary transition-colors">
-              <Phone className="w-3 h-3" /><span>+880 1234-567890</span>
+            <a href="tel:+8801749373748" className="flex items-center gap-1 hover:text-primary transition-colors">
+              <Phone className="w-3 h-3" /><span>+880 1749-373748</span>
             </a>
             <span className="w-px h-3 bg-current opacity-30" />
-            <a href="mailto:support@seventrip.com" className="hover:text-primary transition-colors">support@seventrip.com</a>
+            <a href="mailto:support@seventrip.com.bd" className="hover:text-primary transition-colors">support@seventrip.com.bd</a>
           </div>
           <div className={`flex items-center gap-3 text-[11px] font-medium ${transparent ? "text-white/60" : "text-muted-foreground"}`}>
             <button className="flex items-center gap-1 hover:text-primary transition-colors"><Globe className="w-3 h-3" /> English</button>
@@ -216,7 +216,7 @@ const Header = () => {
                       </>
                     )}
                     <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center pt-2">
-                      <Phone className="w-3 h-3" /><span>+880 1234-567890</span>
+                      <Phone className="w-3 h-3" /><span>+880 1749-373748</span>
                     </div>
                   </div>
                 </div>

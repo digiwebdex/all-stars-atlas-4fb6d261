@@ -234,7 +234,7 @@ export const CMS_PAGE_DEFAULTS: Record<string, CmsPageContent> = {
       subtitle: "Bangladesh's most trusted travel platform since 2018",
       gradient: "from-[hsl(217,91%,50%)] to-[hsl(224,70%,28%)]",
     },
-    storyText: "Founded in 2018 in Dhaka, Seven Trip started with a simple vision: to transform how Bangladeshis book travel. What began as a small team passionate about travel has grown into the country's leading online travel agency, serving over 500,000 happy travellers. We combine cutting-edge technology with deep local expertise to offer flights, hotels, visa processing, and holiday packages — all at the best prices with instant confirmation.",
+    storyText: "Founded in Dhaka as a concern of Evan International, Seven Trip started with a simple vision: to transform how Bangladeshis book travel. What began as a small team passionate about travel has grown into the country's leading online travel agency, serving over 500,000 happy travellers. We combine cutting-edge technology with deep local expertise to offer flights, hotels, visa processing, and holiday packages — all at the best prices with instant confirmation.",
     values: COMPANY_VALUES.map(v => ({ icon: v.icon, title: v.title, desc: v.desc })),
     stats: COMPANY_STATS,
     team: TEAM_MEMBERS,
@@ -249,8 +249,8 @@ export const CMS_PAGE_DEFAULTS: Record<string, CmsPageContent> = {
       gradient: "from-[hsl(217,91%,50%)] to-[hsl(224,70%,28%)]",
     },
     contactInfo: [
-      { icon: "MapPin", title: "Office Address", text: "123 Travel Street, Motijheel C/A\nDhaka 1000, Bangladesh" },
-      { icon: "Phone", title: "Phone", text: "+880 1234-567890\n+880 9876-543210" },
+      { icon: "MapPin", title: "Office Address", text: "Beena Kanon, Flat-4A, House-03\nRoad-17, Block-E, Banani, Dhaka-1213" },
+      { icon: "Phone", title: "Phone", text: "+880 1749-373748" },
       { icon: "Mail", title: "Email", text: "support@seventrip.com.bd\nbooking@seventrip.com.bd" },
       { icon: "Clock", title: "Working Hours", text: "Sunday - Thursday: 9AM - 8PM\nFriday - Saturday: 10AM - 6PM" },
     ],
@@ -308,7 +308,7 @@ export const CMS_PAGE_DEFAULTS: Record<string, CmsPageContent> = {
       { id: "7", title: "7. Your Rights", content: "You have the right to access, correct, or delete your personal data. You can opt out of marketing communications at any time. To exercise these rights, contact us at privacy@seventrip.com.bd.", visible: true, order: 6 },
       { id: "8", title: "8. Children's Privacy", content: "Our services are not directed to children under 18. We do not knowingly collect personal data from minors without parental consent.", visible: true, order: 7 },
       { id: "9", title: "9. Changes to This Policy", content: "We may update this Privacy Policy periodically. We will notify you of significant changes via email or a prominent notice on our Platform.", visible: true, order: 8 },
-      { id: "10", title: "10. Contact Us", content: "For questions about this Privacy Policy or your personal data, contact our Data Protection Officer at privacy@seventrip.com.bd or call +880 1234-567890.", visible: true, order: 9 },
+      { id: "10", title: "10. Contact Us", content: "For questions about this Privacy Policy or your personal data, contact our Data Protection Officer at privacy@seventrip.com.bd or call +880 1749-373748.", visible: true, order: 9 },
     ],
   },
 

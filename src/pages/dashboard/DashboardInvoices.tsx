@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, FileText, Download, Eye, Printer } from "lucide-react";
+import { Search, FileText, Download, Eye, Printer, Receipt } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -13,7 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import DataLoader from "@/components/DataLoader";
 
-import { generateInvoicePDF, printInvoicePDF } from "@/lib/pdf-generator";
+import { generateInvoicePDF, printInvoicePDF, generateMoneyReceiptPDF } from "@/lib/pdf-generator";
 import { downloadCSV } from "@/lib/csv-export";
 
 const statusColors: Record<string, string> = {
@@ -56,6 +56,22 @@ const DashboardInvoices = () => {
   const downloadPDF = (inv: any) => {
     generateInvoicePDF(inv);
     toast({ title: "Downloaded", description: `${inv.invoiceNo}.pdf saved` });
+  };
+
+  const downloadReceipt = (inv: any) => {
+    generateMoneyReceiptPDF({
+      receiptNo: `RCT-${inv.invoiceNo?.replace('INV-', '') || Date.now()}`,
+      customerName: inv.customerName,
+      customerPhone: inv.customerPhone || "",
+      customerAddress: inv.customerAddress || "",
+      items: [{ description: inv.serviceType ? `${inv.serviceType.charAt(0).toUpperCase() + inv.serviceType.slice(1)} Booking` : "Service", pax: 1, unitPrice: inv.amount || 0, totalPrice: inv.amount || 0 }],
+      totalAmount: inv.amount || 0,
+      due: inv.status === "Paid" ? 0 : inv.amount || 0,
+      discount: inv.discount || 0,
+      grandTotal: inv.amount || 0,
+      date: inv.date || new Date().toLocaleDateString(),
+    });
+    toast({ title: "Downloaded", description: "Money Receipt PDF saved" });
   };
 
   return (
@@ -127,10 +143,10 @@ const DashboardInvoices = () => {
                           <DialogContent className="max-w-lg">
                             <DialogHeader><DialogTitle>Invoice {inv.invoiceNo}</DialogTitle></DialogHeader>
                             <div className="space-y-4 py-4">
-                              <div className="flex justify-between items-start">
+                                <div className="flex justify-between items-start">
                                 <div>
                                   <p className="text-lg font-black">Seven Trip</p>
-                                  <p className="text-xs text-muted-foreground">Seven Trip Bangladesh Ltd</p>
+                                  <p className="text-xs text-muted-foreground">A concern of Evan International</p>
                                 </div>
                                 <div className="text-right">
                                   <p className="text-sm font-bold">{inv.invoiceNo}</p>
@@ -151,8 +167,9 @@ const DashboardInvoices = () => {
                                 <div className="flex justify-between font-bold text-lg"><span>Total</span><span className="text-primary">৳{inv.amount?.toLocaleString()}</span></div>
                               </div>
                               <div className="flex gap-2 pt-2">
-                                <Button className="flex-1 font-bold" onClick={() => downloadPDF(inv)}><Download className="w-4 h-4 mr-1" /> Download PDF</Button>
-                                <Button variant="outline" className="flex-1" onClick={() => printInvoicePDF(inv)}><Printer className="w-4 h-4 mr-1" /> Print</Button>
+                                <Button className="flex-1 font-bold" onClick={() => downloadPDF(inv)}><Download className="w-4 h-4 mr-1" /> Invoice PDF</Button>
+                                <Button variant="secondary" className="flex-1" onClick={() => downloadReceipt(inv)}><Receipt className="w-4 h-4 mr-1" /> Receipt</Button>
+                                <Button variant="outline" onClick={() => printInvoicePDF(inv)}><Printer className="w-4 h-4 mr-1" /></Button>
                               </div>
                             </div>
                           </DialogContent>

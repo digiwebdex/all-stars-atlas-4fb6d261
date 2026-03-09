@@ -9,13 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, FileText, Download, Eye, Send, Printer, MoreHorizontal, Plus, DollarSign, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Search, FileText, Download, Eye, Send, Printer, MoreHorizontal, Plus, DollarSign, Clock, CheckCircle2, AlertTriangle, Receipt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import DataLoader from "@/components/DataLoader";
 
-import { generateInvoicePDF, printInvoicePDF } from "@/lib/pdf-generator";
+import { generateInvoicePDF, printInvoicePDF, generateMoneyReceiptPDF } from "@/lib/pdf-generator";
 import { downloadCSV } from "@/lib/csv-export";
 import { getCollection, addToCollection } from "@/lib/local-store";
 
@@ -219,7 +219,22 @@ const AdminInvoices = () => {
                     <DropdownMenu modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => setViewInvoice(inv)}><Eye className="w-4 h-4 mr-2" /> View</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDownloadPDF(inv)}><Download className="w-4 h-4 mr-2" /> Download PDF</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownloadPDF(inv)}><Download className="w-4 h-4 mr-2" /> Download Invoice</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          generateMoneyReceiptPDF({
+                            receiptNo: `RCT-${inv.invoiceNo?.replace('INV-', '') || Date.now()}`,
+                            customerName: inv.customerName,
+                            customerPhone: inv.customerPhone || "",
+                            customerAddress: inv.customerAddress || "",
+                            items: [{ description: inv.bookingType ? `${inv.bookingType.charAt(0).toUpperCase() + inv.bookingType.slice(1)} Booking` : "Service", pax: 1, unitPrice: inv.amount || 0, totalPrice: inv.amount || 0 }],
+                            totalAmount: inv.amount || 0,
+                            due: inv.status === "Paid" ? 0 : inv.amount || 0,
+                            discount: inv.discount || 0,
+                            grandTotal: inv.amount || 0,
+                            date: inv.date || new Date().toLocaleDateString(),
+                          });
+                          toast({ title: "Downloaded", description: "Money Receipt PDF saved" });
+                        }}><Receipt className="w-4 h-4 mr-2" /> Money Receipt</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handlePrint(inv)}><Printer className="w-4 h-4 mr-2" /> Print</DropdownMenuItem>
                         {inv.status !== "Paid" && <DropdownMenuItem onClick={() => handleRemind(inv)}><Send className="w-4 h-4 mr-2" /> Send Reminder</DropdownMenuItem>}
                       </DropdownMenuContent>
@@ -239,7 +254,7 @@ const AdminInvoices = () => {
           {viewInvoice && (
             <div className="space-y-4 py-2">
               <div className="flex justify-between items-start">
-                <div><p className="text-lg font-black">Seven Trip</p><p className="text-xs text-muted-foreground">Seven Trip Bangladesh Ltd</p></div>
+                <div><p className="text-lg font-black">Seven Trip</p><p className="text-xs text-muted-foreground">A concern of Evan International</p></div>
                 <div className="text-right"><p className="text-sm font-bold font-mono">{viewInvoice.invoiceNo}</p><p className="text-xs text-muted-foreground">{viewInvoice.date}</p></div>
               </div>
               <Separator />

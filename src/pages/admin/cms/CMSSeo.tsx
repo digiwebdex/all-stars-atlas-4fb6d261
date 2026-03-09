@@ -47,9 +47,9 @@ const defaultJsonLd = {
   name: "Seven Trip",
   url: "https://seventrip.com.bd",
   logo: "https://seventrip.com.bd/images/seven-trip-logo.png",
-  phone: "+880 1234-567890",
-  email: "support@seventrip.com",
-  address: "123 Travel Street, Dhaka 1205, Bangladesh",
+  phone: "+880 1749-373748",
+  email: "support@seventrip.com.bd",
+  address: "Beena Kanon, Flat-4A, House-03, Road-17, Block-E, Banani, Dhaka-1213",
   priceRange: "৳৳",
 };
 
