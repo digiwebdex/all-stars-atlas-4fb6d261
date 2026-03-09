@@ -249,8 +249,8 @@ export const CMS_PAGE_DEFAULTS: Record<string, CmsPageContent> = {
       gradient: "from-[hsl(217,91%,50%)] to-[hsl(224,70%,28%)]",
     },
     contactInfo: [
-      { icon: "MapPin", title: "Office Address", text: "123 Travel Street, Motijheel C/A\nDhaka 1000, Bangladesh" },
-      { icon: "Phone", title: "Phone", text: "+880 1234-567890\n+880 9876-543210" },
+      { icon: "MapPin", title: "Office Address", text: "Beena Kanon, Flat-4A, House-03\nRoad-17, Block-E, Banani, Dhaka-1213" },
+      { icon: "Phone", title: "Phone", text: "+880 1749-373748" },
       { icon: "Mail", title: "Email", text: "support@seventrip.com.bd\nbooking@seventrip.com.bd" },
       { icon: "Clock", title: "Working Hours", text: "Sunday - Thursday: 9AM - 8PM\nFriday - Saturday: 10AM - 6PM" },
     ],
