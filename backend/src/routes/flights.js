@@ -3,43 +3,176 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { notifyBookingConfirm } = require('../services/notify');
+const { searchFlights: ttiSearch } = require('./tti-flights');
 
 const router = express.Router();
 
-// GET /flights/search
+// GET /flights/search — merges DB flights + TTI/Air Astra API results
 router.get('/search', async (req, res) => {
   try {
-    const { origin, destination, departDate, cabinClass, page = 1, limit = 20 } = req.query;
-    let sql = 'SELECT * FROM flights WHERE 1=1';
-    const params = [];
+    const {
+      origin, destination, from, to,
+      departDate, date, depart,
+      returnDate, return: returnParam,
+      cabinClass, class: classParam, cabin,
+      adults, children, infants,
+      sort, priceMin, priceMax,
+      page = 1, limit = 50
+    } = req.query;
 
-    if (origin) { sql += ' AND origin = ?'; params.push(origin); }
-    if (destination) { sql += ' AND destination = ?'; params.push(destination); }
-    if (departDate) { sql += ' AND DATE(departure_time) = ?'; params.push(departDate); }
-    if (cabinClass) { sql += ' AND cabin_class = ?'; params.push(cabinClass); }
+    // Normalize params (frontend sends various names)
+    const originCode = origin || from || '';
+    const destCode = destination || to || '';
+    const dDate = departDate || date || depart || '';
+    const rDate = returnDate || returnParam || '';
+    const cabClass = cabinClass || classParam || cabin || '';
+    const adultCount = parseInt(adults) || 1;
+    const childCount = parseInt(children) || 0;
+    const infantCount = parseInt(infants) || 0;
 
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-    const [countResult] = await db.query(sql.replace('SELECT *', 'SELECT COUNT(*) as total'), params);
-    sql += ` ORDER BY price ASC LIMIT ? OFFSET ?`;
-    params.push(parseInt(limit), offset);
+    // Fetch from both sources in parallel
+    const [dbFlights, ttiFlights] = await Promise.allSettled([
+      searchDB({ originCode, destCode, dDate, cabClass, page, limit }),
+      ttiSearch({
+        origin: originCode,
+        destination: destCode,
+        departDate: dDate,
+        returnDate: rDate || undefined,
+        adults: adultCount,
+        children: childCount,
+        infants: infantCount,
+        cabinClass: cabClass || undefined,
+      }).catch(err => {
+        console.warn('TTI search failed (continuing with DB only):', err.message);
+        return [];
+      }),
+    ]);
 
-    const [rows] = await db.query(sql, params);
-    const data = rows.map(r => ({
-      id: r.id, airline: r.airline, airlineCode: r.airline_code, airlineLogo: r.airline_logo,
-      flightNumber: r.flight_number, origin: r.origin, originCity: r.origin_city,
-      destination: r.destination, destinationCity: r.destination_city,
-      departureTime: r.departure_time, arrivalTime: r.arrival_time,
-      duration: r.duration, stops: r.stops, cabinClass: r.cabin_class,
-      price: parseFloat(r.price), currency: r.currency, seatsAvailable: r.seats_available,
-      baggage: r.baggage, refundable: !!r.refundable,
-    }));
+    // Collect results
+    let flights = [];
 
-    res.json({ data, total: countResult[0].total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(countResult[0].total / parseInt(limit)) });
+    if (dbFlights.status === 'fulfilled') {
+      flights.push(...(dbFlights.value.rows || []));
+    }
+
+    if (ttiFlights.status === 'fulfilled') {
+      flights.push(...(ttiFlights.value || []));
+    }
+
+    // Apply client-side filters
+    if (priceMin) flights = flights.filter(f => f.price >= parseFloat(priceMin));
+    if (priceMax) flights = flights.filter(f => f.price <= parseFloat(priceMax));
+
+    // Sort
+    switch (sort) {
+      case 'cheapest':
+      case 'price':
+        flights.sort((a, b) => (a.price || 0) - (b.price || 0));
+        break;
+      case 'earliest':
+        flights.sort((a, b) => new Date(a.departureTime || 0) - new Date(b.departureTime || 0));
+        break;
+      case 'fastest':
+        flights.sort((a, b) => (a.durationMinutes || 999) - (b.durationMinutes || 999));
+        break;
+      case 'best':
+      default:
+        // Best = weighted score of price + duration
+        flights.sort((a, b) => {
+          const scoreA = (a.price || 0) + (a.durationMinutes || 0) * 50;
+          const scoreB = (b.price || 0) + (b.durationMinutes || 0) * 50;
+          return scoreA - scoreB;
+        });
+        break;
+    }
+
+    // Extract unique airlines
+    const airlines = [...new Set(flights.map(f => f.airline).filter(Boolean))];
+    const cheapest = flights.length > 0 ? Math.min(...flights.map(f => f.price || Infinity)) : 0;
+
+    res.json({
+      data: flights,
+      airlines,
+      cheapest,
+      total: flights.length,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(flights.length / parseInt(limit)),
+      sources: {
+        db: dbFlights.status === 'fulfilled' ? (dbFlights.value.rows || []).length : 0,
+        tti: ttiFlights.status === 'fulfilled' ? (ttiFlights.value || []).length : 0,
+      },
+    });
   } catch (err) {
     console.error('Flight search error:', err);
     res.status(500).json({ message: 'Something went wrong', status: 500 });
   }
 });
+
+// Helper: search local DB flights
+async function searchDB({ originCode, destCode, dDate, cabClass, page, limit }) {
+  let sql = 'SELECT * FROM flights WHERE 1=1';
+  const params = [];
+
+  if (originCode) { sql += ' AND origin = ?'; params.push(originCode); }
+  if (destCode) { sql += ' AND destination = ?'; params.push(destCode); }
+  if (dDate) { sql += ' AND DATE(departure_time) = ?'; params.push(dDate); }
+  if (cabClass) { sql += ' AND cabin_class = ?'; params.push(cabClass); }
+
+  const offset = (parseInt(page) - 1) * parseInt(limit);
+  sql += ` ORDER BY price ASC LIMIT ? OFFSET ?`;
+  params.push(parseInt(limit), offset);
+
+  const [rows] = await db.query(sql, params);
+  const data = rows.map(r => ({
+    id: r.id,
+    source: 'db',
+    airline: r.airline,
+    airlineCode: r.airline_code,
+    airlineLogo: r.airline_logo,
+    flightNumber: r.flight_number,
+    origin: r.origin,
+    originCity: r.origin_city,
+    destination: r.destination,
+    destinationCity: r.destination_city,
+    departureTime: r.departure_time,
+    arrivalTime: r.arrival_time,
+    duration: r.duration,
+    durationMinutes: parseDurationToMinutes(r.duration),
+    stops: r.stops,
+    stopCodes: [],
+    cabinClass: r.cabin_class,
+    price: parseFloat(r.price),
+    currency: r.currency || 'BDT',
+    seatsAvailable: r.seats_available,
+    baggage: r.baggage,
+    refundable: !!r.refundable,
+    aircraft: '',
+    legs: [{
+      origin: r.origin,
+      destination: r.destination,
+      departureTime: r.departure_time,
+      arrivalTime: r.arrival_time,
+      duration: r.duration,
+      durationMinutes: parseDurationToMinutes(r.duration),
+      flightNumber: r.flight_number,
+      airlineCode: r.airline_code,
+      aircraft: '',
+      stops: [],
+    }],
+  }));
+
+  return { rows: data };
+}
+
+function parseDurationToMinutes(dur) {
+  if (!dur) return 0;
+  const match = dur.match(/(\d+)h\s*(\d+)?m?/i);
+  if (match) return parseInt(match[1]) * 60 + (parseInt(match[2]) || 0);
+  const minMatch = dur.match(/(\d+)\s*m/i);
+  if (minMatch) return parseInt(minMatch[1]);
+  return 0;
+}
 
 // GET /flights/:id
 router.get('/:id', async (req, res) => {
