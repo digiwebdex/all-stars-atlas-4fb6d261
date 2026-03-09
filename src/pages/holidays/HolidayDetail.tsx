@@ -1,17 +1,47 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Star, MapPin, Calendar, CheckCircle2, ArrowRight, Clock } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useHolidayDetails } from "@/hooks/useApiData";
+import { useAuth } from "@/hooks/useAuth";
+import AuthGateModal from "@/components/AuthGateModal";
 import DataLoader from "@/components/DataLoader";
 
 const HolidayDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
   const { data, isLoading, error, refetch } = useHolidayDetails(id);
   const pkg = (data as any)?.package || {};
   const itinerary = (data as any)?.itinerary || [];
+
+  const handleBook = () => {
+    if (!isAuthenticated) {
+      setAuthOpen(true);
+      return;
+    }
+    navigateToConfirmation();
+  };
+
+  const navigateToConfirmation = () => {
+    navigate("/booking/confirmation", {
+      state: {
+        booking: {
+          type: "Holiday",
+          route: pkg.destination || pkg.name,
+          date: pkg.nextAvailable || "—",
+          baseFare: pkg.price || 0,
+          taxes: Math.round((pkg.price || 0) * 0.05),
+          total: Math.round((pkg.price || 0) * 1.05),
+          paymentMethod: "Pending",
+        },
+      },
+    });
+  };
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -52,8 +82,8 @@ const HolidayDetail = () => {
                   <div className="flex justify-between"><span className="text-muted-foreground">Duration</span><span className="font-semibold">{pkg.duration}</span></div>
                   {pkg.nextAvailable && <div className="flex justify-between"><span className="text-muted-foreground">Next Available</span><span className="font-semibold">{pkg.nextAvailable}</span></div>}
                 </div>
-                <Button className="w-full h-11 font-bold shadow-lg shadow-primary/20" asChild>
-                  <Link to="/booking/confirmation" state={{ booking: { type: "Holiday", route: pkg.destination, date: pkg.nextAvailable || "—", baseFare: pkg.price || 0, taxes: Math.round((pkg.price || 0) * 0.05), total: Math.round((pkg.price || 0) * 1.05), paymentMethod: "Pending" } }}>Book This Package <ArrowRight className="w-4 h-4 ml-1" /></Link>
+                <Button className="w-full h-11 font-bold shadow-lg shadow-primary/20" onClick={handleBook}>
+                  Book This Package <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
                 <Button variant="outline" className="w-full" asChild><Link to="/contact">Enquire Now</Link></Button>
               </CardContent></Card>
@@ -61,6 +91,14 @@ const HolidayDetail = () => {
           </div>
         </div>
       </DataLoader>
+
+      <AuthGateModal
+        open={authOpen}
+        onOpenChange={setAuthOpen}
+        onAuthenticated={() => { setAuthOpen(false); navigateToConfirmation(); }}
+        title="Sign in to book your holiday"
+        description="Create an account or sign in to complete your booking."
+      />
     </div>
   );
 };

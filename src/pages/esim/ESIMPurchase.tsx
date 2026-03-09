@@ -10,6 +10,7 @@ import { Smartphone, Check, Shield } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useCmsPageContent } from "@/hooks/useCmsContent";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import AuthGateModal from "@/components/AuthGateModal";
 
 const ESIMPurchase = () => {
@@ -19,21 +20,41 @@ const ESIMPurchase = () => {
   const [authOpen, setAuthOpen] = useState(false);
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const { toast } = useToast();
   const { data: page, isLoading } = useCmsPageContent("/esim/purchase");
   const config = page?.bookingConfig;
 
+  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const updateField = (id: string, value: string) => {
+    setFormData(prev => ({ ...prev, [id]: value }));
+    setFieldErrors(prev => { const n = {...prev}; delete n[id]; return n; });
+  };
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    const fields = config?.steps?.[0]?.fields || [];
+    fields.filter((f: any) => f.visible && f.required).forEach((f: any) => {
+      if (!formData[f.id]?.trim()) errors[f.id] = `${f.label} is required`;
+      if (f.type === "email" && formData[f.id] && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData[f.id])) {
+        errors[f.id] = "Invalid email format";
+      }
+    });
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      toast({ title: "Missing Information", description: Object.values(errors)[0], variant: "destructive" });
+      return false;
+    }
+    setFieldErrors({});
+    return true;
+  };
+
   const handleFinalAction = () => {
+    if (!validateForm()) return;
     if (!isAuthenticated) { setAuthOpen(true); return; }
     navigate("/booking/confirmation", {
-      state: {
-        booking: {
-          type: "eSIM",
-          route: `${country} — ${plan}`,
-          baseFare: config?.totalAmount || 0,
-          total: config?.totalAmount || 0,
-          paymentMethod: "Pending",
-        },
-      },
+      state: { booking: { type: "eSIM", route: `${country} — ${plan}`, baseFare: config?.totalAmount || 0, total: config?.totalAmount || 0, paymentMethod: "Pending" } },
     });
   };
 
@@ -54,12 +75,17 @@ const ESIMPurchase = () => {
               <CardHeader><CardTitle className="text-lg">{config?.steps?.[0]?.label || "Your Details"}</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
-                  {fields.filter(f => f.visible).map(f => (
-                    <div key={f.id} className={`space-y-1.5 ${!f.halfWidth ? "sm:col-span-2" : ""}`}>
-                      <Label>{f.label}</Label>
-                      <Input type={f.type} placeholder={f.placeholder} className="h-11" />
-                    </div>
-                  ))}
+                  {fields.filter((f: any) => f.visible).map((f: any) => {
+                    const hasError = !!fieldErrors[f.id];
+                    return (
+                      <div key={f.id} className={`space-y-1.5 ${!f.halfWidth ? "sm:col-span-2" : ""}`}>
+                        <Label className={hasError ? "text-destructive" : ""}>{f.label}{f.required ? " *" : ""}</Label>
+                        <Input type={f.type} placeholder={f.placeholder} className={`h-11 ${hasError ? "border-destructive ring-destructive/20 ring-2" : ""}`}
+                          value={formData[f.id] || ""} onChange={e => updateField(f.id, e.target.value)} />
+                        {hasError && <p className="text-[11px] text-destructive font-medium">{fieldErrors[f.id]}</p>}
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

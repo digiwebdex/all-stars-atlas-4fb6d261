@@ -43,6 +43,7 @@ const VisaApplication = () => {
   const [processingType, setProcessingType] = useState("normal");
   const [travellers, setTravellers] = useState(1);
   const [agreed, setAgreed] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Document uploads
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDoc[]>([]);
@@ -64,7 +65,10 @@ const VisaApplication = () => {
     notes: "",
   });
 
-  const updateForm = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
+  const updateForm = (field: string, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    setFieldErrors(prev => { const n = {...prev}; delete n[field]; return n; });
+  };
 
   const countries = useMemo(() => visaConfig?.countries?.filter((c: any) => c.active) || [], [visaConfig]);
   const country = useMemo(() => countries.find((c: any) => c.code === selectedCountry), [countries, selectedCountry]);
@@ -77,31 +81,96 @@ const VisaApplication = () => {
   const totalPerPerson = baseFee + serviceFee + expressExtra;
   const grandTotal = totalPerPerson * travellers;
 
+  /** Step validation */
+  const validateStep = (currentStep: number): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (currentStep === 1) {
+      if (!form.travelDate) errors.travelDate = "Travel date is required";
+      if (!form.returnDate) errors.returnDate = "Return date is required";
+      if (!form.purposeOfVisit?.trim()) errors.purposeOfVisit = "Purpose of visit is required";
+      if (form.travelDate && form.returnDate && new Date(form.returnDate) <= new Date(form.travelDate)) {
+        errors.returnDate = "Return date must be after travel date";
+      }
+      if (form.travelDate && new Date(form.travelDate) <= new Date()) {
+        errors.travelDate = "Travel date must be in the future";
+      }
+    }
+
+    if (currentStep === 2) {
+      if (!form.firstName?.trim()) errors.firstName = "First name is required";
+      if (!form.lastName?.trim()) errors.lastName = "Last name is required";
+      if (!form.dob) errors.dob = "Date of birth is required";
+      if (!form.gender) errors.gender = "Gender is required";
+      if (!form.passportNumber?.trim()) errors.passportNumber = "Passport number is required";
+      if (!form.passportExpiry) errors.passportExpiry = "Passport expiry is required";
+      if (!form.email?.trim()) errors.email = "Email is required";
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = "Invalid email format";
+      if (!form.phone?.trim()) errors.phone = "Phone number is required";
+      if (!form.currentAddress?.trim()) errors.currentAddress = "Current address is required";
+      if (!form.occupation?.trim()) errors.occupation = "Occupation is required";
+      if (!form.emergencyContact?.trim()) errors.emergencyContact = "Emergency contact name is required";
+      if (!form.emergencyPhone?.trim()) errors.emergencyPhone = "Emergency phone is required";
+      // Passport expiry must be > 6 months from travel
+      if (form.passportExpiry && form.travelDate) {
+        const expiry = new Date(form.passportExpiry);
+        const travel = new Date(form.travelDate);
+        const sixMonths = new Date(travel.getTime() + 180 * 24 * 60 * 60 * 1000);
+        if (expiry < sixMonths) errors.passportExpiry = "Passport must be valid for 6+ months from travel date";
+      }
+      if (form.dob) {
+        const dobDate = new Date(form.dob);
+        if (dobDate >= new Date()) errors.dob = "Date of birth must be in the past";
+      }
+    }
+
+    if (currentStep === 3) {
+      const requiredDocs = country?.requiredDocs || [];
+      const missingDocs = requiredDocs.filter((d: string) => !uploadedDocs.find(u => u.label === d));
+      if (missingDocs.length > 0) {
+        errors._docs = `Please upload: ${missingDocs.join(", ")}`;
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      const firstError = Object.values(errors)[0];
+      toast({ title: "Missing Information", description: firstError, variant: "destructive" });
+      return false;
+    }
+
+    setFieldErrors({});
+    return true;
+  };
+
+  const handleContinue = () => {
+    if (validateStep(step)) {
+      setStep(step + 1);
+    }
+  };
+
   // File upload handler
   const handleFileUpload = async (docLabel: string, file: globalThis.File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File Too Large", description: "Maximum file size is 10MB.", variant: "destructive" });
+      return;
+    }
     setUploading(prev => ({ ...prev, [docLabel]: true }));
     try {
       const formData = new FormData();
       formData.append('documents', file);
-
       const apiBase = config.apiBaseUrl;
       const token = localStorage.getItem('auth_token');
-
       const response = await fetch(`${apiBase}/visa/upload-documents`, {
         method: 'POST',
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: formData,
       });
-
       if (!response.ok) throw new Error('Upload failed');
       const result = await response.json();
-
       if (result.files && result.files.length > 0) {
         const uploaded = result.files[0];
-        setUploadedDocs(prev => [
-          ...prev.filter(d => d.label !== docLabel),
-          { ...uploaded, label: docLabel },
-        ]);
+        setUploadedDocs(prev => [...prev.filter(d => d.label !== docLabel), { ...uploaded, label: docLabel }]);
         toast({ title: "Uploaded", description: `${docLabel} uploaded successfully.` });
       }
     } catch (err: any) {
@@ -111,27 +180,24 @@ const VisaApplication = () => {
     }
   };
 
-  const removeDoc = (docLabel: string) => {
-    setUploadedDocs(prev => prev.filter(d => d.label !== docLabel));
-  };
-
+  const removeDoc = (docLabel: string) => setUploadedDocs(prev => prev.filter(d => d.label !== docLabel));
   const getDocForLabel = (label: string) => uploadedDocs.find(d => d.label === label);
-
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const errClass = (field: string) => fieldErrors[field] ? "border-destructive ring-destructive/20 ring-2" : "";
+  const errLabel = (field: string) => fieldErrors[field] ? "text-destructive" : "";
+  const errMsg = (field: string) => fieldErrors[field] ? <p className="text-[11px] text-destructive font-medium">{fieldErrors[field]}</p> : null;
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-muted/30 pt-20 lg:pt-28 pb-10">
         <div className="container mx-auto px-4 space-y-6">
           <Skeleton className="h-10 w-64 mx-auto" />
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2"><Skeleton className="h-96 w-full rounded-xl" /></div>
-            <Skeleton className="h-48 w-full rounded-xl" />
-          </div>
+          <div className="grid lg:grid-cols-3 gap-6"><div className="lg:col-span-2"><Skeleton className="h-96 w-full rounded-xl" /></div><Skeleton className="h-48 w-full rounded-xl" /></div>
         </div>
       </div>
     );
@@ -165,28 +231,28 @@ const VisaApplication = () => {
                       <Label>Destination Country <span className="text-destructive">*</span></Label>
                       <Select value={selectedCountry} onValueChange={setSelectedCountry}>
                         <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {countries.map((c: any) => (
-                            <SelectItem key={c.code} value={c.code}>{c.flag} {c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
+                        <SelectContent>{countries.map((c: any) => <SelectItem key={c.code} value={c.code}>{c.flag} {c.name}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-1.5">
                       <Label>Visa Type <span className="text-destructive">*</span></Label>
                       <Select value={selectedType} onValueChange={setSelectedType}>
                         <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {(country?.visaTypes || []).map((t: string) => (
-                            <SelectItem key={t} value={t}>{t}</SelectItem>
-                          ))}
-                        </SelectContent>
+                        <SelectContent>{(country?.visaTypes || []).map((t: string) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                   </div>
                   <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5"><Label>Travel Date <span className="text-destructive">*</span></Label><Input type="date" className="h-11" value={form.travelDate} onChange={e => updateForm("travelDate", e.target.value)} /></div>
-                    <div className="space-y-1.5"><Label>Return Date <span className="text-destructive">*</span></Label><Input type="date" className="h-11" value={form.returnDate} onChange={e => updateForm("returnDate", e.target.value)} /></div>
+                    <div className="space-y-1.5">
+                      <Label className={errLabel("travelDate")}>Travel Date <span className="text-destructive">*</span></Label>
+                      <Input type="date" className={`h-11 ${errClass("travelDate")}`} value={form.travelDate} onChange={e => updateForm("travelDate", e.target.value)} />
+                      {errMsg("travelDate")}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className={errLabel("returnDate")}>Return Date <span className="text-destructive">*</span></Label>
+                      <Input type="date" className={`h-11 ${errClass("returnDate")}`} value={form.returnDate} onChange={e => updateForm("returnDate", e.target.value)} />
+                      {errMsg("returnDate")}
+                    </div>
                   </div>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -197,19 +263,17 @@ const VisaApplication = () => {
                       <Label>Processing Type</Label>
                       <Select value={processingType} onValueChange={setProcessingType}>
                         <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {(country?.processingOptions || []).map((p: any) => (
-                            <SelectItem key={p.label.toLowerCase()} value={p.label.toLowerCase()}>
-                              {p.label} ({p.days}){p.extraFee > 0 ? ` +৳${p.extraFee.toLocaleString()}` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
+                        <SelectContent>{(country?.processingOptions || []).map((p: any) => <SelectItem key={p.label.toLowerCase()} value={p.label.toLowerCase()}>{p.label} ({p.days}){p.extraFee > 0 ? ` +৳${p.extraFee.toLocaleString()}` : ""}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                   </div>
                   <Separator />
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Travel Purpose & Accommodation</p>
-                  <div className="space-y-1.5"><Label>Purpose of Visit <span className="text-destructive">*</span></Label><Textarea placeholder="e.g., Tourism - visiting Bangkok and Pattaya" rows={2} value={form.purposeOfVisit} onChange={e => updateForm("purposeOfVisit", e.target.value)} /></div>
+                  <div className="space-y-1.5">
+                    <Label className={errLabel("purposeOfVisit")}>Purpose of Visit <span className="text-destructive">*</span></Label>
+                    <Textarea placeholder="e.g., Tourism - visiting Bangkok and Pattaya" rows={2} value={form.purposeOfVisit} onChange={e => updateForm("purposeOfVisit", e.target.value)} className={errClass("purposeOfVisit")} />
+                    {errMsg("purposeOfVisit")}
+                  </div>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5"><Label>Hotel / Accommodation Name</Label><Input placeholder="e.g., Grand Hyatt" className="h-11" value={form.hotelName} onChange={e => updateForm("hotelName", e.target.value)} /></div>
                     <div className="space-y-1.5"><Label>Hotel Address</Label><Input placeholder="Full address" className="h-11" value={form.hotelAddress} onChange={e => updateForm("hotelAddress", e.target.value)} /></div>
@@ -226,21 +290,18 @@ const VisaApplication = () => {
                   <CardHeader><CardTitle className="text-lg flex items-center gap-2"><User className="w-5 h-5 text-primary" /> Personal Details</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid sm:grid-cols-3 gap-4">
-                      <div className="space-y-1.5"><Label>First Name <span className="text-destructive">*</span></Label><Input placeholder="As per passport" className="h-11" value={form.firstName} onChange={e => updateForm("firstName", e.target.value)} /></div>
-                      <div className="space-y-1.5"><Label>Last Name <span className="text-destructive">*</span></Label><Input placeholder="As per passport" className="h-11" value={form.lastName} onChange={e => updateForm("lastName", e.target.value)} /></div>
-                      <div className="space-y-1.5"><Label>Date of Birth <span className="text-destructive">*</span></Label><Input type="date" className="h-11" value={form.dob} onChange={e => updateForm("dob", e.target.value)} /></div>
+                      <div className="space-y-1.5"><Label className={errLabel("firstName")}>First Name <span className="text-destructive">*</span></Label><Input placeholder="As per passport" className={`h-11 ${errClass("firstName")}`} value={form.firstName} onChange={e => updateForm("firstName", e.target.value)} />{errMsg("firstName")}</div>
+                      <div className="space-y-1.5"><Label className={errLabel("lastName")}>Last Name <span className="text-destructive">*</span></Label><Input placeholder="As per passport" className={`h-11 ${errClass("lastName")}`} value={form.lastName} onChange={e => updateForm("lastName", e.target.value)} />{errMsg("lastName")}</div>
+                      <div className="space-y-1.5"><Label className={errLabel("dob")}>Date of Birth <span className="text-destructive">*</span></Label><Input type="date" className={`h-11 ${errClass("dob")}`} value={form.dob} onChange={e => updateForm("dob", e.target.value)} />{errMsg("dob")}</div>
                     </div>
                     <div className="grid sm:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
-                        <Label>Gender <span className="text-destructive">*</span></Label>
+                        <Label className={errLabel("gender")}>Gender <span className="text-destructive">*</span></Label>
                         <Select value={form.gender} onValueChange={v => updateForm("gender", v)}>
-                          <SelectTrigger className="h-11"><SelectValue placeholder="Select" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Male">Male</SelectItem>
-                            <SelectItem value="Female">Female</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
-                          </SelectContent>
+                          <SelectTrigger className={`h-11 ${errClass("gender")}`}><SelectValue placeholder="Select" /></SelectTrigger>
+                          <SelectContent><SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent>
                         </Select>
+                        {errMsg("gender")}
                       </div>
                       <div className="space-y-1.5"><Label>Nationality</Label><Input className="h-11" value={form.nationality} onChange={e => updateForm("nationality", e.target.value)} /></div>
                       <div className="space-y-1.5"><Label>NID Number</Label><Input placeholder="National ID number" className="h-11" value={form.nidNumber} onChange={e => updateForm("nidNumber", e.target.value)} /></div>
@@ -253,8 +314,8 @@ const VisaApplication = () => {
                   <CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Passport Information</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5"><Label>Passport Number <span className="text-destructive">*</span></Label><Input placeholder="A12345678" className="h-11" value={form.passportNumber} onChange={e => updateForm("passportNumber", e.target.value)} /></div>
-                      <div className="space-y-1.5"><Label>Passport Expiry <span className="text-destructive">*</span></Label><Input type="date" className="h-11" value={form.passportExpiry} onChange={e => updateForm("passportExpiry", e.target.value)} /></div>
+                      <div className="space-y-1.5"><Label className={errLabel("passportNumber")}>Passport Number <span className="text-destructive">*</span></Label><Input placeholder="A12345678" className={`h-11 ${errClass("passportNumber")}`} value={form.passportNumber} onChange={e => updateForm("passportNumber", e.target.value)} />{errMsg("passportNumber")}</div>
+                      <div className="space-y-1.5"><Label className={errLabel("passportExpiry")}>Passport Expiry <span className="text-destructive">*</span></Label><Input type="date" className={`h-11 ${errClass("passportExpiry")}`} value={form.passportExpiry} onChange={e => updateForm("passportExpiry", e.target.value)} />{errMsg("passportExpiry")}</div>
                     </div>
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5"><Label>Issue Date</Label><Input type="date" className="h-11" value={form.passportIssueDate} onChange={e => updateForm("passportIssueDate", e.target.value)} /></div>
@@ -267,11 +328,11 @@ const VisaApplication = () => {
                   <CardHeader><CardTitle className="text-base flex items-center gap-2"><Phone className="w-4 h-4 text-primary" /> Contact Information</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5"><Label>Email <span className="text-destructive">*</span></Label><Input type="email" className="h-11" value={form.email} onChange={e => updateForm("email", e.target.value)} /></div>
-                      <div className="space-y-1.5"><Label>Phone <span className="text-destructive">*</span></Label><Input type="tel" placeholder="+880XXXXXXXXXX" className="h-11" value={form.phone} onChange={e => updateForm("phone", e.target.value)} /></div>
+                      <div className="space-y-1.5"><Label className={errLabel("email")}>Email <span className="text-destructive">*</span></Label><Input type="email" className={`h-11 ${errClass("email")}`} value={form.email} onChange={e => updateForm("email", e.target.value)} />{errMsg("email")}</div>
+                      <div className="space-y-1.5"><Label className={errLabel("phone")}>Phone <span className="text-destructive">*</span></Label><Input type="tel" placeholder="+880XXXXXXXXXX" className={`h-11 ${errClass("phone")}`} value={form.phone} onChange={e => updateForm("phone", e.target.value)} />{errMsg("phone")}</div>
                     </div>
                     <div className="space-y-1.5"><Label>Alternative Phone</Label><Input type="tel" className="h-11" value={form.altPhone} onChange={e => updateForm("altPhone", e.target.value)} /></div>
-                    <div className="space-y-1.5"><Label>Current Address <span className="text-destructive">*</span></Label><Textarea placeholder="Full current address" rows={2} value={form.currentAddress} onChange={e => updateForm("currentAddress", e.target.value)} /></div>
+                    <div className="space-y-1.5"><Label className={errLabel("currentAddress")}>Current Address <span className="text-destructive">*</span></Label><Textarea placeholder="Full current address" rows={2} value={form.currentAddress} onChange={e => updateForm("currentAddress", e.target.value)} className={errClass("currentAddress")} />{errMsg("currentAddress")}</div>
                     <div className="space-y-1.5"><Label>Permanent Address</Label><Textarea placeholder="If different from current address" rows={2} value={form.permanentAddress} onChange={e => updateForm("permanentAddress", e.target.value)} /></div>
                   </CardContent>
                 </Card>
@@ -280,7 +341,7 @@ const VisaApplication = () => {
                   <CardHeader><CardTitle className="text-base flex items-center gap-2"><Briefcase className="w-4 h-4 text-primary" /> Professional Details</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid sm:grid-cols-3 gap-4">
-                      <div className="space-y-1.5"><Label>Occupation <span className="text-destructive">*</span></Label><Input className="h-11" value={form.occupation} onChange={e => updateForm("occupation", e.target.value)} /></div>
+                      <div className="space-y-1.5"><Label className={errLabel("occupation")}>Occupation <span className="text-destructive">*</span></Label><Input className={`h-11 ${errClass("occupation")}`} value={form.occupation} onChange={e => updateForm("occupation", e.target.value)} />{errMsg("occupation")}</div>
                       <div className="space-y-1.5"><Label>Employer / Company</Label><Input className="h-11" value={form.employer} onChange={e => updateForm("employer", e.target.value)} /></div>
                       <div className="space-y-1.5"><Label>Monthly Income</Label><Input placeholder="e.g., ৳80,000" className="h-11" value={form.monthlyIncome} onChange={e => updateForm("monthlyIncome", e.target.value)} /></div>
                     </div>
@@ -302,8 +363,8 @@ const VisaApplication = () => {
                   <CardHeader><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-warning" /> Emergency Contact</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid sm:grid-cols-3 gap-4">
-                      <div className="space-y-1.5"><Label>Contact Name <span className="text-destructive">*</span></Label><Input className="h-11" value={form.emergencyContact} onChange={e => updateForm("emergencyContact", e.target.value)} /></div>
-                      <div className="space-y-1.5"><Label>Contact Phone <span className="text-destructive">*</span></Label><Input type="tel" className="h-11" value={form.emergencyPhone} onChange={e => updateForm("emergencyPhone", e.target.value)} /></div>
+                      <div className="space-y-1.5"><Label className={errLabel("emergencyContact")}>Contact Name <span className="text-destructive">*</span></Label><Input className={`h-11 ${errClass("emergencyContact")}`} value={form.emergencyContact} onChange={e => updateForm("emergencyContact", e.target.value)} />{errMsg("emergencyContact")}</div>
+                      <div className="space-y-1.5"><Label className={errLabel("emergencyPhone")}>Contact Phone <span className="text-destructive">*</span></Label><Input type="tel" className={`h-11 ${errClass("emergencyPhone")}`} value={form.emergencyPhone} onChange={e => updateForm("emergencyPhone", e.target.value)} />{errMsg("emergencyPhone")}</div>
                       <div className="space-y-1.5"><Label>Relationship</Label><Input placeholder="e.g., Brother, Wife" className="h-11" value={form.emergencyRelation} onChange={e => updateForm("emergencyRelation", e.target.value)} /></div>
                     </div>
                   </CardContent>
@@ -325,6 +386,11 @@ const VisaApplication = () => {
                   <div className="p-4 bg-primary/5 rounded-xl mb-4">
                     <p className="text-xs text-muted-foreground">Upload all required documents in JPG, PNG, PDF, DOC format. Max 10MB each.</p>
                   </div>
+                  {fieldErrors._docs && (
+                    <div className="p-3 bg-destructive/5 border border-destructive/20 rounded-lg">
+                      <p className="text-xs text-destructive font-medium">{fieldErrors._docs}</p>
+                    </div>
+                  )}
                   {(country?.requiredDocs || []).map((doc: string, i: number) => {
                     const uploaded = getDocForLabel(doc);
                     const isUploading = uploading[doc];
@@ -332,69 +398,29 @@ const VisaApplication = () => {
                       <div key={i} className="rounded-lg border border-border overflow-hidden">
                         <div className="flex items-center justify-between gap-3 p-3">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            {uploaded ? (
-                              <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
-                            ) : (
-                              <File className="w-5 h-5 text-muted-foreground shrink-0" />
-                            )}
+                            {uploaded ? <CheckCircle2 className="w-5 h-5 text-success shrink-0" /> : <File className="w-5 h-5 text-muted-foreground shrink-0" />}
                             <div className="min-w-0">
                               <p className="text-sm font-medium truncate">{doc}</p>
-                              {uploaded && (
-                                <p className="text-[11px] text-muted-foreground truncate">
-                                  {uploaded.originalName} ({formatFileSize(uploaded.size)})
-                                </p>
-                              )}
+                              {uploaded && <p className="text-[11px] text-muted-foreground truncate">{uploaded.originalName} ({formatFileSize(uploaded.size)})</p>}
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            {uploaded && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeDoc(doc)}>
-                                <X className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
-                            <input
-                              type="file"
-                              accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
-                              className="hidden"
-                              ref={el => { fileInputRefs.current[doc] = el; }}
-                              onChange={e => {
-                                const file = e.target.files?.[0];
-                                if (file) handleFileUpload(doc, file);
-                                e.target.value = '';
-                              }}
-                            />
-                            <Button
-                              variant={uploaded ? "outline" : "default"}
-                              size="sm"
-                              className="shrink-0"
-                              disabled={isUploading}
-                              onClick={() => fileInputRefs.current[doc]?.click()}
-                            >
-                              {isUploading ? (
-                                <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Uploading...</>
-                              ) : uploaded ? (
-                                <><Upload className="w-3.5 h-3.5 mr-1" /> Replace</>
-                              ) : (
-                                <><Upload className="w-3.5 h-3.5 mr-1" /> Upload</>
-                              )}
+                            {uploaded && <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeDoc(doc)}><X className="w-3.5 h-3.5" /></Button>}
+                            <input type="file" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx" className="hidden" ref={el => { fileInputRefs.current[doc] = el; }} onChange={e => { const file = e.target.files?.[0]; if (file) handleFileUpload(doc, file); e.target.value = ''; }} />
+                            <Button variant={uploaded ? "outline" : "default"} size="sm" className="shrink-0" disabled={isUploading} onClick={() => fileInputRefs.current[doc]?.click()}>
+                              {isUploading ? <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Uploading...</> : uploaded ? <><Upload className="w-3.5 h-3.5 mr-1" /> Replace</> : <><Upload className="w-3.5 h-3.5 mr-1" /> Upload</>}
                             </Button>
                           </div>
                         </div>
                         {uploaded && uploaded.mimetype?.startsWith('image/') && (
-                          <div className="px-3 pb-3">
-                            <img src={`${config.apiBaseUrl.replace('/api', '')}${uploaded.url}`} alt={doc} className="h-16 rounded border border-border object-cover" />
-                          </div>
+                          <div className="px-3 pb-3"><img src={`${config.apiBaseUrl.replace('/api', '')}${uploaded.url}`} alt={doc} className="h-16 rounded border border-border object-cover" /></div>
                         )}
                       </div>
                     );
                   })}
                   <div className="flex items-center gap-2 pt-2">
-                    <Badge variant="outline" className="text-xs">
-                      {uploadedDocs.length} / {(country?.requiredDocs || []).length} uploaded
-                    </Badge>
-                    {uploadedDocs.length === (country?.requiredDocs || []).length && (
-                      <Badge className="text-xs bg-success/10 text-success border-success/30">All documents uploaded ✓</Badge>
-                    )}
+                    <Badge variant="outline" className="text-xs">{uploadedDocs.length} / {(country?.requiredDocs || []).length} uploaded</Badge>
+                    {uploadedDocs.length === (country?.requiredDocs || []).length && <Badge className="text-xs bg-success/10 text-success border-success/30">All documents uploaded ✓</Badge>}
                   </div>
                 </CardContent>
               </Card>
@@ -448,12 +474,8 @@ const VisaApplication = () => {
                     <div>
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Documents ({uploadedDocs.length} uploaded)</p>
                       <div className="flex flex-wrap gap-2">
-                        {uploadedDocs.map((doc, i) => (
-                          <Badge key={i} className="bg-success/10 text-success border-success/30 text-xs">{doc.label} ✓</Badge>
-                        ))}
-                        {(country?.requiredDocs || []).filter((d: string) => !getDocForLabel(d)).map((d: string, i: number) => (
-                          <Badge key={i} variant="outline" className="text-xs text-warning border-warning/30">{d} — missing</Badge>
-                        ))}
+                        {uploadedDocs.map((doc, i) => <Badge key={i} className="bg-success/10 text-success border-success/30 text-xs">{doc.label} ✓</Badge>)}
+                        {(country?.requiredDocs || []).filter((d: string) => !getDocForLabel(d)).map((d: string, i: number) => <Badge key={i} variant="outline" className="text-xs text-warning border-warning/30">{d} — missing</Badge>)}
                       </div>
                     </div>
 
@@ -474,7 +496,7 @@ const VisaApplication = () => {
             <div className="flex gap-3">
               {step > 1 && <Button variant="outline" onClick={() => setStep(step - 1)}>Back</Button>}
               {step < steps.length ? (
-                <Button onClick={() => setStep(step + 1)} className="font-bold">Continue <ArrowRight className="w-4 h-4 ml-1" /></Button>
+                <Button onClick={handleContinue} className="font-bold">Continue <ArrowRight className="w-4 h-4 ml-1" /></Button>
               ) : (
                 <Button className="font-bold shadow-lg shadow-primary/20" disabled={!agreed || submitting} onClick={async () => {
                   if (!isAuthenticated) { setAuthOpen(true); return; }
@@ -484,31 +506,14 @@ const VisaApplication = () => {
                       country: country?.name || selectedCountry,
                       visaType: selectedType,
                       processingFee: grandTotal,
-                      documents: uploadedDocs.map(d => ({
-                        filename: d.filename,
-                        originalName: d.originalName,
-                        size: d.size,
-                        mimetype: d.mimetype,
-                        label: d.label,
-                        url: d.url,
-                      })),
-                      applicantInfo: {
-                        ...form,
-                        selectedCountry,
-                        selectedType,
-                        processingType,
-                        travellers,
-                        countryName: country?.name,
-                        baseFee, serviceFee, expressExtra, grandTotal,
-                      },
+                      documents: uploadedDocs.map(d => ({ filename: d.filename, originalName: d.originalName, size: d.size, mimetype: d.mimetype, label: d.label, url: d.url })),
+                      applicantInfo: { ...form, selectedCountry, selectedType, processingType, travellers, countryName: country?.name, baseFee, serviceFee, expressExtra, grandTotal },
                     });
                     toast({ title: "Application Submitted", description: "Your visa application has been submitted successfully." });
-                    navigate("/booking/confirmation");
+                    navigate("/booking/confirmation", { state: { booking: { type: "Visa", route: `${country?.name} — ${selectedType} Visa`, baseFare: baseFee, taxes: serviceFee + expressExtra, total: grandTotal, paymentMethod: "Pending" } } });
                   } catch (err: any) {
                     toast({ title: "Submission Failed", description: err?.message || "Could not submit application. Please try again.", variant: "destructive" });
-                  } finally {
-                    setSubmitting(false);
-                  }
+                  } finally { setSubmitting(false); }
                 }}>
                   <Shield className="w-4 h-4 mr-1" /> {submitting ? "Submitting..." : `Submit Application & Pay ৳${grandTotal.toLocaleString()}`}
                 </Button>
@@ -524,44 +529,24 @@ const VisaApplication = () => {
                 <div className="flex justify-between"><span className="text-muted-foreground">Country</span><span className="font-semibold">{country?.flag} {country?.name}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Visa Fee</span><span className="font-semibold">৳{baseFee.toLocaleString()}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Service Charge</span><span className="font-semibold">৳{serviceFee.toLocaleString()}</span></div>
-                {expressExtra > 0 && (
-                  <div className="flex justify-between"><span className="text-muted-foreground">Express Fee</span><span className="font-semibold">৳{expressExtra.toLocaleString()}</span></div>
-                )}
-                {travellers > 1 && (
-                  <div className="flex justify-between"><span className="text-muted-foreground">Travellers</span><span className="font-semibold">×{travellers}</span></div>
-                )}
+                {expressExtra > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Express Fee</span><span className="font-semibold">৳{expressExtra.toLocaleString()}</span></div>}
+                {travellers > 1 && <div className="flex justify-between"><span className="text-muted-foreground">Travellers</span><span className="font-semibold">×{travellers}</span></div>}
                 <Separator />
                 <div className="flex justify-between text-base"><span className="font-bold">Total</span><span className="font-black text-primary">৳{grandTotal.toLocaleString()}</span></div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-3">
-                  <Clock className="w-3.5 h-3.5" /> {processingOption?.days ? `Estimated processing: ${processingOption.days}` : visaConfig?.estimatedProcessingNote}
-                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-3"><Clock className="w-3.5 h-3.5" /> {processingOption?.days ? `Estimated processing: ${processingOption.days}` : visaConfig?.estimatedProcessingNote}</div>
                 {form.firstName && (
-                  <>
-                    <Separator />
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <p className="font-semibold text-foreground">{form.firstName} {form.lastName}</p>
-                      {form.passportNumber && <p>Passport: {form.passportNumber}</p>}
-                      {form.phone && <p>{form.phone}</p>}
-                    </div>
-                  </>
+                  <><Separator /><div className="text-xs text-muted-foreground space-y-1"><p className="font-semibold text-foreground">{form.firstName} {form.lastName}</p>{form.passportNumber && <p>Passport: {form.passportNumber}</p>}{form.phone && <p>{form.phone}</p>}</div></>
                 )}
                 {uploadedDocs.length > 0 && (
-                  <>
-                    <Separator />
-                    <div className="text-xs">
-                      <p className="text-muted-foreground font-semibold mb-1">Documents: {uploadedDocs.length} uploaded</p>
-                      {uploadedDocs.map((d, i) => (
-                        <p key={i} className="text-muted-foreground truncate">✓ {d.label}</p>
-                      ))}
-                    </div>
-                  </>
+                  <><Separator /><div className="text-xs"><p className="font-medium text-foreground mb-1">Documents</p>{uploadedDocs.map((d, i) => <p key={i} className="text-muted-foreground">✓ {d.label}</p>)}</div></>
                 )}
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
-      <AuthGateModal open={authOpen} onOpenChange={setAuthOpen} onAuthenticated={() => { setAuthOpen(false); }} title="Sign in to apply for visa" />
+
+      <AuthGateModal open={authOpen} onOpenChange={setAuthOpen} onAuthenticated={() => { setAuthOpen(false); }} title="Sign in to submit your visa application" description="Create an account or sign in to track your application status." />
     </div>
   );
 };

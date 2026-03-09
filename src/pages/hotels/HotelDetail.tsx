@@ -1,20 +1,51 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Star, MapPin, Heart, ArrowRight, CheckCircle2 } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useHotelDetails } from "@/hooks/useApiData";
+import { useAuth } from "@/hooks/useAuth";
+import AuthGateModal from "@/components/AuthGateModal";
 import DataLoader from "@/components/DataLoader";
 
 const HotelDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState<any>(null);
   const { data, isLoading, error, refetch } = useHotelDetails(id);
   
   const hotel = (data as any)?.hotel || {};
   const rooms = hotel?.rooms || [];
   const images = hotel.images || [];
   const cheapestRoom = rooms.reduce((min: any, r: any) => (!min || r.price < min.price) ? r : min, null);
+
+  const handleBookRoom = (room: any) => {
+    setSelectedRoom(room);
+    if (!isAuthenticated) {
+      setAuthOpen(true);
+      return;
+    }
+    navigateToConfirmation(room);
+  };
+
+  const navigateToConfirmation = (room: any) => {
+    navigate("/booking/confirmation", {
+      state: {
+        booking: {
+          type: "Hotel",
+          route: `${hotel.name} — ${hotel.location}`,
+          baseFare: room.price,
+          taxes: Math.round(room.price * 0.15),
+          total: Math.round(room.price * 1.15),
+          paymentMethod: "Pending",
+        },
+      },
+    });
+  };
 
   return (
     <div className="min-h-screen bg-muted/30 pt-20 lg:pt-28">
@@ -84,10 +115,8 @@ const HotelDetail = () => {
                               {room.originalPrice && <p className="text-xs text-muted-foreground line-through">৳{room.originalPrice.toLocaleString()}</p>}
                               <p className="text-xl font-black text-primary">৳{room.price.toLocaleString()}</p>
                               <p className="text-[10px] text-muted-foreground mb-2">per night</p>
-                              <Button size="sm" className="font-bold" asChild>
-                                <Link to={`/booking/confirmation`} state={{ booking: { type: "Hotel", route: `${hotel.name} — ${hotel.location}`, baseFare: room.price, taxes: Math.round(room.price * 0.15), total: Math.round(room.price * 1.15), paymentMethod: "Pending" } }}>
-                                  Book Now
-                                </Link>
+                              <Button size="sm" className="font-bold" onClick={() => handleBookRoom(room)}>
+                                Book Now
                               </Button>
                             </div>
                           </div>
@@ -126,10 +155,8 @@ const HotelDetail = () => {
                       {hotel.rating && <div className="flex justify-between"><span className="text-muted-foreground">Rating</span><span className="font-semibold">{hotel.rating}/5 ({hotel.reviews} reviews)</span></div>}
                       <div className="flex justify-between"><span className="text-muted-foreground">Rooms from</span><span className="font-bold">৳{cheapestRoom.price?.toLocaleString()}</span></div>
                     </div>
-                    <Button className="w-full h-11 font-bold shadow-lg shadow-primary/20" asChild>
-                      <Link to="/booking/confirmation" state={{ booking: { type: "Hotel", route: `${hotel.name} — ${hotel.location}`, baseFare: cheapestRoom.price, taxes: Math.round(cheapestRoom.price * 0.15), total: Math.round(cheapestRoom.price * 1.15), paymentMethod: "Pending" } }}>
-                        Reserve Now <ArrowRight className="w-4 h-4 ml-1" />
-                      </Link>
+                    <Button className="w-full h-11 font-bold shadow-lg shadow-primary/20" onClick={() => handleBookRoom(cheapestRoom)}>
+                      Reserve Now <ArrowRight className="w-4 h-4 ml-1" />
                     </Button>
                     <p className="text-[10px] text-center text-muted-foreground">Free cancellation available on select rooms</p>
                   </CardContent>
@@ -139,6 +166,17 @@ const HotelDetail = () => {
           </div>
         </div>
       </DataLoader>
+
+      <AuthGateModal
+        open={authOpen}
+        onOpenChange={setAuthOpen}
+        onAuthenticated={() => {
+          setAuthOpen(false);
+          if (selectedRoom) navigateToConfirmation(selectedRoom);
+        }}
+        title="Sign in to book your hotel"
+        description="Create an account or sign in to complete your reservation."
+      />
     </div>
   );
 };
