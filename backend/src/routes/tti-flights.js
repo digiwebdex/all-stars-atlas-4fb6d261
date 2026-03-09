@@ -121,11 +121,10 @@ async function searchFlights({ origin, destination, departDate, returnDate, adul
 
   let refCounter = 1;
   const passengers = [];
-  // TTI WCF maps PassengerTypeCode → internal CodePassengerType
-  // Valid codes may vary by agency — try standard IATA codes first
-  if (adults > 0) passengers.push({ Ref: String(refCounter++), PassengerTypeCode: 'ADT', PassengerQuantity: parseInt(adults) });
-  if (children > 0) passengers.push({ Ref: String(refCounter++), PassengerTypeCode: 'CHD', PassengerQuantity: parseInt(children) });
-  if (infants > 0) passengers.push({ Ref: String(refCounter++), PassengerTypeCode: 'INF', PassengerQuantity: parseInt(infants) });
+  // TTI uses full words: ADULT, CHILD, INFANT (not IATA codes ADT/CHD/INF)
+  if (adults > 0) passengers.push({ Ref: String(refCounter++), PassengerTypeCode: 'ADULT', PassengerQuantity: parseInt(adults) });
+  if (children > 0) passengers.push({ Ref: String(refCounter++), PassengerTypeCode: 'CHILD', PassengerQuantity: parseInt(children) });
+  if (infants > 0) passengers.push({ Ref: String(refCounter++), PassengerTypeCode: 'INFANT', PassengerQuantity: parseInt(infants) });
 
   let odRef = 1;
   const originDestinations = [
