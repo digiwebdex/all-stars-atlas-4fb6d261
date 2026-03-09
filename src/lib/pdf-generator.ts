@@ -1,7 +1,19 @@
 import jsPDF from "jspdf";
+import QRCode from "qrcode";
 
 const LOGO_URL = "/images/seven-trip-logo.png";
 let cachedLogoBase64: string | null = null;
+
+// Company info — single source of truth for all PDFs
+const COMPANY = {
+  name: "Seven Trip",
+  parent: "Evan International",
+  phone: "+880 1749-373748",
+  email: "support@seventrip.com.bd",
+  address: "Beena Kanon, Flat-4A, House-03, Road-17, Block-E, Banani, Dhaka-1213",
+  addressShort: "Banani, Dhaka-1213",
+  website: "www.seventrip.com.bd",
+};
 
 async function loadLogoBase64(): Promise<string | null> {
   if (cachedLogoBase64) return cachedLogoBase64;
@@ -55,15 +67,280 @@ function addLogo(doc: jsPDF, logo: string | null, x: number, y: number, h: numbe
   } catch { /* fallback */ }
 }
 
+async function generateQRDataUrl(text: string): Promise<string | null> {
+  try {
+    return await QRCode.toDataURL(text, { width: 120, margin: 1 });
+  } catch {
+    return null;
+  }
+}
+
+function drawCompanyHeader(doc: jsPDF, logo: string | null, w: number): number {
+  // Logo
+  addLogo(doc, logo, 20, 12, 12);
+  const startX = logo ? 20 : 20;
+  const textY = logo ? 30 : 20;
+
+  if (!logo) {
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0);
+    doc.text(COMPANY.name, 20, 22);
+  }
+
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100);
+  doc.text(`Call: ${COMPANY.phone}`, 20, textY + 4);
+  doc.text(COMPANY.address, 20, textY + 9, { maxWidth: 90 });
+
+  return textY + 18;
+}
+
+function numberToWords(n: number): string {
+  if (n === 0) return "Zero";
+  const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+    "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  const scales = ["", "Thousand", "Lakh", "Crore"];
+
+  const num = Math.floor(Math.abs(n));
+  if (num === 0) return "Zero";
+
+  // Split into groups: last 3 digits, then pairs
+  const groups: number[] = [];
+  let remaining = num;
+  groups.push(remaining % 1000);
+  remaining = Math.floor(remaining / 1000);
+  while (remaining > 0) {
+    groups.push(remaining % 100);
+    remaining = Math.floor(remaining / 100);
+  }
+
+  function groupToWords(g: number): string {
+    if (g === 0) return "";
+    if (g < 20) return ones[g];
+    if (g < 100) return tens[Math.floor(g / 10)] + (g % 10 ? " " + ones[g % 10] : "");
+    return ones[Math.floor(g / 100)] + " Hundred" + (g % 100 ? " " + groupToWords(g % 100) : "");
+  }
+
+  const parts: string[] = [];
+  for (let i = groups.length - 1; i >= 0; i--) {
+    if (groups[i] > 0) {
+      parts.push(groupToWords(groups[i]) + (scales[i] ? " " + scales[i] : ""));
+    }
+  }
+  return parts.join(" ") + " Taka Only";
+}
+
 /* ════════════════════════════════════════════════════════════════════
-   INVOICE PDF
+   MONEY RECEIPT PDF — Matches uploaded format
    ════════════════════════════════════════════════════════════════════ */
 
-interface InvoiceData {
+export interface MoneyReceiptData {
+  receiptNo?: string;
+  customerName: string;
+  customerPhone?: string;
+  customerAddress?: string;
+  items: Array<{
+    description: string;
+    pax: number;
+    unitPrice: number;
+    totalPrice: number;
+  }>;
+  totalAmount: number;
+  due: number;
+  discount: number;
+  grandTotal: number;
+  receivedBy?: string;
+  date: string;
+}
+
+export async function generateMoneyReceiptPDF(data: MoneyReceiptData) {
+  const doc = new jsPDF();
+  const w = doc.internal.pageSize.getWidth();
+  const logo = await loadLogoBase64();
+
+  let y = drawCompanyHeader(doc, logo, w);
+  y += 4;
+
+  // Title
+  doc.setFillColor(30, 30, 30);
+  doc.rect(20, y, w - 40, 10, "F");
+  doc.setTextColor(255);
+  doc.setFontSize(13);
+  doc.setFont("helvetica", "bold");
+  doc.text("Money Receipt", w / 2, y + 7, { align: "center" });
+  y += 16;
+
+  // Receipt for section
+  doc.setTextColor(100);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text("Receipt for-", 20, y);
+  y += 6;
+
+  doc.setTextColor(0);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text(data.customerName, 20, y);
+  y += 6;
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(80);
+  if (data.customerPhone) { doc.text(data.customerPhone, 20, y); y += 5; }
+  if (data.customerAddress) { doc.text(data.customerAddress, 20, y); y += 5; }
+
+  // Receipt no on right
+  if (data.receiptNo) {
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text(`Receipt #: ${data.receiptNo}`, w - 20, y - 16, { align: "right" });
+  }
+  doc.text(`Date: ${data.date}`, w - 20, y - 11, { align: "right" });
+
+  y += 6;
+
+  // Table header
+  const cols = [20, 30, w - 100, w - 70, w - 40, w - 20];
+  doc.setFillColor(240, 240, 240);
+  doc.rect(20, y - 4, w - 40, 8, "F");
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(60);
+  doc.text("No", 25, y + 1);
+  doc.text("Description", 35, y + 1);
+  doc.text("Pax", w - 95, y + 1, { align: "center" });
+  doc.text("Unit Price", w - 65, y + 1, { align: "right" });
+  doc.text("Total Price", w - 25, y + 1, { align: "right" });
+  y += 8;
+
+  // Table rows
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(0);
+  doc.setFontSize(9);
+
+  data.items.forEach((item, i) => {
+    const rowY = y + 1;
+    doc.text(String(i + 1).padStart(2, "0"), 25, rowY);
+    doc.text(item.description, 35, rowY, { maxWidth: w - 140 });
+    doc.text(String(item.pax), w - 95, rowY, { align: "center" });
+    doc.text(`${item.unitPrice.toLocaleString()}৳`, w - 65, rowY, { align: "right" });
+    doc.text(`${item.totalPrice.toLocaleString()}৳`, w - 25, rowY, { align: "right" });
+    y += 7;
+    doc.setDrawColor(230);
+    doc.line(20, y - 2, w - 20, y - 2);
+  });
+
+  // Fill empty rows to match format (up to 3 rows)
+  const emptyRows = Math.max(0, 3 - data.items.length);
+  for (let i = 0; i < emptyRows; i++) {
+    doc.text(String(data.items.length + i + 1).padStart(2, "0"), 25, y + 1);
+    y += 7;
+    doc.setDrawColor(230);
+    doc.line(20, y - 2, w - 20, y - 2);
+  }
+
+  y += 4;
+
+  // Totals
+  const totalsX = w - 80;
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(0);
+
+  doc.text("Total Fair:", totalsX, y);
+  doc.text(`${data.totalAmount.toLocaleString()}৳`, w - 25, y, { align: "right" });
+  y += 6;
+
+  doc.text("Due:", totalsX, y);
+  doc.text(`${data.due.toLocaleString()}৳`, w - 25, y, { align: "right" });
+  y += 6;
+
+  doc.text("Adjustment/Discount:", totalsX, y);
+  doc.text(`${data.discount.toLocaleString()}৳`, w - 25, y, { align: "right" });
+  y += 8;
+
+  // Grand total in words
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("In Words: Grand Total", 20, y);
+  doc.text(`${data.grandTotal.toLocaleString()}৳`, w - 25, y, { align: "right" });
+  y += 6;
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(8);
+  doc.setTextColor(80);
+  doc.text(numberToWords(data.grandTotal), 20, y);
+  y += 8;
+
+  // Received with gratitude line
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(60);
+  const gratitudeText = `Received with gratitude from ${data.customerName}, the amount of ${numberToWords(data.grandTotal)} (BDT ${data.grandTotal.toLocaleString()}/-) towards ${data.items.map(i => i.description).join(", ")}.`;
+  doc.text(gratitudeText, 20, y, { maxWidth: w - 40 });
+  y += 16;
+
+  // Signature line
+  doc.setTextColor(0);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  if (data.receivedBy) {
+    doc.text(data.receivedBy, w - 60, y);
+    y += 5;
+  }
+  doc.text(data.date, w - 60, y);
+  y += 3;
+  doc.setDrawColor(0);
+  doc.line(w - 80, y, w - 20, y);
+  y += 4;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(100);
+  doc.text("Signature & Date", w - 60, y);
+
+  // QR Code (bottom-left)
+  const qrText = `SevenTrip Receipt | ${data.receiptNo || "N/A"} | ${data.customerName} | BDT ${data.grandTotal} | ${data.date}`;
+  const qr = await generateQRDataUrl(qrText);
+  if (qr) {
+    try { doc.addImage(qr, "PNG", 20, y - 20, 25, 25); } catch { /* skip */ }
+  }
+
+  // Footer
+  y += 15;
+  doc.setFontSize(6);
+  doc.setTextColor(150);
+  doc.text(`${COMPANY.name} — A concern of ${COMPANY.parent} | ${COMPANY.website} | ${COMPANY.phone}`, w / 2, y, { align: "center" });
+
+  doc.save(`MoneyReceipt-${data.receiptNo || "receipt"}.pdf`);
+}
+
+export async function printMoneyReceiptPDF(data: MoneyReceiptData) {
+  // Generate same as above but open for printing
+  await generateMoneyReceiptPDF(data);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   INVOICE PDF — Matches uploaded format with QR
+   ════════════════════════════════════════════════════════════════════ */
+
+export interface InvoiceLineItem {
+  name: string;
+  description?: string;
+  quantity?: number;
+  unitPrice: number;
+  totalPrice: number;
+  extra?: Record<string, string | number>;
+}
+
+export interface InvoiceData {
   invoiceNo: string;
   date: string;
   customerName: string;
   customerEmail: string;
+  customerPhone?: string;
+  customerAddress?: string;
   bookingRef: string;
   subtotal: number;
   tax: number;
@@ -71,204 +348,219 @@ interface InvoiceData {
   amount: number;
   status: string;
   serviceType?: string;
+  lineItems?: InvoiceLineItem[];
 }
 
-export async function generateInvoicePDF(inv: InvoiceData) {
+async function buildInvoiceDoc(inv: InvoiceData): Promise<jsPDF> {
   const doc = new jsPDF();
   const w = doc.internal.pageSize.getWidth();
   const logo = await loadLogoBase64();
 
-  addLogo(doc, logo, 20, 12, 10);
-  const textStartY = logo ? 28 : 25;
+  let y = drawCompanyHeader(doc, logo, w);
+  y += 2;
 
-  doc.setFontSize(logo ? 10 : 22);
-  doc.setFont("helvetica", "bold");
-  if (!logo) doc.text("Seven Trip", 20, 25);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100);
-  doc.text("Seven Trip Bangladesh Ltd", 20, textStartY + 4);
-  doc.text("Dhaka, Bangladesh | support@seventrip.com.bd", 20, textStartY + 9);
-
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(0);
-  doc.text(inv.invoiceNo, w - 20, 25, { align: "right" });
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100);
-  doc.text(`Date: ${inv.date}`, w - 20, 32, { align: "right" });
-  doc.text(`Status: ${inv.status}`, w - 20, 37, { align: "right" });
-
-  doc.setDrawColor(200);
-  doc.line(20, 44, w - 20, 44);
-
-  doc.setFontSize(9);
-  doc.setTextColor(100);
-  doc.text("BILL TO", 20, 54);
-  doc.setFontSize(11);
-  doc.setTextColor(0);
-  doc.setFont("helvetica", "bold");
-  doc.text(inv.customerName, 20, 61);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(100);
-  doc.text(inv.customerEmail, 20, 67);
-
-  doc.setTextColor(100);
-  doc.text("BOOKING REFERENCE", w / 2, 54);
-  doc.setFontSize(11);
-  doc.setTextColor(0);
-  doc.setFont("helvetica", "bold");
-  doc.text(inv.bookingRef, w / 2, 61);
-  if (inv.serviceType) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(100);
-    doc.text(inv.serviceType.charAt(0).toUpperCase() + inv.serviceType.slice(1), w / 2, 67);
-  }
-
-  const tableY = 82;
-  doc.setFillColor(245, 245, 245);
-  doc.rect(20, tableY - 5, w - 40, 10, "F");
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(80);
-  doc.text("Description", 25, tableY + 1);
-  doc.text("Amount", w - 25, tableY + 1, { align: "right" });
-
-  let y = tableY + 14;
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(0);
-  doc.setFontSize(10);
-
-  doc.text("Subtotal", 25, y);
-  doc.text(`BDT ${inv.subtotal?.toLocaleString()}`, w - 25, y, { align: "right" });
-  y += 10;
-
-  if (inv.tax > 0) {
-    doc.text("Tax (5%)", 25, y);
-    doc.text(`BDT ${inv.tax?.toLocaleString()}`, w - 25, y, { align: "right" });
-    y += 10;
-  }
-
-  if (inv.discount > 0) {
-    doc.setTextColor(0, 150, 0);
-    doc.text("Discount", 25, y);
-    doc.text(`-BDT ${inv.discount?.toLocaleString()}`, w - 25, y, { align: "right" });
-    doc.setTextColor(0);
-    y += 10;
-  }
-
-  doc.setDrawColor(200);
-  doc.line(20, y, w - 20, y);
-  y += 8;
+  // Title bar
+  doc.setFillColor(30, 30, 30);
+  doc.rect(20, y, w - 40, 10, "F");
+  doc.setTextColor(255);
   doc.setFontSize(13);
   doc.setFont("helvetica", "bold");
-  doc.text("Total", 25, y);
-  doc.text(`BDT ${inv.amount?.toLocaleString()}`, w - 25, y, { align: "right" });
+  doc.text("Invoice", w / 2, y + 7, { align: "center" });
+  y += 16;
 
-  y += 25;
+  // Invoice for (left) + Invoice details (right)
+  doc.setTextColor(100);
   doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("Invoice for", 20, y);
+  doc.text("Invoice Details", w - 70, y);
+  y += 6;
+
+  doc.setTextColor(0);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text(inv.customerName, 20, y);
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text(`# ${inv.invoiceNo}`, w - 70, y);
+  y += 5;
+
+  doc.setTextColor(80);
+  doc.setFontSize(8);
+  if (inv.customerPhone) { doc.text(inv.customerPhone, 20, y); }
+  doc.text(`Submitted on ${inv.date}`, w - 70, y);
+  y += 5;
+  if (inv.customerEmail) { doc.text(inv.customerEmail, 20, y); y += 5; }
+  if (inv.customerAddress) { doc.text(inv.customerAddress, 20, y); y += 5; }
+  y += 4;
+
+  // Line items table
+  if (inv.lineItems && inv.lineItems.length > 0) {
+    // Determine columns from first item's extra keys
+    const extraKeys = inv.lineItems[0]?.extra ? Object.keys(inv.lineItems[0].extra) : [];
+
+    // Header
+    doc.setFillColor(240, 240, 240);
+    doc.rect(15, y - 4, w - 30, 8, "F");
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(60);
+
+    let cx = 18;
+    doc.text("No.", cx, y + 1); cx += 10;
+    doc.text("Name", cx, y + 1); cx += 45;
+    extraKeys.forEach(k => {
+      doc.text(k, cx, y + 1); cx += 22;
+    });
+    doc.text("Total Price", w - 20, y + 1, { align: "right" });
+    y += 8;
+
+    // Rows
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(0);
+
+    let pageItemCount = 0;
+    inv.lineItems.forEach((item, i) => {
+      if (y > 265) {
+        doc.addPage();
+        y = 20;
+        // Repeat header
+        doc.setFillColor(240, 240, 240);
+        doc.rect(15, y - 4, w - 30, 8, "F");
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(60);
+        let hx = 18;
+        doc.text("No.", hx, y + 1); hx += 10;
+        doc.text("Name", hx, y + 1); hx += 45;
+        extraKeys.forEach(k => { doc.text(k, hx, y + 1); hx += 22; });
+        doc.text("Total Price", w - 20, y + 1, { align: "right" });
+        y += 8;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(0);
+      }
+
+      let rx = 18;
+      doc.text(String(i + 1).padStart(2, "0"), rx, y + 1); rx += 10;
+      doc.text(item.name.substring(0, 28), rx, y + 1); rx += 45;
+      extraKeys.forEach(k => {
+        const val = item.extra?.[k];
+        doc.text(String(val ?? ""), rx, y + 1); rx += 22;
+      });
+      doc.text(`${item.totalPrice.toLocaleString()}৳`, w - 20, y + 1, { align: "right" });
+      y += 6;
+      doc.setDrawColor(235);
+      doc.line(15, y - 2, w - 15, y - 2);
+      pageItemCount++;
+    });
+  } else {
+    // Simple table (legacy)
+    doc.setFillColor(245, 245, 245);
+    doc.rect(20, y - 4, w - 40, 8, "F");
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(80);
+    doc.text("Description", 25, y + 1);
+    doc.text("Amount", w - 25, y + 1, { align: "right" });
+    y += 10;
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(0);
+    doc.setFontSize(10);
+
+    doc.text("Subtotal", 25, y);
+    doc.text(`BDT ${inv.subtotal?.toLocaleString()}`, w - 25, y, { align: "right" });
+    y += 8;
+
+    if (inv.tax > 0) {
+      doc.text("Tax", 25, y);
+      doc.text(`BDT ${inv.tax?.toLocaleString()}`, w - 25, y, { align: "right" });
+      y += 8;
+    }
+
+    if (inv.discount > 0) {
+      doc.setTextColor(0, 150, 0);
+      doc.text("Discount", 25, y);
+      doc.text(`-BDT ${inv.discount?.toLocaleString()}`, w - 25, y, { align: "right" });
+      doc.setTextColor(0);
+      y += 8;
+    }
+  }
+
+  // Totals
+  y += 4;
+  doc.setDrawColor(180);
+  doc.line(w - 90, y, w - 20, y);
+  y += 7;
+
+  const totalsX = w - 85;
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(0);
+
+  if (inv.lineItems && inv.lineItems.length > 0) {
+    doc.text("Subtotal:", totalsX, y);
+    doc.text(`${inv.subtotal.toLocaleString()}৳`, w - 22, y, { align: "right" });
+    y += 6;
+    if (inv.tax > 0) {
+      doc.text("Tax:", totalsX, y);
+      doc.text(`${inv.tax.toLocaleString()}৳`, w - 22, y, { align: "right" });
+      y += 6;
+    }
+    if (inv.discount > 0) {
+      doc.setTextColor(0, 130, 0);
+      doc.text("Discount:", totalsX, y);
+      doc.text(`-${inv.discount.toLocaleString()}৳`, w - 22, y, { align: "right" });
+      doc.setTextColor(0);
+      y += 6;
+    }
+  }
+
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.text("Grand Total:", totalsX, y);
+  doc.text(`${inv.amount.toLocaleString()}৳`, w - 22, y, { align: "right" });
+  y += 6;
+
+  // In words
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "italic");
+  doc.setTextColor(100);
+  doc.text(numberToWords(inv.amount), totalsX, y);
+
+  // QR Code
+  const qrText = `SevenTrip Invoice | ${inv.invoiceNo} | ${inv.customerName} | BDT ${inv.amount} | ${inv.date}`;
+  const qr = await generateQRDataUrl(qrText);
+  if (qr) {
+    try { doc.addImage(qr, "PNG", 20, y - 18, 25, 25); } catch { /* skip */ }
+  }
+
+  y += 16;
+
+  // Footer
+  doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(150);
-  doc.text("Thank you for choosing Seven Trip. For queries, contact support@seventrip.com.bd", w / 2, y, { align: "center" });
-  doc.text("This is a computer-generated invoice and does not require a signature.", w / 2, y + 6, { align: "center" });
+  doc.text(`Thank you for choosing ${COMPANY.name}. For queries, contact ${COMPANY.email}`, w / 2, y, { align: "center" });
+  y += 5;
+  doc.text("This is a computer-generated invoice and does not require a signature.", w / 2, y, { align: "center" });
+  y += 4;
+  doc.setFontSize(6);
+  doc.text(`${COMPANY.name} — A concern of ${COMPANY.parent} | ${COMPANY.website} | ${COMPANY.phone}`, w / 2, y, { align: "center" });
 
+  return doc;
+}
+
+export async function generateInvoicePDF(inv: InvoiceData) {
+  const doc = await buildInvoiceDoc(inv);
   doc.save(`${inv.invoiceNo}.pdf`);
 }
 
 export async function printInvoicePDF(inv: InvoiceData) {
-  const doc = new jsPDF();
-  const w = doc.internal.pageSize.getWidth();
-  const logo = await loadLogoBase64();
-
-  addLogo(doc, logo, 20, 12, 10);
-  const textStartY = logo ? 28 : 25;
-
-  doc.setFontSize(logo ? 10 : 22);
-  doc.setFont("helvetica", "bold");
-  if (!logo) doc.text("Seven Trip", 20, 25);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100);
-  doc.text("Seven Trip Bangladesh Ltd", 20, textStartY + 4);
-  doc.text("Dhaka, Bangladesh | support@seventrip.com.bd", 20, textStartY + 9);
-
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(0);
-  doc.text(inv.invoiceNo, w - 20, 25, { align: "right" });
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100);
-  doc.text(`Date: ${inv.date}`, w - 20, 32, { align: "right" });
-  doc.text(`Status: ${inv.status}`, w - 20, 37, { align: "right" });
-
-  doc.setDrawColor(200);
-  doc.line(20, 44, w - 20, 44);
-
-  doc.setFontSize(9);
-  doc.setTextColor(100);
-  doc.text("BILL TO", 20, 54);
-  doc.setFontSize(11);
-  doc.setTextColor(0);
-  doc.setFont("helvetica", "bold");
-  doc.text(inv.customerName, 20, 61);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(100);
-  doc.text(inv.customerEmail, 20, 67);
-
-  doc.setTextColor(100);
-  doc.text("BOOKING REFERENCE", w / 2, 54);
-  doc.setFontSize(11);
-  doc.setTextColor(0);
-  doc.setFont("helvetica", "bold");
-  doc.text(inv.bookingRef, w / 2, 61);
-
-  const tableY = 82;
-  doc.setFillColor(245, 245, 245);
-  doc.rect(20, tableY - 5, w - 40, 10, "F");
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(80);
-  doc.text("Description", 25, tableY + 1);
-  doc.text("Amount", w - 25, tableY + 1, { align: "right" });
-
-  let y = tableY + 14;
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(0);
-  doc.setFontSize(10);
-  doc.text("Subtotal", 25, y);
-  doc.text(`BDT ${inv.subtotal?.toLocaleString()}`, w - 25, y, { align: "right" });
-  y += 10;
-  if (inv.tax > 0) {
-    doc.text("Tax (5%)", 25, y);
-    doc.text(`BDT ${inv.tax?.toLocaleString()}`, w - 25, y, { align: "right" });
-    y += 10;
-  }
-  if (inv.discount > 0) {
-    doc.setTextColor(0, 150, 0);
-    doc.text("Discount", 25, y);
-    doc.text(`-BDT ${inv.discount?.toLocaleString()}`, w - 25, y, { align: "right" });
-    doc.setTextColor(0);
-    y += 10;
-  }
-  doc.setDrawColor(200);
-  doc.line(20, y, w - 20, y);
-  y += 8;
-  doc.setFontSize(13);
-  doc.setFont("helvetica", "bold");
-  doc.text("Total", 25, y);
-  doc.text(`BDT ${inv.amount?.toLocaleString()}`, w - 25, y, { align: "right" });
-
-  y += 25;
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(150);
-  doc.text("Thank you for choosing Seven Trip.", w / 2, y, { align: "center" });
-
+  const doc = await buildInvoiceDoc(inv);
   const pdfBlob = doc.output("blob");
   const url = URL.createObjectURL(pdfBlob);
   const printWindow = window.open(url);
@@ -279,7 +571,6 @@ export async function printInvoicePDF(inv: InvoiceData) {
 
 /* ════════════════════════════════════════════════════════════════════
    ENTERPRISE E-TICKET / TRAVEL ITINERARY PDF
-   Based on professional airline ticket format (like the sample)
    ════════════════════════════════════════════════════════════════════ */
 
 interface FlightSegment {
@@ -313,7 +604,6 @@ interface PassengerInfo {
 }
 
 interface TicketData {
-  // Legacy compat
   id?: string;
   airline?: string;
   flightNo?: string;
@@ -325,7 +615,6 @@ interface TicketData {
   pnr?: string;
   seat?: string;
   class?: string;
-  // Enterprise fields
   bookingRef?: string;
   airlineReservationCode?: string;
   isRoundTrip?: boolean;
@@ -357,10 +646,9 @@ async function drawFlightSegment(
   airlineLogo: string | null,
   direction: string,
 ): Promise<number> {
-  const lm = 15; // left margin
+  const lm = 15;
   const boxW = pageW - 30;
 
-  // Direction header
   drawFilledBox(doc, lm, y, boxW, 8, 50, 50, 50);
   doc.setTextColor(255);
   doc.setFontSize(8);
@@ -371,17 +659,14 @@ async function drawFlightSegment(
   doc.text("Please verify flight times prior to departure", lm + 80, y + 5.5);
   y += 12;
 
-  // Main segment box
   const segBoxH = 55;
   drawBox(doc, lm, y, boxW, segBoxH);
 
-  // Airline column (left ~40%)
   const col1W = 50;
   doc.setTextColor(0);
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
 
-  // Airline logo
   if (airlineLogo) {
     try { doc.addImage(airlineLogo, "PNG", lm + 3, y + 3, 12, 12); } catch { /* skip */ }
   }
@@ -407,7 +692,6 @@ async function drawFlightSegment(
   doc.setTextColor(80);
   doc.setFont("helvetica", "normal");
 
-  // Origin column (middle left ~25%)
   const col2X = lm + col1W + 2;
   doc.setDrawColor(200);
   doc.line(col2X - 2, y + 1, col2X - 2, y + segBoxH - 1);
@@ -421,7 +705,6 @@ async function drawFlightSegment(
   doc.setTextColor(80);
   doc.text(seg.originCity?.toUpperCase() || "", col2X + 4, y + 17);
 
-  // Arrow
   doc.setTextColor(0);
   doc.setFontSize(10);
   doc.text("▶", col2X + 35, y + 12);
@@ -442,7 +725,6 @@ async function drawFlightSegment(
     doc.text(seg.terminal, col2X + 4, y + 46);
   }
 
-  // Destination column (middle right ~25%)
   const col3X = col2X + 48;
   doc.setDrawColor(200);
   doc.line(col3X - 2, y + 1, col3X - 2, y + segBoxH - 1);
@@ -471,7 +753,6 @@ async function drawFlightSegment(
     doc.text(seg.arrivalTerminal, col3X + 4, y + 46);
   }
 
-  // Details column (right ~15%)
   const col4X = col3X + 48;
   doc.setDrawColor(200);
   doc.line(col4X - 2, y + 1, col4X - 2, y + segBoxH - 1);
@@ -494,7 +775,6 @@ async function drawFlightSegment(
   doc.text(seg.baggage || "20kg", col4X + 2, detY + 5);
 
   y += segBoxH + 2;
-
   return y;
 }
 
@@ -504,11 +784,9 @@ export async function generateTicketPDF(ticket: TicketData) {
   const logo = await loadLogoBase64();
   const lm = 15;
 
-  // ─── Build segments from ticket data ───
   const outboundSegments: FlightSegment[] = ticket.outbound || [];
   const returnSegments: FlightSegment[] = ticket.returnSegments || [];
 
-  // Legacy single-flight fallback
   if (outboundSegments.length === 0 && ticket.from) {
     outboundSegments.push({
       airline: ticket.airline || "Seven Trip",
@@ -533,31 +811,27 @@ export async function generateTicketPDF(ticket: TicketData) {
   const departDate = ticket.date || (outboundSegments[0]?.departureTime ? new Date(outboundSegments[0].departureTime).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" }) : "");
   const destCity = outboundSegments[outboundSegments.length - 1]?.destinationCity || outboundSegments[outboundSegments.length - 1]?.destination || ticket.to || "";
 
-  // ─── HEADER BAR ───
+  // HEADER BAR
   drawFilledBox(doc, 0, 0, w, 22, 30, 30, 30);
-
-  // Logo
   if (logo) {
     try { doc.addImage(logo, "PNG", lm, 3, 40, 10); } catch { /* skip */ }
   } else {
     doc.setTextColor(255);
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
-    doc.text("Seven Trip", lm, 14);
+    doc.text(COMPANY.name, lm, 14);
   }
 
-  // Title
   doc.setTextColor(255);
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.text(`${departDate}  ▸  TRIP TO ${destCity.toUpperCase()}`, lm + (logo ? 45 : 52), 9);
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
-  doc.text("Seven Trip Bangladesh Ltd | www.seventrip.com.bd | +880 1234-567890", lm + (logo ? 45 : 52), 16);
+  doc.text(`${COMPANY.parent} | ${COMPANY.website} | ${COMPANY.phone}`, lm + (logo ? 45 : 52), 16);
 
   let y = 28;
 
-  // ─── PREPARED FOR + RESERVATION CODE ───
   doc.setTextColor(100);
   doc.setFontSize(8);
   doc.text("PREPARED FOR", lm, y);
@@ -570,7 +844,6 @@ export async function generateTicketPDF(ticket: TicketData) {
     y += 6;
   });
 
-  // Reservation codes (right side)
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100);
@@ -596,15 +869,12 @@ export async function generateTicketPDF(ticket: TicketData) {
   doc.line(lm, y, w - lm, y);
   y += 6;
 
-  // ─── FLIGHT SEGMENTS ───
-  // Load airline logo
   const firstCode = outboundSegments[0]?.airlineCode || "";
   let airlineLogo: string | null = null;
   if (firstCode) {
     airlineLogo = await loadImageBase64(`https://images.kiwi.com/airlines/64/${firstCode}.png`);
   }
 
-  // Outbound segments
   const outDate = outboundSegments[0]?.departureTime
     ? new Date(outboundSegments[0].departureTime).toLocaleDateString("en-US", { weekday: "long", day: "2-digit", month: "short" }).toUpperCase()
     : departDate.toUpperCase();
@@ -612,7 +882,6 @@ export async function generateTicketPDF(ticket: TicketData) {
   for (const seg of outboundSegments) {
     y = await drawFlightSegment(doc, seg, y, w, airlineLogo, outDate);
 
-    // Passenger box after each segment
     drawFilledBox(doc, lm, y, w - 30, 6, 230, 230, 230);
     doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
@@ -634,13 +903,11 @@ export async function generateTicketPDF(ticket: TicketData) {
     y += 4;
   }
 
-  // Return segments
   if (returnSegments.length > 0) {
     const retDate = returnSegments[0]?.departureTime
       ? new Date(returnSegments[0].departureTime).toLocaleDateString("en-US", { weekday: "long", day: "2-digit", month: "short" }).toUpperCase()
       : "";
 
-    // Load return airline logo if different
     const retCode = returnSegments[0]?.airlineCode || firstCode;
     let retLogo = airlineLogo;
     if (retCode && retCode !== firstCode) {
@@ -648,11 +915,7 @@ export async function generateTicketPDF(ticket: TicketData) {
     }
 
     for (const seg of returnSegments) {
-      // Check if we need a new page
-      if (y > 240) {
-        doc.addPage();
-        y = 15;
-      }
+      if (y > 240) { doc.addPage(); y = 15; }
 
       y = await drawFlightSegment(doc, seg, y, w, retLogo, retDate);
 
@@ -678,7 +941,7 @@ export async function generateTicketPDF(ticket: TicketData) {
     }
   }
 
-  // ─── FOOTER ───
+  // FOOTER
   if (y > 260) { doc.addPage(); y = 15; }
   y += 4;
   drawFilledBox(doc, lm, y, w - 30, 18, 240, 240, 240);
@@ -688,22 +951,19 @@ export async function generateTicketPDF(ticket: TicketData) {
   doc.text("TRAVEL CONSULTANT", lm + 4, y + 6);
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
-  doc.text("Seven Trip Bangladesh Ltd", lm + 4, y + 11);
-  doc.text("support@seventrip.com.bd | +880 1234-567890", lm + 4, y + 15);
+  doc.text(`${COMPANY.parent} (${COMPANY.name})`, lm + 4, y + 11);
+  doc.text(`${COMPANY.email} | ${COMPANY.phone}`, lm + 4, y + 15);
 
   doc.setTextColor(100);
   doc.setFontSize(6);
   doc.text("This is a computer-generated travel itinerary. Please arrive at the airport at least 2 hours before departure for domestic and 3 hours for international flights.", w / 2, y + 24, { align: "center" });
-  doc.text("Powered by Seven Trip — www.seventrip.com.bd", w / 2, y + 28, { align: "center" });
+  doc.text(`Powered by ${COMPANY.name} — ${COMPANY.website}`, w / 2, y + 28, { align: "center" });
 
   doc.save(`E-Ticket-${bookingRef}.pdf`);
 }
 
 export async function printTicketPDF(ticket: TicketData) {
-  // Reuse generateTicketPDF logic but output to print
   const doc = new jsPDF();
-  // Same generation as generateTicketPDF but output as blob for printing
-  // For simplicity, generate and open in new window
   const w = doc.internal.pageSize.getWidth();
   const logo = await loadLogoBase64();
   const lm = 15;
@@ -742,7 +1002,7 @@ export async function printTicketPDF(ticket: TicketData) {
   doc.text("TRAVEL ITINERARY", w - lm, 12, { align: "right" });
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
-  doc.text("Seven Trip Bangladesh Ltd", w - lm, 18, { align: "right" });
+  doc.text(`${COMPANY.parent} (${COMPANY.name})`, w - lm, 18, { align: "right" });
 
   let y = 30;
   doc.setTextColor(0);
