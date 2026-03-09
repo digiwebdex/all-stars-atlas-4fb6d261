@@ -52,7 +52,7 @@ const Footer = React.forwardRef<HTMLElement>((_, ref) => {
               <img src="/images/seven-trip-logo.png" alt="Seven Trip" className="h-12 w-auto brightness-0 invert drop-shadow-[0_0_12px_rgba(29,106,229,0.5)]" />
             </Link>
             <p className="text-[13px] sm:text-sm text-white/45 leading-relaxed max-w-sm">
-              Bangladesh's most trusted travel platform. Book flights, hotels, visa & holidays with best prices, instant confirmation, and 24/7 customer support.
+              A concern of Evan International. Bangladesh's most trusted travel platform. Book flights, hotels, visa & holidays with best prices, instant confirmation, and 24/7 customer support.
             </p>
             <div className="flex gap-2">
               {[
