@@ -4,6 +4,31 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [2.4.0] — 2026-03-09 — Complete Data Flow Audit & Mandatory Validations
+
+### Fixed — Search Validation (ALL services now require dates)
+- **Holiday Search** — Now requires travel date before searching. Shows toast error if missing.
+- **Visa Search** — Now requires both travel date AND return date. Shows toast error if missing.
+- **Medical Search** — Now requires travel date for appointment. Shows toast error if missing.
+- **eSIM Search** — Now requires activation date. Shows toast error if missing.
+- **Recharge** — Now validates operator, phone number, and amount before navigating.
+- **Pay Bill** — Now validates category, biller, account number, and amount before navigating.
+
+### Fixed — Results Pages (ALL read URL params + show "No Criteria" guard)
+- **HolidayPackages** — Now reads `destination` and `date` from URL. Shows "No Search Criteria" empty state when params missing. Displays destination and date in hero.
+- **CarRental** — Now reads `pickupDate` and `dropoffDate` from URL. Shows "No Search Criteria" when dates missing. Passes dates to API. Book buttons include date params in link.
+- **MedicalServices** — Now reads `country`, `treatment`, and `date` from URL. Shows "No Search Criteria" when date missing. Passes date to enquiry links.
+- **ESIMPlans** — Now reads `country` and `activation` from URL. Shows "No Search Criteria" when activation date missing. Passes activation date to purchase links.
+- **VisaServices** — Now reads `country`, `type`, `date`, `return`, and `travellers` from URL. Shows "No Search Criteria" when travel date missing. Passes all params to Apply Now links. Filters countries by URL country if provided.
+
+### Fixed — Data Flow Continuity
+- All search handlers in SearchWidget now pass dates in URL params.
+- All results pages now read those dates and pass them to the API.
+- All "Book Now" / "Apply Now" / "Enquire" buttons pass full context (dates, IDs, locations) to booking pages.
+- Booking pages pass complete data to BookingConfirmation via `location.state`.
+
+---
+
 ## [2.3.0] — 2026-03-09 — Critical Logic Fixes & Enterprise Flight Cards
 
 ### Fixed

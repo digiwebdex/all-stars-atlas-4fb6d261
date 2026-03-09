@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Globe, FileText, Clock, CheckCircle2, ArrowRight, Search,
-  Shield, Headphones, Star, Users, Upload
+  Shield, Headphones, Star, Users, Upload, Calendar
 } from "lucide-react";
 import { useState } from "react";
 import { useCmsPageContent } from "@/hooks/useCmsContent";
@@ -14,10 +14,18 @@ import { useCmsPageContent } from "@/hooks/useCmsContent";
 const iconMap: Record<string, any> = { Globe, FileText, Clock, CheckCircle2, Shield, Headphones, Star, Users, Upload };
 
 const VisaServices = () => {
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const { data: page, isLoading } = useCmsPageContent("/visa");
   const listing = page?.listingConfig;
+
+  const urlCountry = searchParams.get("country") || "";
+  const urlType = searchParams.get("type") || "";
+  const travelDate = searchParams.get("date") || "";
+  const returnDate = searchParams.get("return") || "";
+  const travellers = searchParams.get("travellers") || "1";
+  const hasRequiredParams = !!travelDate;
 
   const countries = listing?.visaCountries || [];
   const steps = listing?.visaSteps || [];
@@ -25,6 +33,7 @@ const VisaServices = () => {
 
   const filtered = countries.filter(c => {
     if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (urlCountry && !c.name.toLowerCase().includes(urlCountry.toLowerCase())) return false;
     if (filter === "popular" && !c.popular) return false;
     return true;
   });
@@ -55,9 +64,10 @@ const VisaServices = () => {
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">
               {page?.hero.title}
             </h1>
-            <p className="text-white/65 text-sm sm:text-base mb-8 max-w-lg mx-auto">
+            <p className="text-white/65 text-sm sm:text-base mb-2 max-w-lg mx-auto">
               {page?.hero.subtitle}
             </p>
+            {travelDate && <p className="text-white/50 text-xs mb-6">Travel: {travelDate}{returnDate ? ` → ${returnDate}` : ""} • {travellers} traveller(s)</p>}
             <div className="relative max-w-md mx-auto">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
@@ -71,6 +81,19 @@ const VisaServices = () => {
         </div>
       </section>
 
+      {!hasRequiredParams ? (
+        <section className="py-10 sm:py-14">
+          <div className="container mx-auto px-4">
+            <Card><CardContent className="py-16 text-center">
+              <Globe className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+              <h2 className="text-lg font-bold mb-2">No Search Criteria</h2>
+              <p className="text-muted-foreground mb-4">Please use the search widget to search for visa services with travel and return dates.</p>
+              <Button asChild><Link to="/">Search Visa Services</Link></Button>
+            </CardContent></Card>
+          </div>
+        </section>
+      ) : (
+      <>
       {/* How it works */}
       {steps.length > 0 && (
         <section className="bg-card border-b border-border">
@@ -136,7 +159,7 @@ const VisaServices = () => {
                     </div>
                   </div>
                   <Button className="w-full font-semibold group-hover:shadow-lg transition-shadow" size="sm" asChild>
-                    <Link to={`/visa/apply?country=${encodeURIComponent(country.name)}&type=${encodeURIComponent(country.type)}`}>
+                    <Link to={`/visa/apply?country=${encodeURIComponent(country.name)}&type=${encodeURIComponent(country.type)}&date=${travelDate}&return=${returnDate}&travellers=${travellers}`}>
                       Apply Now <ArrowRight className="w-4 h-4 ml-1" />
                     </Link>
                   </Button>
@@ -146,6 +169,8 @@ const VisaServices = () => {
           </div>
         </div>
       </section>
+      </>
+      )}
 
       {/* Trust Features */}
       {features.length > 0 && (

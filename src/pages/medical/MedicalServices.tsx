@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Stethoscope, MapPin, Star, ArrowRight, Heart, Shield } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Stethoscope, MapPin, Star, ArrowRight, Heart, Shield, Calendar } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useMedicalHospitals } from "@/hooks/useApiData";
 import { useCmsPageContent } from "@/hooks/useCmsContent";
 import DataLoader from "@/components/DataLoader";
@@ -21,13 +21,26 @@ const toggleWishlistItem = (id: string): boolean => {
 
 const MedicalServices = () => {
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [wishlistedIds, setWishlistedIds] = useState<string[]>(getWishlist);
-  const [country, setCountry] = useState("all");
-  const [treatment, setTreatment] = useState("all");
   const { data: page } = useCmsPageContent("/medical");
   const listing = page?.listingConfig;
 
-  const { data: rawData, isLoading, error, refetch } = useMedicalHospitals({ country: country !== "all" ? country : undefined, treatment: treatment !== "all" ? treatment : undefined });
+  const urlCountry = searchParams.get("country") || "";
+  const urlTreatment = searchParams.get("treatment") || "";
+  const medicalDate = searchParams.get("date") || "";
+  const hasRequiredParams = !!medicalDate;
+
+  const [country, setCountry] = useState(urlCountry || "all");
+  const [treatment, setTreatment] = useState(urlTreatment || "all");
+
+  const params = hasRequiredParams ? {
+    country: country !== "all" ? country : undefined,
+    treatment: treatment !== "all" ? treatment : undefined,
+    date: medicalDate,
+  } : undefined;
+
+  const { data: rawData, isLoading, error, refetch } = useMedicalHospitals(params);
   const hospitals = (rawData as any)?.data || (rawData as any)?.hospitals || [];
 
   const countries = listing?.medicalCountries || [
@@ -45,7 +58,7 @@ const MedicalServices = () => {
       <div className={`bg-gradient-to-r ${page?.hero.gradient || "from-primary to-primary/80"} text-primary-foreground pt-20 lg:pt-28 pb-10`}>
         <div className="container mx-auto px-4">
           <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3"><Stethoscope className="w-8 h-8" /> {page?.hero.title || "Medical Tourism"}</h1>
-          <p className="text-primary-foreground/80 mt-2 max-w-2xl">{page?.hero.subtitle}</p>
+          <p className="text-primary-foreground/80 mt-2 max-w-2xl">{page?.hero.subtitle}{medicalDate ? ` • Appointment: ${medicalDate}` : ""}</p>
           <div className="flex flex-wrap gap-3 mt-6">
             <Select value={country} onValueChange={setCountry}>
               <SelectTrigger className="w-40 bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground"><SelectValue placeholder="Country" /></SelectTrigger>
@@ -66,6 +79,14 @@ const MedicalServices = () => {
       </div>
 
       <div className="container mx-auto px-4 py-8">
+        {!hasRequiredParams ? (
+          <Card><CardContent className="py-16 text-center">
+            <Stethoscope className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+            <h2 className="text-lg font-bold mb-2">No Search Criteria</h2>
+            <p className="text-muted-foreground mb-4">Please use the search widget to search for medical services with a travel date.</p>
+            <Button asChild><Link to="/">Search Medical</Link></Button>
+          </CardContent></Card>
+        ) : (
         <DataLoader isLoading={isLoading} error={error} skeleton="cards" retry={refetch}>
           {hospitals.length === 0 ? (
             <Card><CardContent className="py-12 text-center text-muted-foreground"><p className="font-semibold">No hospitals found</p></CardContent></Card>
@@ -93,7 +114,7 @@ const MedicalServices = () => {
                     <div className="flex flex-wrap gap-1.5 mb-3">{(hospital.specialties || []).map((s: string) => <Badge key={s} variant="secondary" className="text-[10px] font-semibold">{s}</Badge>)}</div>
                     <div className="flex items-center justify-between pt-3 border-t border-border">
                       <div><p className="text-xs text-muted-foreground">Packages</p><p className="font-bold text-primary">{hospital.price}</p></div>
-                      <Button size="sm" className="font-bold" asChild><Link to={`/medical/book?hospital=${hospital.id}`}>Enquire <ArrowRight className="w-4 h-4 ml-1" /></Link></Button>
+                      <Button size="sm" className="font-bold" asChild><Link to={`/medical/book?hospital=${hospital.id}&date=${medicalDate}`}>Enquire <ArrowRight className="w-4 h-4 ml-1" /></Link></Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -101,6 +122,7 @@ const MedicalServices = () => {
             </div>
           )}
         </DataLoader>
+        )}
       </div>
     </div>
   );

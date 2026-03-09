@@ -373,28 +373,32 @@ const SearchWidget = () => {
   };
 
   const handleVisaSearch = () => {
+    if (!visaDate) { toast.error("Please select a travel date"); return; }
+    if (!visaReturnDate) { toast.error("Please select a return date"); return; }
     const country = VISA_COUNTRIES.find(c => c.code === visaCountry);
     const params = new URLSearchParams({
       country: country?.name || visaCountry,
       type: visaType,
       travellers: String(visaTravellers),
     });
-    if (visaDate) params.set('date', format(visaDate, 'yyyy-MM-dd'));
-    if (visaReturnDate) params.set('return', format(visaReturnDate, 'yyyy-MM-dd'));
+    params.set('date', format(visaDate, 'yyyy-MM-dd'));
+    params.set('return', format(visaReturnDate, 'yyyy-MM-dd'));
     navigate(`/visa?${params.toString()}`);
   };
 
   const handleHolidaySearch = () => {
+    if (!travelDate) { toast.error("Please select a travel date"); return; }
     const params = new URLSearchParams({ destination: holidayDest });
-    if (travelDate) params.set('date', format(travelDate, 'yyyy-MM-dd'));
+    params.set('date', format(travelDate, 'yyyy-MM-dd'));
     navigate(`/holidays?${params.toString()}`);
   };
 
   const handleMedicalSearch = () => {
+    if (!medicalDate) { toast.error("Please select a travel date for medical appointment"); return; }
     const params = new URLSearchParams();
     if (medicalCountry) params.set('country', medicalCountry);
     if (treatmentType) params.set('treatment', treatmentType);
-    if (medicalDate) params.set('date', format(medicalDate, 'yyyy-MM-dd'));
+    params.set('date', format(medicalDate, 'yyyy-MM-dd'));
     params.set('patients', String(medicalPatients));
     navigate(`/medical?${params.toString()}`);
   };
@@ -409,26 +413,34 @@ const SearchWidget = () => {
   };
 
   const handleEsimSearch = () => {
+    if (!esimDate) { toast.error("Please select an activation date"); return; }
     const params = new URLSearchParams({ country: esimCountry, plan: esimPlan });
-    if (esimDate) params.set('activation', format(esimDate, 'yyyy-MM-dd'));
+    params.set('activation', format(esimDate, 'yyyy-MM-dd'));
     navigate(`/esim?${params.toString()}`);
   };
 
   const handleRecharge = () => {
+    if (!rechargeOperator) { toast.error("Please select an operator"); return; }
+    if (!rechargeNumber) { toast.error("Please enter a phone number"); return; }
+    if (!rechargeAmount) { toast.error("Please enter recharge amount"); return; }
     const params = new URLSearchParams();
-    if (rechargeOperator) params.set('operator', rechargeOperator);
-    if (rechargeNumber) params.set('number', rechargeNumber);
-    if (rechargeAmount) params.set('amount', rechargeAmount);
+    params.set('operator', rechargeOperator);
+    params.set('number', rechargeNumber);
+    params.set('amount', rechargeAmount);
     params.set('type', rechargeType);
     navigate(`/recharge?${params.toString()}`);
   };
 
   const handlePayBill = () => {
+    if (!billCategory) { toast.error("Please select a bill category"); return; }
+    if (!billerName) { toast.error("Please enter a biller name"); return; }
+    if (!accountNumber) { toast.error("Please enter your account number"); return; }
+    if (!billAmount) { toast.error("Please enter the bill amount"); return; }
     const params = new URLSearchParams();
-    if (billCategory) params.set('category', billCategory);
-    if (billerName) params.set('biller', billerName);
-    if (accountNumber) params.set('account', accountNumber);
-    if (billAmount) params.set('amount', billAmount);
+    params.set('category', billCategory);
+    params.set('biller', billerName);
+    params.set('account', accountNumber);
+    params.set('amount', billAmount);
     navigate(`/paybill?${params.toString()}`);
   };
 

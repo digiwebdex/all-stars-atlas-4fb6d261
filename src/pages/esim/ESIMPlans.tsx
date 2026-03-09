@@ -4,20 +4,29 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Smartphone, Check, ArrowRight, Signal } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useESIMPlans } from "@/hooks/useApiData";
 import { useCmsPageContent } from "@/hooks/useCmsContent";
 import DataLoader from "@/components/DataLoader";
 
 const ESIMPlans = () => {
-  const [selectedCountry, setSelectedCountry] = useState("all");
+  const [searchParams] = useSearchParams();
+  const urlCountry = searchParams.get("country") || "";
+  const activationDate = searchParams.get("activation") || "";
+  const hasRequiredParams = !!activationDate;
+
+  const [selectedCountry, setSelectedCountry] = useState(urlCountry || "all");
   const { data: page } = useCmsPageContent("/esim");
   const listing = page?.listingConfig;
 
-  const { data: rawData, isLoading, error, refetch } = useESIMPlans({ country: selectedCountry !== "all" ? selectedCountry : undefined });
+  const params = hasRequiredParams ? {
+    country: selectedCountry !== "all" ? selectedCountry : undefined,
+    activation: activationDate,
+  } : undefined;
+
+  const { data: rawData, isLoading, error, refetch } = useESIMPlans(params);
   const apiData = (rawData as any) || {};
   const plans = apiData.data || [];
-  // Group plans by country for display
   const groupedByCountry = plans.reduce((acc: any, plan: any) => {
     const key = plan.country || 'Other';
     if (!acc[key]) acc[key] = { id: key, country: key, flag: '', plans: [] };
@@ -36,7 +45,7 @@ const ESIMPlans = () => {
       <div className={`bg-gradient-to-r ${page?.hero.gradient || "from-primary to-accent"} text-primary-foreground pt-20 lg:pt-28 pb-10`}>
         <div className="container mx-auto px-4">
           <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3"><Smartphone className="w-8 h-8" /> {page?.hero.title || "eSIM Data Plans"}</h1>
-          <p className="text-primary-foreground/80 mt-2 max-w-2xl">{page?.hero.subtitle}</p>
+          <p className="text-primary-foreground/80 mt-2 max-w-2xl">{page?.hero.subtitle}{activationDate ? ` • Activation: ${activationDate}` : ""}</p>
           <div className="flex flex-wrap gap-3 mt-6">
             <Select value={selectedCountry} onValueChange={setSelectedCountry}>
               <SelectTrigger className="w-44 bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground"><SelectValue /></SelectTrigger>
@@ -50,6 +59,14 @@ const ESIMPlans = () => {
       </div>
 
       <div className="container mx-auto px-4 py-8 space-y-8">
+        {!hasRequiredParams ? (
+          <Card><CardContent className="py-16 text-center">
+            <Smartphone className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+            <h2 className="text-lg font-bold mb-2">No Search Criteria</h2>
+            <p className="text-muted-foreground mb-4">Please use the search widget to search for eSIM plans with an activation date.</p>
+            <Button asChild><Link to="/">Search eSIM Plans</Link></Button>
+          </CardContent></Card>
+        ) : (
         <DataLoader isLoading={isLoading} error={error} skeleton="cards" retry={refetch}>
           {countries.length === 0 ? (
             <Card><CardContent className="py-12 text-center text-muted-foreground"><p className="font-semibold">No eSIM plans available</p></CardContent></Card>
@@ -71,7 +88,7 @@ const ESIMPlans = () => {
                       </div>
                       <p className="text-2xl font-black text-primary">৳{plan.price?.toLocaleString()}</p>
                       <Button className="w-full font-bold" size="sm" asChild>
-                        <Link to={`/esim/purchase?country=${plan.country?.toLowerCase()}&plan=${plan.dataAmount || plan.data}`}>Buy Now <ArrowRight className="w-4 h-4 ml-1" /></Link>
+                        <Link to={`/esim/purchase?country=${(plan.country || country.country)?.toLowerCase()}&plan=${plan.dataAmount || plan.data}&activation=${activationDate}`}>Buy Now <ArrowRight className="w-4 h-4 ml-1" /></Link>
                       </Button>
                     </CardContent>
                   </Card>
@@ -80,6 +97,7 @@ const ESIMPlans = () => {
             </div>
           ))}
         </DataLoader>
+        )}
       </div>
     </div>
   );

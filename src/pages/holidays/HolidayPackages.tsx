@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, Star, Calendar, Plane, Building2, UtensilsCrossed, Camera, ArrowRight, Heart, Users } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useHolidaySearch } from "@/hooks/useApiData";
 import { useCmsPageContent } from "@/hooks/useCmsContent";
 import DataLoader from "@/components/DataLoader";
@@ -23,13 +23,20 @@ const includeIcons: Record<string, typeof Plane> = { Plane, Building2, UtensilsC
 
 const HolidayPackages = () => {
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [wishlistedIds, setWishlistedIds] = useState<string[]>(getWishlist);
   const [sortBy, setSortBy] = useState("recommended");
   const [filter, setFilter] = useState("all");
   const { data: page } = useCmsPageContent("/holidays");
   const listing = page?.listingConfig;
 
-  const { data: rawData, isLoading, error, refetch } = useHolidaySearch({ sort: sortBy, filter });
+  const destination = searchParams.get("destination") || "";
+  const travelDate = searchParams.get("date") || "";
+  const hasRequiredParams = !!destination && !!travelDate;
+
+  const params = hasRequiredParams ? { destination, date: travelDate, sort: sortBy, filter } : undefined;
+
+  const { data: rawData, isLoading, error, refetch } = useHolidaySearch(params);
   const apiData = (rawData as any) || {};
   const packages = apiData.data || apiData.packages || [];
 
@@ -47,8 +54,10 @@ const HolidayPackages = () => {
       <section className={`relative bg-gradient-to-br ${page?.hero.gradient || "from-[hsl(167,72%,41%)] to-[hsl(217,91%,50%)]"} pt-24 lg:pt-32 pb-16 sm:pb-20 overflow-hidden`}>
         <div className="container mx-auto px-4 relative text-center">
           <Badge className="bg-white/15 text-white border-white/20 mb-4 text-xs font-semibold"><Star className="w-3.5 h-3.5 mr-1 fill-warning text-warning" /> {listing?.heroBadge || "Holiday Packages"}</Badge>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">{page?.hero.title || "Holiday Packages"}</h1>
-          <p className="text-white/65 text-sm sm:text-base max-w-lg mx-auto">{page?.hero.subtitle}</p>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">{page?.hero.title || "Holiday Packages"}{destination ? ` — ${destination}` : ""}</h1>
+          <p className="text-white/65 text-sm sm:text-base max-w-lg mx-auto">
+            {travelDate ? `Travel date: ${travelDate}` : page?.hero.subtitle}
+          </p>
         </div>
       </section>
 
@@ -65,6 +74,15 @@ const HolidayPackages = () => {
 
       <section className="py-10 sm:py-14">
         <div className="container mx-auto px-4">
+          {!hasRequiredParams ? (
+            <Card><CardContent className="py-16 text-center">
+              <Calendar className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+              <h2 className="text-lg font-bold mb-2">No Search Criteria</h2>
+              <p className="text-muted-foreground mb-4">Please use the search widget to search for holiday packages with a destination and travel date.</p>
+              <Button asChild><Link to="/">Search Holidays</Link></Button>
+            </CardContent></Card>
+          ) : (
+          <>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
             <div className="flex gap-1 overflow-x-auto scrollbar-none">
               {filters.map(f => (
@@ -120,6 +138,8 @@ const HolidayPackages = () => {
               </div>
             )}
           </DataLoader>
+          </>
+          )}
         </div>
       </section>
 

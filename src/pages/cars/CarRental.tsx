@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Car, Star, Users, Fuel, Settings2, ArrowRight } from "lucide-react";
+import { Car, Star, Users, Fuel, Settings2, ArrowRight, Calendar } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CAR_TYPES } from "@/lib/constants";
 import { useCarSearch } from "@/hooks/useApiData";
@@ -17,12 +17,22 @@ const CarRental = () => {
   const { data: page } = useCmsPageContent("/cars");
   const listing = page?.listingConfig;
 
-  const { data: rawData, isLoading, error, refetch } = useCarSearch({
-    pickup: searchParams.get("pickup") || undefined,
-    dropoff: searchParams.get("dropoff") || undefined,
+  const pickup = searchParams.get("pickup") || "";
+  const dropoff = searchParams.get("dropoff") || "";
+  const pickupDate = searchParams.get("pickupDate") || "";
+  const dropoffDate = searchParams.get("dropoffDate") || "";
+  const hasRequiredParams = !!pickup && !!pickupDate && !!dropoffDate;
+
+  const params = hasRequiredParams ? {
+    pickup,
+    dropoff,
+    pickupDate,
+    dropoffDate,
     type: carType !== "all" ? carType : undefined,
     sort: sortBy,
-  });
+  } : undefined;
+
+  const { data: rawData, isLoading, error, refetch } = useCarSearch(params);
   const cars = (rawData as any)?.data || (rawData as any)?.cars || [];
 
   const sortOptions = listing?.carSortOptions || [
@@ -34,11 +44,22 @@ const CarRental = () => {
     <div className="min-h-screen bg-muted/30">
       <div className="bg-card border-b border-border pt-20 lg:pt-28 pb-4">
         <div className="container mx-auto px-4">
-          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2"><Car className="w-6 h-6 text-primary" /> {page?.hero.title || "Car Rental"}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{cars.length} vehicles available</p>
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2"><Car className="w-6 h-6 text-primary" /> {page?.hero.title || "Car Rental"}{pickup ? ` — ${pickup}` : ""}</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {pickupDate && dropoffDate ? `${pickupDate} → ${dropoffDate}` : ""}{pickup && dropoff ? ` • ${pickup} to ${dropoff}` : ""} • {cars.length} vehicles available
+          </p>
         </div>
       </div>
       <div className="container mx-auto px-4 py-6">
+        {!hasRequiredParams ? (
+          <Card><CardContent className="py-16 text-center">
+            <Car className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+            <h2 className="text-lg font-bold mb-2">No Search Criteria</h2>
+            <p className="text-muted-foreground mb-4">Please use the search widget to search for cars with pickup/drop-off dates.</p>
+            <Button asChild><Link to="/">Search Cars</Link></Button>
+          </CardContent></Card>
+        ) : (
+        <>
         <div className="flex flex-wrap gap-3 mb-6">
           <Select value={carType} onValueChange={setCarType}>
             <SelectTrigger className="w-36"><SelectValue placeholder="Car Type" /></SelectTrigger>
@@ -69,7 +90,7 @@ const CarRental = () => {
                     </div>
                     <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
                       <div><p className="text-xs text-muted-foreground">Per day</p><p className="text-xl font-black text-primary">৳{car.price?.toLocaleString()}</p></div>
-                      <Button size="sm" className="font-bold" asChild><Link to={`/cars/book?id=${car.id}`}>Book <ArrowRight className="w-4 h-4 ml-1" /></Link></Button>
+                      <Button size="sm" className="font-bold" asChild><Link to={`/cars/book?id=${car.id}&pickup=${pickup}&dropoff=${dropoff}&pickupDate=${pickupDate}&dropoffDate=${dropoffDate}`}>Book <ArrowRight className="w-4 h-4 ml-1" /></Link></Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -77,6 +98,8 @@ const CarRental = () => {
             </div>
           )}
         </DataLoader>
+        </>
+        )}
       </div>
     </div>
   );
