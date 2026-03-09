@@ -45,13 +45,23 @@ const MedicalBooking = () => {
   const [step, setStep] = useState(1);
   const [authOpen, setAuthOpen] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isAuthenticated } = useAuth();
   const { data: page, isLoading } = useCmsPageContent("/medical/book");
   const config = page?.bookingConfig;
+  const hospitalId = searchParams.get("hospital");
 
   const handleFinalAction = () => {
     if (!isAuthenticated) { setAuthOpen(true); return; }
-    navigate("/booking/confirmation");
+    navigate("/booking/confirmation", {
+      state: {
+        booking: {
+          type: "Medical",
+          route: `Hospital #${hospitalId || "—"}`,
+          paymentMethod: "Pending",
+        },
+      },
+    });
   };
 
   if (isLoading) {
