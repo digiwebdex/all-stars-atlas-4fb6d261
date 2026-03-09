@@ -35,9 +35,6 @@ const defaultPriceRules = [
   { id: "PR-007", name: "Medical Tourism Markup", service: "Medical", type: "markup", value: 7, basis: "percentage", status: "paused", appliedTo: "All hospitals" },
 ];
 
-const DISCOUNT_KEY = "admin_discounts";
-const RULE_KEY = "admin_price_rules";
-
 const statusColors: Record<string, string> = {
   active: "bg-success/10 text-success", scheduled: "bg-primary/10 text-primary",
   expired: "bg-muted text-muted-foreground", draft: "bg-warning/10 text-warning", paused: "bg-warning/10 text-warning",
@@ -48,13 +45,33 @@ const emptyRule = { name: "", service: "Flights", type: "markup", value: "", bas
 
 const AdminDiscounts = () => {
   const { toast } = useToast();
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [serviceFilter, setServiceFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showCreateDiscount, setShowCreateDiscount] = useState(false);
   const [showCreateRule, setShowCreateRule] = useState(false);
-  const [discounts, setDiscounts] = useState(() => getCollection(DISCOUNT_KEY, defaultDiscounts));
-  const [priceRules, setPriceRules] = useState(() => getCollection(RULE_KEY, defaultPriceRules));
+  const [dForm, setDForm] = useState(emptyDiscount);
+  const [rForm, setRForm] = useState(emptyRule);
+
+  // Fetch from API
+  const { data: apiData, isLoading } = useQuery({
+    queryKey: ['admin', 'discounts'],
+    queryFn: () => api.get<any>('/admin/discounts'),
+  });
+
+  const discounts: any[] = apiData?.discounts || defaultDiscounts;
+  const priceRules: any[] = apiData?.priceRules || defaultPriceRules;
+
+  const saveDiscounts = useMutation({
+    mutationFn: (newDiscounts: any[]) => api.put('/admin/discounts', { section: 'discounts', discounts: newDiscounts }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'discounts'] }),
+  });
+
+  const saveRules = useMutation({
+    mutationFn: (newRules: any[]) => api.put('/admin/discounts', { section: 'price_rules', priceRules: newRules }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'discounts'] }),
+  });
   const [dForm, setDForm] = useState(emptyDiscount);
   const [rForm, setRForm] = useState(emptyRule);
 
