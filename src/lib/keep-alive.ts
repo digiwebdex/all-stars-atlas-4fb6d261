@@ -15,7 +15,7 @@ export function warmUpServer() {
   // Parallel warm-up: health + critical data the homepage needs
   const urls = [
     `${base}/health`,
-    `${base}/cms/page?path=/`,
+    `${base}/cms/pages/home`,
   ];
 
   urls.forEach((url) => {
