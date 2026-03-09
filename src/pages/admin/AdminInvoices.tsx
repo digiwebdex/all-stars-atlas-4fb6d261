@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, FileText, Download, Eye, Send, Printer, MoreHorizontal, Plus, DollarSign, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Search, FileText, Download, Eye, Send, Printer, MoreHorizontal, Plus, DollarSign, Clock, CheckCircle2, AlertTriangle, Receipt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
