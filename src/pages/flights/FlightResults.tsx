@@ -542,9 +542,9 @@ const FlightResults = () => {
   // Handle booking with both flights for round-trip
   const handleBookRoundTrip = () => {
     if (!selectedOutbound || !selectedReturn) return;
-    const outId = selectedOutbound.id;
-    const retId = selectedReturn.id;
-    navigate(`/flights/book?flightId=${outId}&returnFlightId=${retId}&roundTrip=true`);
+    navigate(`/flights/book?roundTrip=true`, {
+      state: { outboundFlight: selectedOutbound, returnFlight: selectedReturn },
+    });
   };
 
   // Total for round-trip selection
