@@ -79,7 +79,7 @@ cd "$PROJECT_DIR"
 
 # Create frontend .env with correct API URL
 cat > .env << EOF
-VITE_API_BASE_URL=http://$VPS_IP/api
+VITE_API_BASE_URL=https://seven-trip.com/api
 EOF
 
 npm install
