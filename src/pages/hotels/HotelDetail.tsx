@@ -127,7 +127,7 @@ const HotelDetail = () => {
                       <div className="flex justify-between"><span className="text-muted-foreground">Rooms from</span><span className="font-bold">৳{cheapestRoom.price?.toLocaleString()}</span></div>
                     </div>
                     <Button className="w-full h-11 font-bold shadow-lg shadow-primary/20" asChild>
-                      <Link to="/booking/confirmation" state={{ booking: { type: "hotel", hotelName: hotel.name, amount: cheapestRoom.price } }}>
+                      <Link to="/booking/confirmation" state={{ booking: { type: "Hotel", route: `${hotel.name} — ${hotel.location}`, baseFare: cheapestRoom.price, taxes: Math.round(cheapestRoom.price * 0.15), total: Math.round(cheapestRoom.price * 1.15), paymentMethod: "Pending" } }}>
                         Reserve Now <ArrowRight className="w-4 h-4 ml-1" />
                       </Link>
                     </Button>
