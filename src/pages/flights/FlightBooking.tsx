@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useCmsPageContent } from "@/hooks/useCmsContent";
-import { useCmsPageContent } from "@/hooks/useCmsContent";
 import { useAuth } from "@/hooks/useAuth";
 import AuthGateModal from "@/components/AuthGateModal";
 import type { BookingFormField } from "@/lib/cms-defaults";
