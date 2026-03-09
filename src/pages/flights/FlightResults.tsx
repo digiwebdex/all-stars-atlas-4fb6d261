@@ -203,6 +203,7 @@ const FlightCard = ({
   flight: any; cheapest: number; isExpanded: boolean; onToggleExpand: () => void;
   isSelected?: boolean; onSelect?: () => void; selectionMode?: boolean;
 }) => {
+  const cardNavigate = useNavigate();
   const logo = getAirlineLogo(flight.airlineCode);
   const departTime = formatTime(flight.departureTime);
   const arriveTime = formatTime(flight.arrivalTime);
