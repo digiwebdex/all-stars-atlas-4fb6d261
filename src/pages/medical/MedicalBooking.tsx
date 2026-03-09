@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Stethoscope, ArrowRight, User, Shield } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useCmsPageContent } from "@/hooks/useCmsContent";
 import { useAuth } from "@/hooks/useAuth";
 import AuthGateModal from "@/components/AuthGateModal";
@@ -45,13 +45,23 @@ const MedicalBooking = () => {
   const [step, setStep] = useState(1);
   const [authOpen, setAuthOpen] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isAuthenticated } = useAuth();
   const { data: page, isLoading } = useCmsPageContent("/medical/book");
   const config = page?.bookingConfig;
+  const hospitalId = searchParams.get("hospital");
 
   const handleFinalAction = () => {
     if (!isAuthenticated) { setAuthOpen(true); return; }
-    navigate("/booking/confirmation");
+    navigate("/booking/confirmation", {
+      state: {
+        booking: {
+          type: "Medical",
+          route: `Hospital #${hospitalId || "—"}`,
+          paymentMethod: "Pending",
+        },
+      },
+    });
   };
 
   if (isLoading) {
@@ -120,7 +130,7 @@ const MedicalBooking = () => {
         </div>
       </div>
 
-      <AuthGateModal open={authOpen} onOpenChange={setAuthOpen} onAuthenticated={() => { setAuthOpen(false); navigate("/booking/confirmation"); }} title="Sign in to submit your enquiry" />
+      <AuthGateModal open={authOpen} onOpenChange={setAuthOpen} onAuthenticated={() => { setAuthOpen(false); navigate("/booking/confirmation", { state: { booking: { type: "Medical", route: `Hospital #${hospitalId || "—"}` } } }); }} title="Sign in to submit your enquiry" />
     </div>
   );
 };

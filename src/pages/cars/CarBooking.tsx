@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Car, ArrowRight, User, Shield } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useCmsPageContent } from "@/hooks/useCmsContent";
 import { useAuth } from "@/hooks/useAuth";
 import AuthGateModal from "@/components/AuthGateModal";
@@ -37,13 +37,26 @@ const CarBooking = () => {
   const [step, setStep] = useState(1);
   const [authOpen, setAuthOpen] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isAuthenticated } = useAuth();
   const { data: page, isLoading } = useCmsPageContent("/cars/book");
   const config = page?.bookingConfig;
+  const carId = searchParams.get("id");
 
   const handleFinalAction = () => {
     if (!isAuthenticated) { setAuthOpen(true); return; }
-    navigate("/booking/confirmation");
+    navigate("/booking/confirmation", {
+      state: {
+        booking: {
+          type: "Car Rental",
+          route: `Car #${carId || "—"}`,
+          baseFare: config?.totalAmount || 0,
+          taxes: Math.round((config?.totalAmount || 0) * 0.05),
+          total: Math.round((config?.totalAmount || 0) * 1.05),
+          paymentMethod: "Pending",
+        },
+      },
+    });
   };
 
   if (isLoading) {
@@ -79,8 +92,8 @@ const CarBooking = () => {
                   <CardContent>
                     {si === 0 && (
                       <div className="p-4 bg-muted/50 rounded-xl mb-4">
-                        <h3 className="font-bold text-lg">Toyota Corolla — Sedan</h3>
-                        <p className="text-sm text-muted-foreground">4 seats • Petrol • Automatic</p>
+                        <h3 className="font-bold text-lg">Selected Vehicle</h3>
+                        <p className="text-sm text-muted-foreground">Car ID: {carId || "—"}</p>
                       </div>
                     )}
                     <div className="grid sm:grid-cols-2 gap-4">
@@ -118,7 +131,7 @@ const CarBooking = () => {
         </div>
       </div>
 
-      <AuthGateModal open={authOpen} onOpenChange={setAuthOpen} onAuthenticated={() => { setAuthOpen(false); navigate("/booking/confirmation"); }} title="Sign in to book your car" />
+      <AuthGateModal open={authOpen} onOpenChange={setAuthOpen} onAuthenticated={() => { setAuthOpen(false); navigate("/booking/confirmation", { state: { booking: { type: "Car Rental", baseFare: config?.totalAmount || 0, total: Math.round((config?.totalAmount || 0) * 1.05) } } }); }} title="Sign in to book your car" />
     </div>
   );
 };

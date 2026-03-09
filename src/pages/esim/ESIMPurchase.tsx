@@ -24,7 +24,17 @@ const ESIMPurchase = () => {
 
   const handleFinalAction = () => {
     if (!isAuthenticated) { setAuthOpen(true); return; }
-    navigate("/booking/confirmation");
+    navigate("/booking/confirmation", {
+      state: {
+        booking: {
+          type: "eSIM",
+          route: `${country} — ${plan}`,
+          baseFare: config?.totalAmount || 0,
+          total: config?.totalAmount || 0,
+          paymentMethod: "Pending",
+        },
+      },
+    });
   };
 
   if (isLoading) {
@@ -81,7 +91,7 @@ const ESIMPurchase = () => {
         </div>
       </div>
 
-      <AuthGateModal open={authOpen} onOpenChange={setAuthOpen} onAuthenticated={() => { setAuthOpen(false); navigate("/booking/confirmation"); }} title="Sign in to purchase eSIM" />
+      <AuthGateModal open={authOpen} onOpenChange={setAuthOpen} onAuthenticated={() => { setAuthOpen(false); navigate("/booking/confirmation", { state: { booking: { type: "eSIM", route: `${country} — ${plan}`, total: config?.totalAmount || 0 } } }); }} title="Sign in to purchase eSIM" />
     </div>
   );
 };
