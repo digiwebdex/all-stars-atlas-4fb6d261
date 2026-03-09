@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { toast } from "sonner";
 import { AIRPORTS, type Airport } from "@/lib/airports";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -331,7 +332,9 @@ const SearchWidget = () => {
   const handleFlightSearch = () => {
     if (tripType === "multicity") {
       const validSegments = multiCitySegments.filter(s => s.from && s.to);
-      if (validSegments.length < 2) return;
+      if (validSegments.length < 2) { toast.error("Please add at least 2 flight segments"); return; }
+      const missingDates = validSegments.some(s => !s.date);
+      if (missingDates) { toast.error("Please select departure date for all segments"); return; }
       const params = new URLSearchParams({
         tripType: "multicity",
         adults: String(passengers.adults), children: String(passengers.children), infants: String(passengers.infants),
@@ -344,21 +347,25 @@ const SearchWidget = () => {
       navigate(`/flights?${params.toString()}`);
       return;
     }
-    if (!fromAirport || !toAirport) return;
+    if (!fromAirport || !toAirport) { toast.error("Please select departure and arrival airports"); return; }
+    if (!departDate) { toast.error("Please select a departure date"); return; }
+    if (tripType === 'roundtrip' && !returnDate) { toast.error("Please select a return date for round trip"); return; }
     const params = new URLSearchParams({
       from: fromAirport.code, to: toAirport.code, tripType,
       adults: String(passengers.adults), children: String(passengers.children), infants: String(passengers.infants),
       cabin: cabinClass, fare: fareType,
     });
-    if (departDate) params.set('depart', format(departDate, 'yyyy-MM-dd'));
+    params.set('depart', format(departDate, 'yyyy-MM-dd'));
     if (returnDate && tripType === 'roundtrip') params.set('return', format(returnDate, 'yyyy-MM-dd'));
     navigate(`/flights?${params.toString()}`);
   };
 
   const handleHotelSearch = () => {
+    if (!checkIn) { toast.error("Please select a check-in date"); return; }
+    if (!checkOut) { toast.error("Please select a check-out date"); return; }
     const params = new URLSearchParams({ destination: hotelCity });
-    if (checkIn) params.set('checkIn', format(checkIn, 'yyyy-MM-dd'));
-    if (checkOut) params.set('checkOut', format(checkOut, 'yyyy-MM-dd'));
+    params.set('checkIn', format(checkIn, 'yyyy-MM-dd'));
+    params.set('checkOut', format(checkOut, 'yyyy-MM-dd'));
     params.set('adults', String(hotelGuests.adults));
     params.set('children', String(hotelGuests.children));
     params.set('rooms', String(hotelRooms));
@@ -393,9 +400,11 @@ const SearchWidget = () => {
   };
 
   const handleCarSearch = () => {
+    if (!pickupDate) { toast.error("Please select a pickup date"); return; }
+    if (!dropoffDate) { toast.error("Please select a drop-off date"); return; }
     const params = new URLSearchParams({ pickup: pickupCity, dropoff: dropoffCity });
-    if (pickupDate) params.set('pickupDate', format(pickupDate, 'yyyy-MM-dd'));
-    if (dropoffDate) params.set('dropoffDate', format(dropoffDate, 'yyyy-MM-dd'));
+    params.set('pickupDate', format(pickupDate, 'yyyy-MM-dd'));
+    params.set('dropoffDate', format(dropoffDate, 'yyyy-MM-dd'));
     navigate(`/cars?${params.toString()}`);
   };
 
