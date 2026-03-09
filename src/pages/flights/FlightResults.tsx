@@ -4,11 +4,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Plane, Clock, ArrowRight, Filter, X, Luggage, Wifi, UtensilsCrossed,
-  SlidersHorizontal, ChevronDown, ChevronUp, Shield, MapPin, Timer,
-  ArrowUpDown, CircleDot, Zap, TrendingUp, AlertTriangle,
+  SlidersHorizontal, ChevronDown, ChevronUp, Shield, Timer,
+  CircleDot, Zap, TrendingUp,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -16,56 +15,73 @@ import { useFlightSearch } from "@/hooks/useApiData";
 import { useCmsPageContent } from "@/hooks/useCmsContent";
 import DataLoader from "@/components/DataLoader";
 
-/* ─── airline logo map ─── */
+/* ─── airline logo CDN map (IATA code → logo URL) ─── */
 const AIRLINE_LOGOS: Record<string, string> = {
-  "2A": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Air_Astra_Logo.svg/200px-Air_Astra_Logo.svg.png",
-  "S2": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Air_Astra_Logo.svg/200px-Air_Astra_Logo.svg.png",
-  "Air Astra": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Air_Astra_Logo.svg/200px-Air_Astra_Logo.svg.png",
-  "BG": "https://images.seeklogo.com/logo-png/52/1/biman-bangladesh-airlines-logo-png_seeklogo-524035.png",
-  "Biman Bangladesh": "https://images.seeklogo.com/logo-png/52/1/biman-bangladesh-airlines-logo-png_seeklogo-524035.png",
-  "BS": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/US-Bangla_Airlines_Logo.svg/200px-US-Bangla_Airlines_Logo.svg.png",
-  "US-Bangla Airlines": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/US-Bangla_Airlines_Logo.svg/200px-US-Bangla_Airlines_Logo.svg.png",
-  "VQ": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Novoair_Logo.svg/200px-Novoair_Logo.svg.png",
-  "Novoair": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Novoair_Logo.svg/200px-Novoair_Logo.svg.png",
-  "EK": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Emirates_logo.svg/200px-Emirates_logo.svg.png",
-  "Emirates": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Emirates_logo.svg/200px-Emirates_logo.svg.png",
-  "QR": "https://upload.wikimedia.org/wikipedia/en/thumb/9/9b/Qatar_Airways_Logo.svg/200px-Qatar_Airways_Logo.svg.png",
-  "Qatar Airways": "https://upload.wikimedia.org/wikipedia/en/thumb/9/9b/Qatar_Airways_Logo.svg/200px-Qatar_Airways_Logo.svg.png",
-  "SQ": "https://upload.wikimedia.org/wikipedia/en/thumb/6/6b/Singapore_Airlines_Logo_2.svg/200px-Singapore_Airlines_Logo_2.svg.png",
-  "Singapore Airlines": "https://upload.wikimedia.org/wikipedia/en/thumb/6/6b/Singapore_Airlines_Logo_2.svg/200px-Singapore_Airlines_Logo_2.svg.png",
-  "TG": "https://upload.wikimedia.org/wikipedia/en/thumb/5/51/Thai_Airways_logo.svg/200px-Thai_Airways_logo.svg.png",
-  "Thai Airways": "https://upload.wikimedia.org/wikipedia/en/thumb/5/51/Thai_Airways_logo.svg/200px-Thai_Airways_logo.svg.png",
-  "6E": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/IndiGo_Airlines_logo.svg/200px-IndiGo_Airlines_logo.svg.png",
-  "IndiGo": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/IndiGo_Airlines_logo.svg/200px-IndiGo_Airlines_logo.svg.png",
-  "G9": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Air_Arabia_Logo.svg/200px-Air_Arabia_Logo.svg.png",
-  "Air Arabia": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Air_Arabia_Logo.svg/200px-Air_Arabia_Logo.svg.png",
-  "MH": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Malaysia_Airlines_Logo.svg/200px-Malaysia_Airlines_Logo.svg.png",
-  "Malaysia Airlines": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Malaysia_Airlines_Logo.svg/200px-Malaysia_Airlines_Logo.svg.png",
-  "TK": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Turkish_Airlines_logo_2019_compact.svg/200px-Turkish_Airlines_logo_2019_compact.svg.png",
-  "Turkish Airlines": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Turkish_Airlines_logo_2019_compact.svg/200px-Turkish_Airlines_logo_2019_compact.svg.png",
-  "CX": "https://upload.wikimedia.org/wikipedia/en/thumb/1/17/Cathay_Pacific_logo.svg/200px-Cathay_Pacific_logo.svg.png",
-  "Cathay Pacific": "https://upload.wikimedia.org/wikipedia/en/thumb/1/17/Cathay_Pacific_logo.svg/200px-Cathay_Pacific_logo.svg.png",
-  "AI": "https://upload.wikimedia.org/wikipedia/en/thumb/2/2f/Air_India_Logo.svg/200px-Air_India_Logo.svg.png",
-  "Air India": "https://upload.wikimedia.org/wikipedia/en/thumb/2/2f/Air_India_Logo.svg/200px-Air_India_Logo.svg.png",
-  "UL": "https://upload.wikimedia.org/wikipedia/en/thumb/b/b4/SriLankan_Airlines_logo.svg/200px-SriLankan_Airlines_logo.svg.png",
-  "SriLankan Airlines": "https://upload.wikimedia.org/wikipedia/en/thumb/b/b4/SriLankan_Airlines_logo.svg/200px-SriLankan_Airlines_logo.svg.png",
-  "RX": "https://upload.wikimedia.org/wikipedia/en/5/54/Regent_Airways_Logo.png",
-  "Regent Airways": "https://upload.wikimedia.org/wikipedia/en/5/54/Regent_Airways_Logo.png",
-  "SV": "https://upload.wikimedia.org/wikipedia/en/thumb/0/0e/Saudi_Arabian_Airlines_Logo.svg/200px-Saudi_Arabian_Airlines_Logo.svg.png",
-  "Saudi Arabian Airlines": "https://upload.wikimedia.org/wikipedia/en/thumb/0/0e/Saudi_Arabian_Airlines_Logo.svg/200px-Saudi_Arabian_Airlines_Logo.svg.png",
-  "FZ": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Flydubai_logo.svg/200px-Flydubai_logo.svg.png",
-  "flydubai": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Flydubai_logo.svg/200px-Flydubai_logo.svg.png",
-  "ET": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Ethiopian_Airlines_Logo.svg/200px-Ethiopian_Airlines_Logo.svg.png",
-  "Ethiopian Airlines": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Ethiopian_Airlines_Logo.svg/200px-Ethiopian_Airlines_Logo.svg.png",
-  "LH": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Lufthansa_Logo_2018.svg/200px-Lufthansa_Logo_2018.svg.png",
-  "Lufthansa": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Lufthansa_Logo_2018.svg/200px-Lufthansa_Logo_2018.svg.png",
-  "BA": "https://upload.wikimedia.org/wikipedia/en/thumb/4/42/British_Airways_Logo.svg/200px-British_Airways_Logo.svg.png",
-  "British Airways": "https://upload.wikimedia.org/wikipedia/en/thumb/4/42/British_Airways_Logo.svg/200px-British_Airways_Logo.svg.png",
+  "2A": "https://images.kiwi.com/airlines/64/2A.png",
+  "S2": "https://images.kiwi.com/airlines/64/S2.png",
+  "BG": "https://images.kiwi.com/airlines/64/BG.png",
+  "BS": "https://images.kiwi.com/airlines/64/BS.png",
+  "VQ": "https://images.kiwi.com/airlines/64/VQ.png",
+  "RX": "https://images.kiwi.com/airlines/64/RX.png",
+  "EK": "https://images.kiwi.com/airlines/64/EK.png",
+  "QR": "https://images.kiwi.com/airlines/64/QR.png",
+  "SQ": "https://images.kiwi.com/airlines/64/SQ.png",
+  "TG": "https://images.kiwi.com/airlines/64/TG.png",
+  "6E": "https://images.kiwi.com/airlines/64/6E.png",
+  "G9": "https://images.kiwi.com/airlines/64/G9.png",
+  "MH": "https://images.kiwi.com/airlines/64/MH.png",
+  "TK": "https://images.kiwi.com/airlines/64/TK.png",
+  "CX": "https://images.kiwi.com/airlines/64/CX.png",
+  "AI": "https://images.kiwi.com/airlines/64/AI.png",
+  "UL": "https://images.kiwi.com/airlines/64/UL.png",
+  "SV": "https://images.kiwi.com/airlines/64/SV.png",
+  "FZ": "https://images.kiwi.com/airlines/64/FZ.png",
+  "ET": "https://images.kiwi.com/airlines/64/ET.png",
+  "LH": "https://images.kiwi.com/airlines/64/LH.png",
+  "BA": "https://images.kiwi.com/airlines/64/BA.png",
+  "AF": "https://images.kiwi.com/airlines/64/AF.png",
+  "KL": "https://images.kiwi.com/airlines/64/KL.png",
+  "EY": "https://images.kiwi.com/airlines/64/EY.png",
+  "WY": "https://images.kiwi.com/airlines/64/WY.png",
+  "GF": "https://images.kiwi.com/airlines/64/GF.png",
+  "PG": "https://images.kiwi.com/airlines/64/PG.png",
+  "OZ": "https://images.kiwi.com/airlines/64/OZ.png",
+  "KE": "https://images.kiwi.com/airlines/64/KE.png",
+  "NH": "https://images.kiwi.com/airlines/64/NH.png",
+  "JL": "https://images.kiwi.com/airlines/64/JL.png",
+  "AA": "https://images.kiwi.com/airlines/64/AA.png",
+  "UA": "https://images.kiwi.com/airlines/64/UA.png",
+  "DL": "https://images.kiwi.com/airlines/64/DL.png",
+  "AC": "https://images.kiwi.com/airlines/64/AC.png",
+  "PK": "https://images.kiwi.com/airlines/64/PK.png",
+  "BR": "https://images.kiwi.com/airlines/64/BR.png",
+  "CI": "https://images.kiwi.com/airlines/64/CI.png",
+  "CA": "https://images.kiwi.com/airlines/64/CA.png",
+  "MU": "https://images.kiwi.com/airlines/64/MU.png",
+  "CZ": "https://images.kiwi.com/airlines/64/CZ.png",
+  "GA": "https://images.kiwi.com/airlines/64/GA.png",
+  "VN": "https://images.kiwi.com/airlines/64/VN.png",
+  "QF": "https://images.kiwi.com/airlines/64/QF.png",
+  "NZ": "https://images.kiwi.com/airlines/64/NZ.png",
+  "PR": "https://images.kiwi.com/airlines/64/PR.png",
+  "AK": "https://images.kiwi.com/airlines/64/AK.png",
+  "FR": "https://images.kiwi.com/airlines/64/FR.png",
+  "U2": "https://images.kiwi.com/airlines/64/U2.png",
+  "W6": "https://images.kiwi.com/airlines/64/W6.png",
+  "IB": "https://images.kiwi.com/airlines/64/IB.png",
+  "AY": "https://images.kiwi.com/airlines/64/AY.png",
+  "LX": "https://images.kiwi.com/airlines/64/LX.png",
+  "OS": "https://images.kiwi.com/airlines/64/OS.png",
+  "SK": "https://images.kiwi.com/airlines/64/SK.png",
+  "LO": "https://images.kiwi.com/airlines/64/LO.png",
+  "W5": "https://images.kiwi.com/airlines/64/W5.png",
+  "HU": "https://images.kiwi.com/airlines/64/HU.png",
 };
 
-function getAirlineLogo(airline: string, code?: string, providedLogo?: string): string | null {
-  if (providedLogo && providedLogo.startsWith("http")) return providedLogo;
-  return AIRLINE_LOGOS[airline] || AIRLINE_LOGOS[code || ""] || null;
+/** Get airline logo — tries explicit map, then Kiwi CDN fallback by code */
+function getAirlineLogo(code?: string): string | null {
+  if (!code) return null;
+  return AIRLINE_LOGOS[code] || `https://images.kiwi.com/airlines/64/${code}.png`;
 }
 
 function formatTime(datetime?: string): string {
@@ -93,22 +109,7 @@ function isNextDay(depart?: string, arrive?: string): boolean {
   return a.getDate() !== d.getDate();
 }
 
-/* ─── Google Flights-style filter chips ─── */
-const FilterChip = ({ label, active, count, onClick }: { label: string; active: boolean; count?: number; onClick: () => void }) => (
-  <button
-    onClick={onClick}
-    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-      active
-        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-        : "bg-card text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
-    }`}
-  >
-    {label}
-    {count !== undefined && <span className="opacity-70">({count})</span>}
-  </button>
-);
-
-/* ─── Stops filter ─── */
+/* ─── Filter chips ─── */
 const StopsFilter = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
   <div className="flex gap-1.5">
     {[
@@ -132,7 +133,7 @@ const StopsFilter = ({ value, onChange }: { value: string; onChange: (v: string)
   </div>
 );
 
-/* ─── Full filter panel (sidebar / mobile drawer) ─── */
+/* ─── Full filter panel ─── */
 const FilterPanel = ({
   priceRange, setPriceRange, maxPrice,
   airlines, selectedAirlines, toggleAirline,
@@ -147,13 +148,10 @@ const FilterPanel = ({
   onReset: () => void;
 }) => (
   <div className="space-y-6">
-    {/* Stops */}
     <div>
       <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Stops</h4>
       <StopsFilter value={stopsFilter} onChange={setStopsFilter} />
     </div>
-
-    {/* Price Range */}
     <div>
       <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Price Range</h4>
       <Slider value={priceRange} onValueChange={setPriceRange} min={0} max={maxPrice} step={100} className="mb-2" />
@@ -162,8 +160,6 @@ const FilterPanel = ({
         <span>৳{priceRange[1].toLocaleString()}</span>
       </div>
     </div>
-
-    {/* Departure Time */}
     <div>
       <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Departure Time</h4>
       <Slider value={departTimeRange} onValueChange={setDepartTimeRange} min={0} max={24} step={1} className="mb-2" />
@@ -172,8 +168,6 @@ const FilterPanel = ({
         <span>{departTimeRange[1]}:00</span>
       </div>
     </div>
-
-    {/* Airlines */}
     <div>
       <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Airlines</h4>
       <div className="space-y-2 max-h-[280px] overflow-y-auto">
@@ -203,13 +197,13 @@ const LayoverBadge = ({ stopCodes, stops }: { stopCodes?: string[]; stops: numbe
   );
 };
 
-/* ─── Flight Card (Google Flights style) ─── */
+/* ─── Flight Card ─── */
 const FlightCard = ({
   flight, cheapest, isExpanded, onToggleExpand,
 }: {
   flight: any; cheapest: number; isExpanded: boolean; onToggleExpand: () => void;
 }) => {
-  const logo = getAirlineLogo(flight.airline, flight.airlineCode, flight.logo || flight.airlineLogo);
+  const logo = getAirlineLogo(flight.airlineCode);
   const departTime = formatTime(flight.departureTime);
   const arriveTime = formatTime(flight.arrivalTime);
   const fromCode = flight.origin || "";
@@ -225,13 +219,13 @@ const FlightCard = ({
   const stopCodes = flight.stopCodes || [];
   const aircraft = flight.aircraft || legs[0]?.aircraft || "";
   const source = flight.source || "db";
+  const direction = flight.direction || "outbound";
 
   return (
     <Card className={`group transition-all overflow-hidden hover:shadow-md ${isExpanded ? "ring-1 ring-primary/20 shadow-md" : ""}`}>
       <CardContent className="p-0">
-        {/* Main row — Google Flights compact layout */}
         <div className="flex items-center gap-0">
-          {/* Airline logo + info */}
+          {/* Airline logo */}
           <div className="w-16 sm:w-20 shrink-0 flex flex-col items-center justify-center p-3 sm:p-4">
             {logo ? (
               <img
@@ -240,7 +234,7 @@ const FlightCard = ({
                 className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = "none";
-                  (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="text-xs font-bold text-muted-foreground">${(flight.airlineCode || flight.airline?.slice(0, 2) || "").toUpperCase()}</span>`;
+                  (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="text-xs font-bold text-muted-foreground">${(flight.airlineCode || "").toUpperCase()}</span>`;
                 }}
               />
             ) : (
@@ -254,19 +248,15 @@ const FlightCard = ({
 
           {/* Times + route */}
           <div className="flex-1 flex items-center gap-3 sm:gap-6 py-4 pr-2 min-w-0">
-            {/* Departure */}
             <div className="text-center shrink-0">
               <p className="text-lg sm:text-xl font-black tracking-tight leading-none">{departTime}</p>
               <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{fromCode}</p>
             </div>
-
-            {/* Duration + stops line */}
             <div className="flex-1 flex flex-col items-center gap-0.5 min-w-[80px]">
               <p className="text-[11px] text-muted-foreground font-medium">{duration}</p>
               <div className="w-full flex items-center gap-0">
                 <div className="w-1.5 h-1.5 rounded-full border-[1.5px] border-muted-foreground/40" />
                 <div className="flex-1 h-[1.5px] bg-muted-foreground/30 relative">
-                  {/* Stop dots */}
                   {stops > 0 && Array.from({ length: Math.min(stops, 3) }).map((_, i) => (
                     <div
                       key={i}
@@ -279,8 +269,6 @@ const FlightCard = ({
               </div>
               <LayoverBadge stopCodes={stopCodes} stops={stops} />
             </div>
-
-            {/* Arrival */}
             <div className="text-center shrink-0">
               <p className="text-lg sm:text-xl font-black tracking-tight leading-none">
                 {arriveTime}
@@ -290,7 +278,7 @@ const FlightCard = ({
             </div>
           </div>
 
-          {/* Airline name (desktop) */}
+          {/* Airline info (desktop) */}
           <div className="hidden lg:block w-36 shrink-0 px-3">
             <p className="text-sm font-semibold truncate">{flight.airline}</p>
             <p className="text-[10px] text-muted-foreground">{flightNo}{cabin ? ` · ${cabin}` : ""}</p>
@@ -307,6 +295,9 @@ const FlightCard = ({
             )}
             {source === "tti" && (
               <Badge variant="outline" className="text-[9px] border-primary/30 text-primary px-1.5 py-0">Air Astra</Badge>
+            )}
+            {direction === "return" && (
+              <Badge variant="outline" className="text-[9px] border-amber-500/30 text-amber-600 dark:text-amber-400 px-1.5 py-0">Return</Badge>
             )}
           </div>
 
@@ -333,7 +324,7 @@ const FlightCard = ({
           {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>
 
-        {/* Expanded details — leg-by-leg like Google Flights */}
+        {/* Expanded details */}
         <AnimatePresence>
           {isExpanded && (
             <motion.div
@@ -347,31 +338,24 @@ const FlightCard = ({
                 {legs.length > 0 ? (
                   <div className="space-y-0">
                     {legs.map((leg: any, i: number) => {
-                      const legLogo = getAirlineLogo("", leg.airlineCode);
+                      const legLogo = getAirlineLogo(leg.airlineCode);
                       return (
                         <div key={i}>
-                          {/* Leg */}
                           <div className="flex gap-4">
-                            {/* Timeline */}
                             <div className="flex flex-col items-center w-6 shrink-0">
                               <CircleDot className="w-3.5 h-3.5 text-primary shrink-0" />
                               <div className="flex-1 w-[1.5px] bg-primary/30 my-1" />
                               <CircleDot className="w-3.5 h-3.5 text-primary shrink-0" />
                             </div>
-
-                            {/* Details */}
                             <div className="flex-1 pb-2 min-w-0">
-                              {/* Departure */}
                               <div className="flex items-baseline gap-2 mb-3">
                                 <span className="text-sm font-bold">{formatTime(leg.departureTime)}</span>
                                 <span className="text-sm">·</span>
                                 <span className="text-sm font-medium">{leg.origin}</span>
                                 {leg.originTerminal && <span className="text-xs text-muted-foreground">Terminal {leg.originTerminal}</span>}
                               </div>
-
-                              {/* Flight info mid-section */}
                               <div className="ml-0 pl-0 mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                                {legLogo && <img src={legLogo} alt="" className="w-4 h-4 object-contain" />}
+                                {legLogo && <img src={legLogo} alt="" className="w-4 h-4 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                                 <span className="font-medium text-foreground">{leg.flightNumber}</span>
                                 {leg.aircraft && <span>· {leg.aircraft}</span>}
                                 <span className="flex items-center gap-1"><Timer className="w-3 h-3" /> {leg.duration || `${leg.durationMinutes}m`}</span>
@@ -379,8 +363,6 @@ const FlightCard = ({
                                   <span>Operated by {leg.operatingAirline}</span>
                                 )}
                               </div>
-
-                              {/* Arrival */}
                               <div className="flex items-baseline gap-2">
                                 <span className="text-sm font-bold">{formatTime(leg.arrivalTime)}</span>
                                 <span className="text-sm">·</span>
@@ -389,8 +371,6 @@ const FlightCard = ({
                               </div>
                             </div>
                           </div>
-
-                          {/* Layover between legs */}
                           {i < legs.length - 1 && (
                             <div className="flex gap-4 my-2">
                               <div className="w-6 flex justify-center">
@@ -408,8 +388,7 @@ const FlightCard = ({
                                     }
                                     return "Connection";
                                   })()}
-                                  {" · "}
-                                  <span className="text-muted-foreground">{leg.destination}</span>
+                                  {" · "}<span className="text-muted-foreground">{leg.destination}</span>
                                 </span>
                               </div>
                             </div>
@@ -419,7 +398,6 @@ const FlightCard = ({
                     })}
                   </div>
                 ) : (
-                  // Fallback for flights without leg data
                   <div className="grid sm:grid-cols-3 gap-6">
                     <div>
                       <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Flight Info</h4>
@@ -446,7 +424,7 @@ const FlightCard = ({
                   </div>
                 )}
 
-                {/* Baggage + fare rules footer */}
+                {/* Baggage + amenities footer */}
                 <div className="flex flex-wrap items-center gap-4 mt-4 pt-3 border-t border-border/50 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1"><Luggage className="w-3.5 h-3.5" /> {flight.baggage || "20kg"} checked</span>
                   {refundable && <span className="flex items-center gap-1 text-success"><Shield className="w-3.5 h-3.5" /> Refundable</span>}
@@ -470,6 +448,31 @@ const SORT_OPTIONS = [
   { value: "fastest", label: "Fastest", icon: Timer },
 ];
 
+/* ─── Client-side sort function ─── */
+function sortFlights(flights: any[], sortBy: string) {
+  const sorted = [...flights];
+  switch (sortBy) {
+    case "cheapest":
+      return sorted.sort((a, b) => (a.price || 0) - (b.price || 0));
+    case "earliest":
+      return sorted.sort((a, b) => {
+        const da = a.departureTime ? new Date(a.departureTime).getTime() : Infinity;
+        const db = b.departureTime ? new Date(b.departureTime).getTime() : Infinity;
+        return da - db;
+      });
+    case "fastest":
+      return sorted.sort((a, b) => (a.durationMinutes || Infinity) - (b.durationMinutes || Infinity));
+    case "best":
+    default:
+      // Best = weighted score: lower price + fewer stops + shorter duration
+      return sorted.sort((a, b) => {
+        const scoreA = (a.price || 0) * 0.5 + (a.durationMinutes || 0) * 30 + (a.stops || 0) * 3000;
+        const scoreB = (b.price || 0) * 0.5 + (b.durationMinutes || 0) * 30 + (b.stops || 0) * 3000;
+        return scoreA - scoreB;
+      });
+  }
+}
+
 /* ─── Main page ─── */
 const FlightResults = () => {
   const { data: page } = useCmsPageContent("/flights");
@@ -481,6 +484,7 @@ const FlightResults = () => {
   const [departTimeRange, setDepartTimeRange] = useState([0, 24]);
   const [showFilters, setShowFilters] = useState(false);
   const [expandedFlight, setExpandedFlight] = useState<string | null>(null);
+  const [directionFilter, setDirectionFilter] = useState<"all" | "outbound" | "return">("all");
 
   const fromCode = searchParams.get("from") || "";
   const toCode = searchParams.get("to") || "";
@@ -489,6 +493,7 @@ const FlightResults = () => {
   const adults = searchParams.get("adults") || "1";
   const cabinClass = searchParams.get("class") || searchParams.get("cabin") || "";
   const hasRequiredParams = !!fromCode && !!toCode && !!departDate;
+  const isRoundTrip = !!returnDate;
 
   const params = hasRequiredParams ? {
     from: fromCode,
@@ -499,12 +504,15 @@ const FlightResults = () => {
     children: searchParams.get("children") || undefined,
     infants: searchParams.get("infants") || undefined,
     class: cabinClass || undefined,
-    sort: sortBy,
   } : undefined;
 
   const { data: rawData, isLoading, error, refetch } = useFlightSearch(params);
   const apiData = (rawData as any) || {};
   const flights = apiData.data || apiData.flights || [];
+
+  // Detect if we have round-trip flights with direction markers
+  const hasDirections = flights.some((f: any) => f.direction === "return");
+
   const airlines = useMemo(() =>
     apiData.airlines || [...new Set(flights.map((f: any) => f.airline).filter(Boolean))],
     [apiData.airlines, flights]
@@ -523,37 +531,45 @@ const FlightResults = () => {
     []
   );
 
-  // Apply all filters
+  // Apply filters + client-side sort
   const filtered = useMemo(() => {
-    return flights.filter((f: any) => {
-      // Airlines
+    let result = flights.filter((f: any) => {
       if (selectedAirlines.length > 0 && !selectedAirlines.includes(f.airline)) return false;
-      // Price
       if (f.price < priceRange[0] || f.price > priceRange[1]) return false;
-      // Stops
       if (stopsFilter !== "all") {
         const stops = f.stops ?? 0;
         if (stopsFilter === "0" && stops !== 0) return false;
         if (stopsFilter === "1" && stops !== 1) return false;
         if (stopsFilter === "2+" && stops < 2) return false;
       }
-      // Departure time
       if (f.departureTime) {
         const hour = new Date(f.departureTime).getHours();
         if (hour < departTimeRange[0] || hour > departTimeRange[1]) return false;
       }
+      // Direction filter (for round-trip)
+      if (directionFilter !== "all" && f.direction) {
+        if (f.direction !== directionFilter) return false;
+      }
       return true;
     });
-  }, [flights, selectedAirlines, priceRange, stopsFilter, departTimeRange]);
+
+    // Client-side sorting
+    result = sortFlights(result, sortBy);
+
+    return result;
+  }, [flights, selectedAirlines, priceRange, stopsFilter, departTimeRange, directionFilter, sortBy]);
 
   const resetFilters = useCallback(() => {
     setSelectedAirlines([]);
     setPriceRange([0, maxPrice]);
     setStopsFilter("all");
     setDepartTimeRange([0, 24]);
+    setDirectionFilter("all");
   }, [maxPrice]);
 
   const sources = apiData.sources || {};
+  const outboundCount = flights.filter((f: any) => f.direction !== "return").length;
+  const returnCount = flights.filter((f: any) => f.direction === "return").length;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -564,6 +580,7 @@ const FlightResults = () => {
             <div>
               <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
                 {fromCode || "—"} <ArrowRight className="w-5 h-5 text-primary" /> {toCode || "—"}
+                {isRoundTrip && <span className="text-sm font-normal text-muted-foreground ml-1">(Round trip)</span>}
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {departDate}{returnDate ? ` – ${returnDate}` : ""} · {adults} traveller(s) · <strong className="text-foreground">{filtered.length} flights</strong> found
@@ -608,6 +625,33 @@ const FlightResults = () => {
                       Reset
                     </Button>
                   </div>
+
+                  {/* Direction filter for round-trip */}
+                  {hasDirections && (
+                    <div className="mb-6">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Direction</h4>
+                      <div className="flex gap-1.5">
+                        {[
+                          { key: "all" as const, label: "All" },
+                          { key: "outbound" as const, label: `Outbound (${outboundCount})` },
+                          { key: "return" as const, label: `Return (${returnCount})` },
+                        ].map(opt => (
+                          <button
+                            key={opt.key}
+                            onClick={() => setDirectionFilter(opt.key)}
+                            className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
+                              directionFilter === opt.key
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-card text-muted-foreground border-border hover:border-foreground/30"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <FilterPanel
                     priceRange={priceRange}
                     setPriceRange={setPriceRange}
@@ -627,7 +671,7 @@ const FlightResults = () => {
 
             {/* Main content */}
             <div className="flex-1 space-y-3">
-              {/* Sort tabs + mobile filter button */}
+              {/* Sort tabs + mobile filter */}
               <div className="flex items-center justify-between gap-3">
                 <div className="flex gap-1 overflow-x-auto scrollbar-none">
                   {SORT_OPTIONS.map((s) => {
@@ -663,7 +707,7 @@ const FlightResults = () => {
                       <p className="text-sm mt-1 max-w-md mx-auto">
                         {selectedAirlines.length > 0 || stopsFilter !== "all"
                           ? "Try adjusting your filters or search criteria"
-                          : "No flights available for this route and date. Currently available airlines: Air Astra (Bangladesh domestic & regional routes). More airline integrations (BDFare / Amadeus GDS) coming soon."}
+                          : "No flights available for this route. More airline integrations coming soon."}
                       </p>
                       {selectedAirlines.length > 0 || stopsFilter !== "all" ? (
                         <Button variant="outline" size="sm" className="mt-3" onClick={resetFilters}>Clear Filters</Button>

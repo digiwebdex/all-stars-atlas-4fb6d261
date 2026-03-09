@@ -44,11 +44,9 @@ async function ttiRequest(method, body) {
   const config = await getTTIConfig();
   if (!config) throw new Error('TTI API not configured — set credentials in Admin → Settings → API Integrations');
 
-  // Try the configured URL first, then HTTPS fallback if HTTP fails
   const baseUrl = config.url.replace(/\/+$/, '');
   const urlsToTry = [baseUrl];
 
-  // If HTTP, also try HTTPS; if HTTPS, also try HTTP
   if (baseUrl.startsWith('http://')) {
     urlsToTry.push(baseUrl.replace('http://', 'https://'));
   } else if (baseUrl.startsWith('https://')) {
@@ -59,51 +57,36 @@ async function ttiRequest(method, body) {
 
   for (const tryUrl of urlsToTry) {
     const fullUrl = `${tryUrl}/${method}`;
-    console.log(`[TTI] → ${method} | Trying URL: ${fullUrl}`);
+    console.log(`[TTI] → ${method} | URL: ${fullUrl}`);
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      const timeout = setTimeout(() => controller.abort(), 30000);
 
       const res = await fetch(fullUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ request: body }),  // WCF requires wrapping in "request"
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ request: body }),
         signal: controller.signal,
       });
       clearTimeout(timeout);
 
       const responseText = await res.text();
-      console.log(`[TTI] ← ${method} | Status: ${res.status} | Body length: ${responseText.length}`);
+      console.log(`[TTI] ← ${method} | Status: ${res.status} | Length: ${responseText.length}`);
 
       if (!res.ok) {
-        console.error(`[TTI] ← ERROR (${res.status}): ${responseText.slice(0, 1000)}`);
-        // Don't throw yet — try next URL
         lastError = new Error(`TTI ${method} failed (${res.status}): ${responseText.slice(0, 500)}`);
         continue;
       }
 
       try {
         const json = JSON.parse(responseText);
-        console.log(`[TTI] ← Parsed OK. Keys:`, Object.keys(json));
-        if (json.Segments) console.log(`[TTI] ← Segments: ${json.Segments.length}`);
-        if (json.FareInfo?.Itineraries) console.log(`[TTI] ← Itineraries: ${json.FareInfo.Itineraries.length}`);
-        if (json.ResponseInfo?.Errors?.length) console.log(`[TTI] ← ERRORS:`, JSON.stringify(json.ResponseInfo.Errors));
-
-        // If this URL worked and it's different from configured, log it
-        if (tryUrl !== baseUrl) {
-          console.log(`[TTI] ✓ SUCCESS with fallback URL: ${tryUrl} (configured was: ${baseUrl})`);
-        }
+        if (tryUrl !== baseUrl) console.log(`[TTI] ✓ Fallback URL worked: ${tryUrl}`);
         return json;
       } catch (e) {
-        console.error(`[TTI] ← JSON parse failed:`, responseText.slice(0, 500));
         lastError = new Error(`TTI ${method}: invalid JSON response`);
         continue;
       }
     } catch (fetchErr) {
-      console.error(`[TTI] ✗ Connection failed for ${fullUrl}:`, fetchErr.message, fetchErr.cause || '');
       lastError = fetchErr;
       continue;
     }
@@ -121,7 +104,6 @@ async function searchFlights({ origin, destination, departDate, returnDate, adul
 
   let refCounter = 1;
   const passengers = [];
-  // TTI valid codes: AD (adult), CHD (child 2-12), INF (infant 0-2), INS (infant w/ seat), UM (unaccompanied minor)
   if (adults > 0) passengers.push({ Ref: String(refCounter++), PassengerTypeCode: 'AD', PassengerQuantity: parseInt(adults) });
   if (children > 0) passengers.push({ Ref: String(refCounter++), PassengerTypeCode: 'CHD', PassengerQuantity: parseInt(children) });
   if (infants > 0) passengers.push({ Ref: String(refCounter++), PassengerTypeCode: 'INF', PassengerQuantity: parseInt(infants) });
@@ -145,13 +127,12 @@ async function searchFlights({ origin, destination, departDate, returnDate, adul
 
   const response = await ttiRequest('SearchFlights', request);
 
-  // TTI returns Error (singular object) not Errors (array)
   if (response.ResponseInfo?.Error) {
     const err = response.ResponseInfo.Error;
     throw new Error(`TTI search error: ${err.Message || err.Code || err.FullText || 'Unknown'}`);
   }
 
-  return normalizeTTIResponse(response, origin, destination);
+  return normalizeTTIResponse(response, origin, destination, !!returnDate);
 }
 
 function parseTTIDate(dateStr) {
@@ -162,19 +143,20 @@ function parseTTIDate(dateStr) {
 }
 
 function formatDuration(minutes) {
-  if (!minutes) return '';
+  if (!minutes || minutes <= 0) return '';
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return `${h}h ${m}m`;
 }
 
-function normalizeTTIResponse(response, originCode, destinationCode) {
+/**
+ * Normalize TTI response — splits multi-OD itineraries into separate per-direction flights
+ */
+function normalizeTTIResponse(response, originCode, destinationCode, isRoundTrip) {
   const segments = response.Segments || [];
   const fareInfo = response.FareInfo || {};
   const itineraries = fareInfo.Itineraries || [];
   const etTicketFares = fareInfo.ETTicketFares || [];
-
-  console.log(`[TTI] Normalizing: ${segments.length} segments, ${itineraries.length} itineraries`);
 
   const segmentMap = {};
   for (const seg of segments) segmentMap[seg.Ref] = seg;
@@ -193,70 +175,22 @@ function normalizeTTIResponse(response, originCode, destinationCode) {
     const airODs = itin.AirOriginDestinations || [];
     const fares = itinFareMap[itin.Ref] || [];
 
-    let totalPrice = 0;
+    // Calculate total itinerary price
+    let totalItinPrice = 0;
     let currency = 'BDT';
     if (itin.SaleCurrencyAmount) {
-      totalPrice = itin.SaleCurrencyAmount.TotalAmount || itin.SaleCurrencyAmount.Amount || itin.SaleCurrencyAmount.Value || 0;
+      totalItinPrice = itin.SaleCurrencyAmount.TotalAmount || itin.SaleCurrencyAmount.Amount || itin.SaleCurrencyAmount.Value || 0;
       currency = itin.SaleCurrencyAmount.CurrencyCode || 'BDT';
     } else if (fares.length > 0) {
       for (const f of fares) {
         if (f.SaleCurrencyAmount) {
-          totalPrice += f.SaleCurrencyAmount.Amount || f.SaleCurrencyAmount.Value || 0;
+          totalItinPrice += f.SaleCurrencyAmount.Amount || f.SaleCurrencyAmount.Value || 0;
           currency = f.SaleCurrencyAmount.CurrencyCode || currency;
         }
       }
     }
 
-    const itinSegments = [];
-    for (const od of airODs) {
-      // TTI uses AirCoupons (not SegmentReferences)
-      const coupons = od.AirCoupons || od.SegmentReferences || od.Segments || [];
-      for (const coupon of coupons) {
-        const ref = coupon.RefSegment || coupon.Ref || coupon;
-        const seg = segmentMap[ref];
-        if (seg) itinSegments.push(seg);
-      }
-    }
-
-    if (itinSegments.length === 0) continue;
-
-    const legs = itinSegments.map(seg => {
-      const fi = seg.FlightInfo || {};
-      return {
-        origin: seg.OriginCode,
-        destination: seg.DestinationCode,
-        departureTime: parseTTIDate(fi.DepartureDate)?.toISOString() || null,
-        arrivalTime: parseTTIDate(fi.ArrivalDate)?.toISOString() || null,
-        durationMinutes: fi.DurationMinutes || 0,
-        duration: formatDuration(fi.DurationMinutes),
-        flightNumber: `${seg.AirlineDesignator || ''}${fi.FlightNumber || ''}`,
-        airlineCode: seg.AirlineDesignator || '',
-        operatingAirline: fi.OperatingAirlineDesignator || seg.AirlineDesignator || '',
-        aircraft: fi.EquipmentText || fi.EquipmentCode || '',
-        originTerminal: fi.OriginAirportTerminal || '',
-        destinationTerminal: fi.DestinationAirportTerminal || '',
-        stops: (fi.Stops || []).map(s => ({
-          code: s.AirportCode || s.Code || '',
-          duration: s.DurationMinutes || 0,
-        })),
-      };
-    });
-
-    const firstLeg = legs[0];
-    const lastLeg = legs[legs.length - 1];
-
-    let totalDurationMin = 0;
-    for (const leg of legs) totalDurationMin += leg.durationMinutes;
-    for (let i = 1; i < legs.length; i++) {
-      if (legs[i].departureTime && legs[i - 1].arrivalTime) {
-        const layover = (new Date(legs[i].departureTime).getTime() - new Date(legs[i - 1].arrivalTime).getTime()) / 60000;
-        if (layover > 0) totalDurationMin += layover;
-      }
-    }
-
-    const stopsCount = legs.length - 1;
-    const stopCodes = legs.slice(0, -1).map(l => l.destination);
-
+    // Get fare details for the itinerary
     const fareDetails = [];
     for (const f of fares) {
       const odFares = f.OriginDestinationFares || [];
@@ -275,33 +209,98 @@ function normalizeTTIResponse(response, originCode, destinationCode) {
     const cabinClass = fareDetails[0]?.cabinClass || '';
     const cabinName = cabinClass === 'Y' ? 'Economy' : cabinClass === 'C' ? 'Business' : cabinClass === 'F' ? 'First' : cabinClass === 'W' ? 'Premium Economy' : cabinClass || 'Economy';
 
-    flights.push({
-      id: `tti-${itin.Ref}`,
-      source: 'tti',
-      airline: getAirlineName(firstLeg.airlineCode),
-      airlineCode: firstLeg.airlineCode,
-      airlineLogo: null,
-      flightNumber: firstLeg.flightNumber,
-      origin: firstLeg.origin,
-      destination: lastLeg.destination,
-      departureTime: firstLeg.departureTime,
-      arrivalTime: lastLeg.arrivalTime,
-      duration: formatDuration(totalDurationMin),
-      durationMinutes: totalDurationMin,
-      stops: stopsCount,
-      stopCodes: stopCodes,
-      cabinClass: cabinName,
-      price: totalPrice,
-      currency: currency,
-      refundable: false,
-      baggage: '20kg',
-      aircraft: firstLeg.aircraft,
-      legs: legs,
-      itineraryRef: itin.Ref,
-      validatingAirline: itin.ValidatingAirlineDesignator || firstLeg.airlineCode,
-      fareDetails: fareDetails,
-      _ttiItineraryRef: itin.Ref,
-    });
+    // ─── KEY FIX: Split each AirOriginDestination into a separate flight ───
+    // For round-trip, this creates outbound + return as independent flight objects
+    // For one-way with connections, legs within the SAME OD stay together
+
+    const odCount = airODs.length;
+    const pricePerDirection = odCount > 1 ? Math.round(totalItinPrice / odCount) : totalItinPrice;
+
+    for (let odIdx = 0; odIdx < airODs.length; odIdx++) {
+      const od = airODs[odIdx];
+      const coupons = od.AirCoupons || od.SegmentReferences || od.Segments || [];
+      const odSegments = [];
+
+      for (const coupon of coupons) {
+        const ref = coupon.RefSegment || coupon.Ref || coupon;
+        const seg = segmentMap[ref];
+        if (seg) odSegments.push(seg);
+      }
+
+      if (odSegments.length === 0) continue;
+
+      const legs = odSegments.map(seg => {
+        const fi = seg.FlightInfo || {};
+        return {
+          origin: seg.OriginCode,
+          destination: seg.DestinationCode,
+          departureTime: parseTTIDate(fi.DepartureDate)?.toISOString() || null,
+          arrivalTime: parseTTIDate(fi.ArrivalDate)?.toISOString() || null,
+          durationMinutes: fi.DurationMinutes || 0,
+          duration: formatDuration(fi.DurationMinutes),
+          flightNumber: `${seg.AirlineDesignator || ''}${fi.FlightNumber || ''}`,
+          airlineCode: seg.AirlineDesignator || '',
+          operatingAirline: fi.OperatingAirlineDesignator || seg.AirlineDesignator || '',
+          aircraft: fi.EquipmentText || fi.EquipmentCode || '',
+          originTerminal: fi.OriginAirportTerminal || '',
+          destinationTerminal: fi.DestinationAirportTerminal || '',
+          stops: (fi.Stops || []).map(s => ({
+            code: s.AirportCode || s.Code || '',
+            duration: s.DurationMinutes || 0,
+          })),
+        };
+      });
+
+      const firstLeg = legs[0];
+      const lastLeg = legs[legs.length - 1];
+
+      // Calculate total duration for THIS direction only (legs + layovers within OD)
+      let totalDurationMin = 0;
+      for (const leg of legs) totalDurationMin += leg.durationMinutes;
+      for (let i = 1; i < legs.length; i++) {
+        if (legs[i].departureTime && legs[i - 1].arrivalTime) {
+          const layover = (new Date(legs[i].departureTime).getTime() - new Date(legs[i - 1].arrivalTime).getTime()) / 60000;
+          if (layover > 0) totalDurationMin += layover;
+        }
+      }
+
+      const stopsCount = legs.length - 1;
+      const stopCodes = legs.slice(0, -1).map(l => l.destination);
+
+      // Determine direction
+      const direction = odIdx === 0 ? 'outbound' : 'return';
+
+      flights.push({
+        id: `tti-${itin.Ref}-${direction}`,
+        source: 'tti',
+        direction: direction,
+        isRoundTrip: isRoundTrip && odCount > 1,
+        airline: getAirlineName(firstLeg.airlineCode),
+        airlineCode: firstLeg.airlineCode,
+        airlineLogo: null,
+        flightNumber: firstLeg.flightNumber,
+        origin: firstLeg.origin,
+        destination: lastLeg.destination,
+        departureTime: firstLeg.departureTime,
+        arrivalTime: lastLeg.arrivalTime,
+        duration: formatDuration(totalDurationMin),
+        durationMinutes: totalDurationMin,
+        stops: stopsCount,
+        stopCodes: stopCodes,
+        cabinClass: cabinName,
+        price: pricePerDirection,
+        totalRoundTripPrice: isRoundTrip && odCount > 1 ? totalItinPrice : undefined,
+        currency: currency,
+        refundable: false,
+        baggage: '20kg',
+        aircraft: firstLeg.aircraft,
+        legs: legs,
+        itineraryRef: itin.Ref,
+        validatingAirline: itin.ValidatingAirlineDesignator || firstLeg.airlineCode,
+        fareDetails: fareDetails,
+        _ttiItineraryRef: itin.Ref,
+      });
+    }
   }
 
   return flights;
@@ -319,7 +318,19 @@ function getAirlineName(code) {
     'OZ': 'Asiana Airlines', 'KE': 'Korean Air', 'NH': 'ANA',
     'JL': 'Japan Airlines', 'LH': 'Lufthansa', 'BA': 'British Airways',
     'AF': 'Air France', 'KL': 'KLM', 'LO': 'LOT Polish Airlines',
-    'SK': 'SAS', 'ET': 'Ethiopian Airlines',
+    'SK': 'SAS', 'ET': 'Ethiopian Airlines', 'WS': 'WestJet',
+    'AC': 'Air Canada', 'UA': 'United Airlines', 'AA': 'American Airlines',
+    'DL': 'Delta Air Lines', 'IB': 'Iberia', 'AY': 'Finnair',
+    'OS': 'Austrian Airlines', 'LX': 'Swiss International', 'EY': 'Etihad Airways',
+    'W5': 'Mahan Air', 'PK': 'Pakistan International', 'BR': 'EVA Air',
+    'CI': 'China Airlines', 'CA': 'Air China', 'MU': 'China Eastern',
+    'CZ': 'China Southern', 'HU': 'Hainan Airlines', 'VN': 'Vietnam Airlines',
+    'GA': 'Garuda Indonesia', 'OD': 'Malindo Air', 'AK': 'AirAsia',
+    'FD': 'Thai AirAsia', 'SL': 'Thai Lion Air', 'DD': 'Nok Air',
+    'QF': 'Qantas', 'NZ': 'Air New Zealand', 'PR': 'Philippine Airlines',
+    'IT': 'Tigerair Taiwan', '5J': 'Cebu Pacific', 'J9': 'Jazeera Airways',
+    'WF': 'Widerøe', 'DY': 'Norwegian', 'FR': 'Ryanair', 'U2': 'easyJet',
+    'W6': 'Wizz Air',
   };
   return names[code] || code;
 }
