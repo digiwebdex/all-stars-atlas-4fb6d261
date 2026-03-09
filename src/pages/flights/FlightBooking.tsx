@@ -853,21 +853,23 @@ const FlightBooking = () => {
                         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                           <Timer className="w-5 h-5 text-primary" />
                         </div>
-                        <div>
-                          <p className="font-bold text-sm">Book Now, Pay Later</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Your booking will be placed on hold. You can pay anytime from your dashboard.
-                            {deadlineInfo && (
-                              <span className="text-destructive font-semibold"> {deadlineInfo.label}.</span>
-                            )}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground mt-2">
-                            {domestic
-                              ? "Domestic flights: Booking valid for 48 hours. Must pay 24h before departure."
-                              : "International flights: Booking valid for 7 days. Must pay before deadline."
-                            }
-                          </p>
-                        </div>
+                         <div>
+                           <p className="font-bold text-sm">Book Now, Pay Later</p>
+                           <p className="text-xs text-muted-foreground mt-1">
+                             Your booking will be placed on hold. You can pay anytime from your dashboard before the airline's deadline.
+                             {deadlineInfo && (
+                               <span className="text-destructive font-semibold"> {deadlineInfo.label}.</span>
+                             )}
+                           </p>
+                           <p className="text-[10px] text-muted-foreground mt-2">
+                             {outboundFlight?.timeLimit
+                               ? "⏱ Deadline set by the airline's reservation system. Booking will auto-cancel after this time."
+                               : domestic
+                                 ? "Domestic flights: Booking valid for 48 hours. Must pay 24h before departure."
+                                 : "International flights: Booking valid for 7 days. Must pay before deadline."
+                             }
+                           </p>
+                         </div>
                       </div>
                     </CardContent>
                   </Card>
