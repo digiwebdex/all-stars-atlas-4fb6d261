@@ -18,17 +18,33 @@ const PayBillPage = () => {
   const [account, setAccount] = useState(searchParams.get("account") || "");
   const [amount, setAmount] = useState(searchParams.get("amount") || "");
   const [submitted, setSubmitted] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const { data: catData, isLoading, error, refetch } = useBillCategories();
   const submitBill = useSubmitBillPayment();
 
   const categories = (catData as any)?.data || (catData as any)?.categories || [];
 
-  const handleSubmit = async () => {
-    if (!category || !biller || !account || !amount) {
-      toast({ title: "Error", description: "Please fill in all fields", variant: "destructive" });
-      return;
+  const validate = (): boolean => {
+    const errors: Record<string, string> = {};
+    if (!category) errors.category = "Please select a category";
+    if (!biller?.trim()) errors.biller = "Biller name is required";
+    if (!account?.trim()) errors.account = "Account number is required";
+    if (!amount?.trim()) errors.amount = "Amount is required";
+    else if (Number(amount) < 1) errors.amount = "Amount must be positive";
+    else if (Number(amount) > 500000) errors.amount = "Maximum amount is ৳500,000";
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      toast({ title: "Error", description: Object.values(errors)[0], variant: "destructive" });
+      return false;
     }
+    setFieldErrors({});
+    return true;
+  };
+
+  const handleSubmit = async () => {
+    if (!validate()) return;
     try {
       await submitBill.mutateAsync({ category, biller, account, amount: Number(amount) } as any);
       setSubmitted(true);
@@ -37,6 +53,8 @@ const PayBillPage = () => {
       toast({ title: "Error", description: e.message || "Payment failed", variant: "destructive" });
     }
   };
+
+  const errClass = (f: string) => fieldErrors[f] ? "border-destructive ring-destructive/20 ring-2" : "";
 
   if (submitted) {
     return (
@@ -48,7 +66,7 @@ const PayBillPage = () => {
             <p className="text-sm text-muted-foreground">৳{Number(amount).toLocaleString()} paid to {biller}</p>
             <p className="text-xs text-muted-foreground">Account: {account}</p>
             <div className="flex gap-3 justify-center">
-              <Button variant="outline" onClick={() => setSubmitted(false)}>Pay Another Bill</Button>
+              <Button variant="outline" onClick={() => { setSubmitted(false); setBiller(""); setAccount(""); setAmount(""); }}>Pay Another Bill</Button>
               <Button asChild><Link to="/">Go Home</Link></Button>
             </div>
           </CardContent>
@@ -65,17 +83,30 @@ const PayBillPage = () => {
           <Card>
             <CardContent className="p-6 space-y-5">
               <div className="space-y-1.5">
-                <Label>Bill Category</Label>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger className="h-11"><SelectValue placeholder="Select category" /></SelectTrigger>
+                <Label className={fieldErrors.category ? "text-destructive" : ""}>Bill Category *</Label>
+                <Select value={category} onValueChange={v => { setCategory(v); setFieldErrors(p => { const n = {...p}; delete n.category; return n; }); }}>
+                  <SelectTrigger className={`h-11 ${errClass("category")}`}><SelectValue placeholder="Select category" /></SelectTrigger>
                   <SelectContent>{categories.map((cat: any) => <SelectItem key={cat.id || cat} value={cat.id || cat.toLowerCase().replace(/ /g, '-')}>{cat.name || cat}</SelectItem>)}</SelectContent>
                 </Select>
+                {fieldErrors.category && <p className="text-[11px] text-destructive font-medium">{fieldErrors.category}</p>}
               </div>
-              <div className="space-y-1.5"><Label>Biller Name</Label><Input value={biller} onChange={e => setBiller(e.target.value)} placeholder="e.g. DPDC, Titas Gas" className="h-11" /></div>
-              <div className="space-y-1.5"><Label>Account / Subscriber Number</Label><Input value={account} onChange={e => setAccount(e.target.value)} placeholder="Enter account number" className="h-11" /></div>
-              <div className="space-y-1.5"><Label>Amount (৳)</Label><Input value={amount} onChange={e => setAmount(e.target.value)} placeholder="Enter amount" type="number" className="h-11" /></div>
+              <div className="space-y-1.5">
+                <Label className={fieldErrors.biller ? "text-destructive" : ""}>Biller Name *</Label>
+                <Input value={biller} onChange={e => { setBiller(e.target.value); setFieldErrors(p => { const n = {...p}; delete n.biller; return n; }); }} placeholder="e.g. DPDC, Titas Gas" className={`h-11 ${errClass("biller")}`} />
+                {fieldErrors.biller && <p className="text-[11px] text-destructive font-medium">{fieldErrors.biller}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label className={fieldErrors.account ? "text-destructive" : ""}>Account / Subscriber Number *</Label>
+                <Input value={account} onChange={e => { setAccount(e.target.value); setFieldErrors(p => { const n = {...p}; delete n.account; return n; }); }} placeholder="Enter account number" className={`h-11 ${errClass("account")}`} />
+                {fieldErrors.account && <p className="text-[11px] text-destructive font-medium">{fieldErrors.account}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label className={fieldErrors.amount ? "text-destructive" : ""}>Amount (৳) *</Label>
+                <Input value={amount} onChange={e => { setAmount(e.target.value); setFieldErrors(p => { const n = {...p}; delete n.amount; return n; }); }} placeholder="Enter amount" type="number" className={`h-11 ${errClass("amount")}`} />
+                {fieldErrors.amount && <p className="text-[11px] text-destructive font-medium">{fieldErrors.amount}</p>}
+              </div>
               <Separator />
-              {amount && (
+              {amount && Number(amount) > 0 && (
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Bill Amount</span><span className="font-semibold">৳{Number(amount).toLocaleString()}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Service Charge</span><span className="font-semibold">৳10</span></div>
