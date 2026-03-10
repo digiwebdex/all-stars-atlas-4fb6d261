@@ -268,20 +268,23 @@ const FlightCard = ({
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
               <div className="border-t border-border">
                 {/* Tab headers */}
-                <div className="flex border-b border-border bg-muted/20">
+                <div className="flex overflow-x-auto border-b border-border bg-muted/20 scrollbar-none">
                   {[
-                    { key: "itinerary", label: "Flight Itinerary", icon: Plane },
+                    { key: "itinerary", label: "Flight Details", icon: Plane },
                     { key: "fare", label: "Fare Summary", icon: FileText },
                     { key: "baggage", label: "Baggage", icon: Luggage },
+                    { key: "cancellation", label: "Cancellation", icon: Shield },
+                    { key: "datechange", label: "Date Change", icon: Clock },
                   ].map(tab => (
                     <button key={tab.key} onClick={() => setActiveDetailTab(tab.key)}
-                      className={`flex items-center gap-1.5 px-4 py-3 text-xs font-semibold border-b-2 -mb-px transition-colors ${
+                      className={`flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-xs font-semibold border-b-2 -mb-px transition-colors whitespace-nowrap shrink-0 ${
                         activeDetailTab === tab.key
                           ? "border-accent text-accent"
                           : "border-transparent text-muted-foreground hover:text-foreground"
                       }`}>
-                      <tab.icon className="w-3.5 h-3.5" />
-                      {tab.label}
+                      <tab.icon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      <span className="hidden sm:inline">{tab.label}</span>
+                      <span className="sm:hidden">{tab.label.split(" ")[0]}</span>
                     </button>
                   ))}
                 </div>
