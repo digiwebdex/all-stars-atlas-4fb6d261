@@ -4,15 +4,30 @@ All notable changes to this project are documented in this file.
 
 ---
 
-## [2.9.0] — 2026-03-10 — Full Platform Audit & Production Hardening
+## [3.0.0] — 2026-03-10 — Complete Platform Audit v2 & Production Finalization
 
-### Fixed — Hardcoded Data Removal (Zero-Mock Policy)
-- **Baggage fallbacks**: Replaced all `"20kg"` hardcoded defaults with `null` or `"As per airline policy"` across BookingConfirmation, DashboardBookings, FlightBooking, and ancillaries endpoint
-- **Meal fallbacks**: Removed `"Meals"` hardcoded default — now shows actual API data or empty
-- **Dashboard stats**: Removed fake `"+12%"`, `"+5%"`, `"+8%"` growth indicators from user and admin dashboard stats — values now come directly from DB
-- **Admin reports**: Replaced hardcoded `growthRate: 12.5` with real calculated growth rate comparing last two periods
-- **Admin discounts**: Removed 7 hardcoded default discount codes and 7 default price rules — now shows empty state when no API data exists
-- **Admin currency**: Exchange rates now load from API/DB with proper empty state
+### Fixed — Booking Flows Now Call Real APIs
+- **eSIM Purchase**: Now calls `POST /esim/purchase` instead of just navigating to confirmation
+- **Holiday Booking**: Now calls `POST /holidays/book` with package details and returns bookingRef
+- **Medical Booking**: Now calls `POST /medical/book` with hospital and form data
+- **Car Booking**: Now calls `POST /cars/book` with car, dates, and form data
+- All 4 booking flows now persist bookings in the database and return real booking references
+
+### Fixed — Hardcoded Data Removal (Zero-Mock Policy v2)
+- **BookingConfirmation**: Removed hardcoded fallbacks for route (`"Dhaka → Cox's Bazar"`), flightNo (`"BG-435"`), departTime (`"07:30"`), arriveTime (`"08:35"`), stops (`"Non-stop"`), and ticketNo (random `997-xxx`)
+- **AdminCurrency**: Removed 5 hardcoded default exchange rates — now shows empty state when no rates configured
+- **ESIMPlans**: Removed 4 hardcoded fallback country filters — now uses CMS data only
+- **MedicalServices**: Removed 5+6 hardcoded country/treatment fallback arrays
+- **HolidayPackages**: Removed 5+4 hardcoded includes/filter fallback arrays
+- **Dashboard stats**: Removed fake `"+0%"` change indicator — now only shows change when API provides it
+- **Admin Dashboard**: Same fix for stat change indicators
+
+### Fixed — Previous Audit (v2.9.0)
+- Baggage fallbacks: `"20kg"` → `"As per airline policy"` (7 locations)
+- Meal fallbacks: `"Meals"` → empty (5 locations)
+- Dashboard stats: Removed fake `"+12%"`, `"+8%"` growth indicators
+- Admin reports: Real calculated growth rate instead of `12.5`
+- Admin discounts: No hardcoded default discount codes
 
 ### Improved — TTI/ZENITH GDS Integration
 - Enhanced seat availability extraction from `AirCoupons[]`, segment-level, and `ETCouponFares[]`
