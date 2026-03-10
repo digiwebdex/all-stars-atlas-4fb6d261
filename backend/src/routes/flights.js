@@ -4,9 +4,9 @@ const db = require('../config/db');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { notifyBookingConfirm } = require('../services/notify');
 const { searchFlights: ttiSearch, createBooking: ttiCreateBooking } = require('./tti-flights');
-const { searchFlights: bdfSearch } = require('./bdf-flights');
-const { searchFlights: flyhubSearch } = require('./flyhub-flights');
-const { searchFlights: sabreSearch } = require('./sabre-flights');
+const { searchFlights: bdfSearch, createBooking: bdfCreateBooking } = require('./bdf-flights');
+const { searchFlights: flyhubSearch, createBooking: flyhubCreateBooking } = require('./flyhub-flights');
+const { searchFlights: sabreSearch, createBooking: sabreCreateBooking } = require('./sabre-flights');
 
 const router = express.Router();
 
@@ -468,18 +468,19 @@ router.post('/book', authenticate, async (req, res) => {
       baseFare, taxes, serviceCharge,
     };
 
-    // If this is a TTI/Air Astra flight, create booking in GDS first
+    // Create GDS booking based on flight source
     let gdsPnr = null;
     let gdsBookingResult = null;
     const flightSource = flightData?.source || '';
-    if (flightSource === 'tti' || (flightData?.airlineCode === '2A' || flightData?.airlineCode === 'S2')) {
+
+    if (flightSource === 'tti' || flightData?.airlineCode === '2A' || flightData?.airlineCode === 'S2') {
+      // TTI / Air Astra
       console.log('[Booking] TTI/Air Astra flight detected — creating GDS booking...');
       try {
         gdsBookingResult = await ttiCreateBooking({ flightData, passengers: passengers || [], contactInfo: contactInfo || {} });
         if (gdsBookingResult.success && gdsBookingResult.pnr) {
           gdsPnr = gdsBookingResult.pnr;
           console.log('[Booking] TTI PNR created:', gdsPnr);
-          // Use TTI time limit if available
           if (gdsBookingResult.ticketTimeLimit && payLater) {
             const ttiDeadline = new Date(gdsBookingResult.ticketTimeLimit);
             if (!isNaN(ttiDeadline.getTime()) && ttiDeadline > new Date()) {
@@ -491,6 +492,53 @@ router.post('/book', authenticate, async (req, res) => {
         }
       } catch (ttiErr) {
         console.error('[Booking] TTI CreateBooking exception:', ttiErr.message, '— proceeding with local booking');
+      }
+    } else if (flightSource === 'bdfare') {
+      // BDFare
+      console.log('[Booking] BDFare flight detected — creating GDS booking...');
+      try {
+        const offerId = flightData?._bdfOfferId || null;
+        if (offerId) {
+          gdsBookingResult = await bdfCreateBooking({ offerId, passengers: passengers || [], contactInfo: contactInfo || {} });
+          if (gdsBookingResult.success && gdsBookingResult.pnr) {
+            gdsPnr = gdsBookingResult.pnr;
+            console.log('[Booking] BDFare PNR created:', gdsPnr);
+          } else {
+            console.warn('[Booking] BDFare booking failed:', gdsBookingResult.error || 'unknown', '— proceeding with local booking');
+          }
+        } else {
+          console.warn('[Booking] BDFare flight missing offerId — skipping GDS booking');
+        }
+      } catch (bdfErr) {
+        console.error('[Booking] BDFare CreateBooking exception:', bdfErr.message, '— proceeding with local booking');
+      }
+    } else if (flightSource === 'flyhub') {
+      // FlyHub
+      console.log('[Booking] FlyHub flight detected — creating GDS booking...');
+      try {
+        gdsBookingResult = await flyhubCreateBooking({ flightData, passengers: passengers || [], contactInfo: contactInfo || {} });
+        if (gdsBookingResult.success && gdsBookingResult.pnr) {
+          gdsPnr = gdsBookingResult.pnr;
+          console.log('[Booking] FlyHub PNR created:', gdsPnr);
+        } else {
+          console.warn('[Booking] FlyHub booking failed:', gdsBookingResult.error || 'unknown', '— proceeding with local booking');
+        }
+      } catch (fhErr) {
+        console.error('[Booking] FlyHub CreateBooking exception:', fhErr.message, '— proceeding with local booking');
+      }
+    } else if (flightSource === 'sabre') {
+      // Sabre GDS
+      console.log('[Booking] Sabre flight detected — creating GDS booking...');
+      try {
+        gdsBookingResult = await sabreCreateBooking({ flightData, passengers: passengers || [], contactInfo: contactInfo || {} });
+        if (gdsBookingResult.success && gdsBookingResult.pnr) {
+          gdsPnr = gdsBookingResult.pnr;
+          console.log('[Booking] Sabre PNR created:', gdsPnr);
+        } else {
+          console.warn('[Booking] Sabre booking failed:', gdsBookingResult.error || 'unknown', '— proceeding with local booking');
+        }
+      } catch (sabreErr) {
+        console.error('[Booking] Sabre CreateBooking exception:', sabreErr.message, '— proceeding with local booking');
       }
     }
 

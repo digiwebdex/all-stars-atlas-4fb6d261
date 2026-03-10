@@ -145,7 +145,7 @@ router.get('/bookings', async (req, res) => {
     const params = [];
     if (status) { sql += ' AND b.status = ?'; params.push(status); }
     if (type) { sql += ' AND b.booking_type = ?'; params.push(type); }
-    if (search) { sql += ' AND (b.booking_ref LIKE ? OR u.first_name LIKE ? OR u.email LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    if (search) { sql += ' AND (b.booking_ref LIKE ? OR u.first_name LIKE ? OR u.email LIKE ? OR b.details LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`); }
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const [countResult] = await db.query(sql.replace('SELECT b.*, u.first_name, u.last_name, u.email as user_email', 'SELECT COUNT(*) as total'), params);
@@ -153,17 +153,21 @@ router.get('/bookings', async (req, res) => {
     params.push(parseInt(limit), offset);
     const [rows] = await db.query(sql, params);
 
-    const data = rows.map(b => ({
-      id: b.id, bookingRef: b.booking_ref, bookingType: b.booking_type, status: b.status,
-      totalAmount: parseFloat(b.total_amount), currency: b.currency, paymentMethod: b.payment_method,
-      paymentStatus: b.payment_status, paymentDeadline: b.payment_deadline,
-      details: safeJsonParse(b.details, {}),
-      passengerInfo: safeJsonParse(b.passenger_info, []),
-      contactInfo: safeJsonParse(b.contact_info, {}),
-      user: { name: `${b.first_name} ${b.last_name}`, email: b.user_email },
-      notes: b.notes || '',
-      bookedAt: b.booked_at, updatedAt: b.updated_at,
-    }));
+    const data = rows.map(b => {
+      const details = safeJsonParse(b.details, {});
+      return {
+        id: b.id, bookingRef: b.booking_ref, bookingType: b.booking_type, status: b.status,
+        totalAmount: parseFloat(b.total_amount), currency: b.currency, paymentMethod: b.payment_method,
+        paymentStatus: b.payment_status, paymentDeadline: b.payment_deadline,
+        details,
+        pnr: details.gdsPnr || null,
+        passengerInfo: safeJsonParse(b.passenger_info, []),
+        contactInfo: safeJsonParse(b.contact_info, {}),
+        user: { name: `${b.first_name} ${b.last_name}`, email: b.user_email },
+        notes: b.notes || '',
+        bookedAt: b.booked_at, updatedAt: b.updated_at,
+      };
+    });
     res.json({ data, total: countResult[0].total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(countResult[0].total / parseInt(limit)) });
   } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
 });
