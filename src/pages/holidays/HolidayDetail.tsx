@@ -19,7 +19,6 @@ const HolidayDetail = () => {
   const [authOpen, setAuthOpen] = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
   const { toast } = useToast();
-  const [authOpen, setAuthOpen] = useState(false);
   const { data, isLoading, error, refetch } = useHolidayDetails(id);
   const pkg = (data as any)?.package || {};
   const itinerary = (data as any)?.itinerary || [];
