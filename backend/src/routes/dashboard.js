@@ -17,8 +17,8 @@ router.get('/stats', async (req, res) => {
     const userId = req.user.sub;
 
     // Core counts
-    const [bookingCount] = await db.query('SELECT COUNT(*) as total FROM bookings WHERE user_id = ?', [userId]);
-    const [upcoming] = await db.query("SELECT COUNT(*) as total FROM bookings WHERE user_id = ? AND status IN ('confirmed','pending')", [userId]);
+    const [bookingCount] = await db.query('SELECT COUNT(*) as total FROM bookings WHERE user_id = ? AND (archived IS NULL OR archived = 0)', [userId]);
+    const [upcoming] = await db.query("SELECT COUNT(*) as total FROM bookings WHERE user_id = ? AND status IN ('confirmed','pending') AND (archived IS NULL OR archived = 0)", [userId]);
     const [totalSpent] = await db.query("SELECT COALESCE(SUM(amount),0) as total FROM transactions WHERE user_id = ? AND type = 'payment' AND status = 'completed'", [userId]);
     const [travellers] = await db.query('SELECT COUNT(*) as total FROM travellers WHERE user_id = ?', [userId]);
 

@@ -18,7 +18,7 @@ router.use(authenticate, requireAdmin);
 router.get('/dashboard', async (req, res) => {
   try {
     const [users] = await db.query('SELECT COUNT(*) as total FROM users');
-    const [bookings] = await db.query('SELECT COUNT(*) as total FROM bookings');
+    const [bookings] = await db.query('SELECT COUNT(*) as total FROM bookings WHERE (archived IS NULL OR archived = 0)');
     const [revenue] = await db.query("SELECT COALESCE(SUM(amount),0) as total FROM transactions WHERE type = 'payment' AND status = 'completed'");
     const [visas] = await db.query("SELECT COUNT(*) as total FROM visa_applications WHERE status IN ('submitted','processing')");
 
