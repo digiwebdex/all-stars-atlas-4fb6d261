@@ -629,14 +629,24 @@ const AdminBookings = () => {
       <Dialog open={cancelFlightOpen} onOpenChange={setCancelFlightOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle className="flex items-center gap-2 text-destructive"><Ban className="w-5 h-5" /> Cancel Flight — {viewBooking?.id}</DialogTitle></DialogHeader>
+          {viewBooking?.details?.outbound?.source && viewBooking?.details?.gdsPnr && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-sm">
+              <p className="font-semibold text-destructive">⚠️ Real GDS Cancellation</p>
+              <p className="text-muted-foreground">This will call the <span className="font-bold uppercase">{viewBooking.details.outbound.source}</span> API to cancel PNR: <span className="font-mono font-bold">{viewBooking.details.gdsPnr}</span></p>
+              <p className="text-destructive text-xs mt-1">This will cancel the actual airline reservation. This cannot be undone.</p>
+            </div>
+          )}
           <p className="text-sm text-muted-foreground">Type reason to cancel the flight ticket:</p>
           <Textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Type reason to cancel the booking..." rows={3} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setCancelFlightOpen(false)}>Close</Button>
-            <Button variant="destructive" onClick={() => {
-              if (viewBooking) updateBooking(viewBooking, { status: "cancelled", notes: cancelReason });
+            <Button variant="destructive" disabled={!!actionLoading} onClick={() => {
+              if (viewBooking) updateBooking(viewBooking, { status: "cancelled", notes: cancelReason ? `${viewBooking.notes ? viewBooking.notes + '\n' : ''}[Cancelled] ${cancelReason}` : viewBooking.notes });
               setCancelFlightOpen(false); setViewBooking(null);
-            }}>Cancel Flight</Button>
+            }}>
+              {actionLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Ban className="w-4 h-4 mr-1" />}
+              Cancel Flight
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
