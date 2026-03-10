@@ -19,8 +19,8 @@ async function getVisionConfig() {
       const raw = rows[0].setting_value;
       console.log('[OCR] Raw setting_value:', raw);
       const config = JSON.parse(raw);
-      console.log('[OCR] Parsed config keys:', Object.keys(config), 'enabled:', config.enabled, 'hasApiKey:', !!config.apiKey);
-      const isEnabled = config.enabled === true || config.enabled === 'true';
+      // Treat as enabled if apiKey exists (enabled field may not be saved by admin panel)
+      const isEnabled = config.enabled === false ? false : true;
       if (isEnabled && config.apiKey) {
         configCache = config;
         configCacheTime = Date.now();
