@@ -297,27 +297,27 @@ const FlightCard = ({
                                 <span className="text-xs text-muted-foreground">{leg.flightNumber}</span>
                                 {leg.aircraft && <span className="text-xs text-muted-foreground">· Aircraft: {leg.aircraft}</span>}
                               </div>
-                              {/* Segment body - table style */}
-                              <div className="grid grid-cols-5 gap-0 text-center divide-x divide-border/50">
-                                <div className="p-3">
-                                  <p className="text-[10px] text-muted-foreground uppercase font-medium mb-1">Flight</p>
-                                  <p className="text-sm font-bold">{leg.flightNumber}</p>
+                              {/* Segment body - responsive grid */}
+                              <div className="grid grid-cols-3 sm:grid-cols-5 gap-0 text-center divide-x divide-border/50">
+                                <div className="p-2 sm:p-3">
+                                  <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-medium mb-0.5 sm:mb-1">Flight</p>
+                                  <p className="text-xs sm:text-sm font-bold">{leg.flightNumber}</p>
                                 </div>
-                                <div className="p-3">
-                                  <p className="text-[10px] text-muted-foreground uppercase font-medium mb-1">Departure</p>
-                                  <p className="text-sm font-bold">{formatTime(leg.departureTime)}</p>
-                                  <p className="text-[10px] text-muted-foreground">{formatShortDate(leg.departureTime)}</p>
+                                <div className="p-2 sm:p-3">
+                                  <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-medium mb-0.5 sm:mb-1">Departure</p>
+                                  <p className="text-xs sm:text-sm font-bold">{formatTime(leg.departureTime)}</p>
+                                  <p className="text-[9px] sm:text-[10px] text-muted-foreground">{formatShortDate(leg.departureTime)}</p>
                                 </div>
-                                <div className="p-3">
+                                <div className="p-2 sm:p-3">
+                                  <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-medium mb-0.5 sm:mb-1">Arrival</p>
+                                  <p className="text-xs sm:text-sm font-bold">{formatTime(leg.arrivalTime)}</p>
+                                  <p className="text-[9px] sm:text-[10px] text-muted-foreground">{formatShortDate(leg.arrivalTime)}</p>
+                                </div>
+                                <div className="p-2 sm:p-3 hidden sm:block">
                                   <p className="text-[10px] text-muted-foreground uppercase font-medium mb-1">Duration</p>
                                   <p className="text-sm font-bold">{leg.duration || `${leg.durationMinutes}m`}</p>
                                 </div>
-                                <div className="p-3">
-                                  <p className="text-[10px] text-muted-foreground uppercase font-medium mb-1">Arrival</p>
-                                  <p className="text-sm font-bold">{formatTime(leg.arrivalTime)}</p>
-                                  <p className="text-[10px] text-muted-foreground">{formatShortDate(leg.arrivalTime)}</p>
-                                </div>
-                                <div className="p-3">
+                                <div className="p-2 sm:p-3 hidden sm:block">
                                   <p className="text-[10px] text-muted-foreground uppercase font-medium mb-1">Baggage</p>
                                   <p className="text-sm font-bold">{baggage}</p>
                                   <p className="text-[10px] text-muted-foreground">per pax</p>
