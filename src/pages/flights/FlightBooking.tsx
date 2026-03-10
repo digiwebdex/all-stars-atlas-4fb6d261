@@ -292,7 +292,11 @@ const FlightBooking = () => {
 
   const handlePassportScan = (data: any) => {
     const updated = [...passengers];
-    if (data.title) updated[0].title = data.title;
+    if (data.title) {
+      // Normalize OCR title (e.g. "MR" -> "Mr", "MS" -> "Ms") to match Select values
+      const titleMap: Record<string, string> = { MR: "Mr", MRS: "Mrs", MS: "Ms", MISS: "Miss", MASTER: "Master" };
+      updated[0].title = titleMap[data.title.toUpperCase()] || data.title;
+    }
     if (data.firstName) updated[0].firstName = data.firstName;
     if (data.lastName) updated[0].lastName = data.lastName;
     if (data.gender) updated[0].gender = data.gender;
