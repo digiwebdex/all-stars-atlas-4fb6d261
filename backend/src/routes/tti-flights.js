@@ -586,48 +586,55 @@ async function createBooking({ flightData, passengers, contactInfo }) {
   if (!config) throw new Error('TTI API not configured');
 
   // Build passenger list for TTI — must match WCF DataContract format
-  // TTI expects the same structure as search passengers (with PassengerQuantity)
-  // plus personal details in specific sub-objects
   let refCounter = 1;
-  const ttiPassengers = passengers.map((p, i) => ({
-    Ref: String(refCounter++),
-    PassengerTypeCode: 'AD',
-    PassengerQuantity: 1,
-    Title: (p.title || 'Mr').toUpperCase(),
-    FirstName: (p.firstName || '').toUpperCase(),
-    LastName: (p.lastName || '').toUpperCase(),
-    GivenName: (p.firstName || '').toUpperCase(),
-    Surname: (p.lastName || '').toUpperCase(),
-    DateOfBirth: p.dob ? `/Date(${new Date(p.dob).getTime()})/` : null,
-    Gender: p.title === 'Mr' ? 'M' : 'F',
-    GenderCode: p.title === 'Mr' ? 'M' : 'F',
-    Nationality: p.nationality || 'BD',
-    NationalityCode: p.nationality || 'BD',
-    PassportNumber: p.passport || null,
-    PassportExpiry: p.passportExpiry ? `/Date(${new Date(p.passportExpiry).getTime()})/` : null,
-    DocumentInfo: p.passport ? {
-      DocumentNumber: p.passport,
-      DocumentType: 'P',
-      ExpiryDate: p.passportExpiry ? `/Date(${new Date(p.passportExpiry).getTime()})/` : null,
-      NationalityCode: p.nationality || 'BD',
-    } : null,
-    ContactInfo: {
+  const ttiPassengers = passengers.map((p, i) => {
+    // Fix nationality: must be ISO 2-letter country code, NOT a city/birth place
+    let natCode = (p.nationality || 'BD').toUpperCase();
+    // If it looks like a city name (>2 chars and not a known code), default to BD
+    if (natCode.length > 2) natCode = 'BD';
+    
+    return {
+      Ref: String(refCounter++),
+      PassengerTypeCode: 'AD',
+      PassengerQuantity: 1,
+      Title: (p.title || 'Mr').toUpperCase(),
+      FirstName: (p.firstName || '').toUpperCase(),
+      LastName: (p.lastName || '').toUpperCase(),
+      GivenName: (p.firstName || '').toUpperCase(),
+      Surname: (p.lastName || '').toUpperCase(),
+      DateOfBirth: p.dob ? `/Date(${new Date(p.dob).getTime()})/` : null,
+      Gender: p.title === 'Mr' ? 'M' : 'F',
+      GenderCode: p.title === 'Mr' ? 'M' : 'F',
+      Nationality: natCode,
+      NationalityCode: natCode,
+      PassportNumber: p.passport || null,
+      PassportExpiry: p.passportExpiry ? `/Date(${new Date(p.passportExpiry).getTime()})/` : null,
+      DocumentInfo: p.passport ? {
+        DocumentNumber: p.passport,
+        DocumentType: 'P',
+        ExpiryDate: p.passportExpiry ? `/Date(${new Date(p.passportExpiry).getTime()})/` : null,
+        NationalityCode: natCode,
+      } : null,
+      ContactInfo: {
+        Email: p.email || contactInfo?.email || '',
+        Phone: p.phone || contactInfo?.phone || '',
+      },
       Email: p.email || contactInfo?.email || '',
       Phone: p.phone || contactInfo?.phone || '',
-    },
-    Email: p.email || contactInfo?.email || '',
-    Phone: p.phone || contactInfo?.phone || '',
-    Extensions: null,
-  }));
+      Extensions: null,
+    };
+  });
 
-  // ── TTI CreateBooking requires the COMPLETE FareInfo and ALL Segments ──
-  // from the original SearchFlights response echoed back exactly
-  const fullFareInfo = flightData._ttiFullFareInfo || null;
-  const allSegments = flightData._ttiAllSegments || [];
+  // ── CRITICAL: TTI CreateBooking requires the Offer from search response ──
+  // Without Offer.Ref, TTI can't link this booking to the search session → NullReferenceException
+  const offer = flightData._ttiOffer || null;
+  
+  // ── Only send the SELECTED itinerary's segments, not ALL search results ──
   const rawSegments = flightData._ttiRawSegments || [];
-
-  // Use ALL segments from the original search response (TTI needs complete context)
-  let segments = allSegments.length > 0 ? allSegments : rawSegments;
+  const allSegments = flightData._ttiAllSegments || [];
+  
+  // Prefer the itinerary-specific segments (collected during normalization)
+  let segments = rawSegments.length > 0 ? rawSegments : allSegments;
   
   // Fallback: build from legs if no raw data
   if (segments.length === 0) {
@@ -647,14 +654,29 @@ async function createBooking({ flightData, passengers, contactInfo }) {
     }
   }
 
-  // Use the COMPLETE FareInfo from search response (includes FareRules, WebClasses, etc.)
-  const fareInfo = fullFareInfo || {};
+  // ── Build FareInfo with ONLY the selected itinerary ──
+  const fullFareInfo = flightData._ttiFullFareInfo || {};
+  const selectedItinRef = flightData._ttiItineraryRef || flightData.itineraryRef;
   
-  console.log('[TTI BOOKING] Using full FareInfo keys:', Object.keys(fareInfo));
+  // Filter to only the selected itinerary and its associated fares
+  const filteredFareInfo = {
+    ...fullFareInfo,
+    Itineraries: (fullFareInfo.Itineraries || []).filter(it => it.Ref === selectedItinRef),
+    ETTicketFares: (fullFareInfo.ETTicketFares || []).filter(f => 
+      f.RefItinerary === selectedItinRef || !f.RefItinerary
+    ),
+  };
+  
+  // If filtering removed everything, fall back to full FareInfo
+  const fareInfo = filteredFareInfo.Itineraries.length > 0 ? filteredFareInfo : fullFareInfo;
+  
+  console.log('[TTI BOOKING] Offer:', offer ? `Ref=${offer.Ref}` : 'MISSING!');
+  console.log('[TTI BOOKING] Selected itinerary:', selectedItinRef);
   console.log('[TTI BOOKING] Segments count:', segments.length, '| FareInfo.Itineraries:', (fareInfo.Itineraries || []).length, '| FareInfo.ETTicketFares:', (fareInfo.ETTicketFares || []).length);
 
   const request = {
     RequestInfo: { AuthenticationKey: config.key },
+    Offer: offer,                    // CRITICAL: Links to search session
     Passengers: ttiPassengers,
     Segments: segments,
     FareInfo: fareInfo,
@@ -669,7 +691,6 @@ async function createBooking({ flightData, passengers, contactInfo }) {
   };
 
   console.log('[TTI] Creating booking for', flightData.origin, '→', flightData.destination, 'flight', flightData.flightNumber);
-  console.log('[TTI BOOKING] Full FareInfo keys:', Object.keys(fareInfo), '| All segments:', segments.length);
   console.log('[TTI BOOKING] Request payload (truncated):', JSON.stringify(request).substring(0, 3000));
 
   try {
