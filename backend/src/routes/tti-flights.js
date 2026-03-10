@@ -674,9 +674,15 @@ async function createBooking({ flightData, passengers, contactInfo }) {
   console.log('[TTI BOOKING] Selected itinerary:', selectedItinRef);
   console.log('[TTI BOOKING] Segments count:', segments.length, '| FareInfo.Itineraries:', (fareInfo.Itineraries || []).length, '| FareInfo.ETTicketFares:', (fareInfo.ETTicketFares || []).length);
 
+  // Add RefItinerary to Offer — TTI requires this to know which itinerary to book
+  const offerWithRef = offer ? {
+    ...offer,
+    RefItinerary: selectedItinRef,
+  } : { RefItinerary: selectedItinRef };
+
   const request = {
     RequestInfo: { AuthenticationKey: config.key },
-    Offer: offer,                    // CRITICAL: Links to search session
+    Offer: offerWithRef,              // CRITICAL: Links to search session + selected itinerary
     Passengers: ttiPassengers,
     Segments: segments,
     FareInfo: fareInfo,
