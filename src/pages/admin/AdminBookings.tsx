@@ -651,9 +651,24 @@ const AdminBookings = () => {
                   <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 flex items-start gap-2">
                     <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
                     <div className="text-sm">
-                      <p className="font-semibold text-warning">Booking on Hold</p>
+                      <p className="font-semibold text-warning">Booking Reserved</p>
                       <p className="text-muted-foreground">Awaiting payment or admin approval.</p>
                       {viewBooking.paymentDeadline && <p className="text-warning font-medium mt-1">Deadline: {fmtDate(viewBooking.paymentDeadline)}</p>}
+                    </div>
+                  </div>
+                )}
+
+                {viewBooking.status === "cancelled" && (
+                  <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 flex items-start gap-2">
+                    <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="font-semibold text-destructive">Booking Cancelled</p>
+                      {viewBooking.details?.lastGdsAction?.statusBlocked && (
+                        <p className="text-muted-foreground">⚠️ GDS cancellation failed previously. This booking may still be active in the airline system.</p>
+                      )}
+                      <Button variant="outline" size="sm" className="mt-2" onClick={() => { updateBooking(viewBooking, { status: "on_hold" }); setViewBooking(null); }}>
+                        <RotateCcw className="w-3.5 h-3.5 mr-1" /> Revert to Reserved
+                      </Button>
                     </div>
                   </div>
                 )}
