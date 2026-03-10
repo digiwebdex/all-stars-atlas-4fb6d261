@@ -288,6 +288,40 @@ const FlightBooking = () => {
 
   const handleContinue = () => { if (validateStep(step)) setStep(step + 1); };
 
+  const handlePassportScan = (data: any) => {
+    const updated = [...passengers];
+    if (data.title) updated[0].title = data.title;
+    if (data.firstName) updated[0].firstName = data.firstName;
+    if (data.lastName) updated[0].lastName = data.lastName;
+    if (data.gender) updated[0].gender = data.gender;
+    if (data.birthDate) updated[0].dob = data.birthDate;
+    if (data.passportNumber) updated[0].passport = data.passportNumber;
+    if (data.expiryDate) updated[0].passportExpiry = data.expiryDate;
+    if (data.country) updated[0].documentCountry = data.country;
+    if (data.birthPlace) updated[0].nationality = data.birthPlace;
+    setPassengers(updated);
+    setFieldErrors({});
+  };
+
+  const handleSelectExistingPax = (t: any) => {
+    const updated = [...passengers];
+    updated[0] = {
+      title: t.title || updated[0].title,
+      firstName: t.firstName || "",
+      lastName: t.lastName || "",
+      dob: t.dob || "",
+      nationality: t.nationality || "",
+      passport: t.passport || "",
+      passportExpiry: t.passportExpiry || "",
+      email: t.email || "",
+      phone: t.phone || "",
+      gender: t.gender || "",
+      documentCountry: t.documentCountry || "BD",
+    };
+    setPassengers(updated);
+    setFieldErrors({});
+  };
+
   const createBooking = async (payLater: boolean) => {
     setBookingLoading(true);
     try {
