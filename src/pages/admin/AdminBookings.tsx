@@ -604,16 +604,23 @@ const AdminBookings = () => {
       <Dialog open={issueTicketOpen} onOpenChange={setIssueTicketOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Ticket className="w-5 h-5" /> Issue Ticket — {viewBooking?.id}</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Please provide notes for ticket issuance.</p>
+          {viewBooking?.details?.outbound?.source && viewBooking?.details?.gdsPnr && (
+            <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 text-sm">
+              <p className="font-semibold text-warning">⚠️ Real GDS API Call</p>
+              <p className="text-muted-foreground">This will call the <span className="font-bold uppercase">{viewBooking.details.outbound.source}</span> API to issue a real airline ticket for PNR: <span className="font-mono font-bold">{viewBooking.details.gdsPnr}</span></p>
+              <p className="text-destructive text-xs mt-1">This action cannot be undone. Payment will be deducted from your GDS balance.</p>
+            </div>
+          )}
           <Textarea value={issueNotes} onChange={(e) => setIssueNotes(e.target.value)} placeholder="Type notes..." rows={3} />
-          <p className="text-xs text-muted-foreground">Are you agree with the authorized price modification during ticket issuance?</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIssueTicketOpen(false)}>Close</Button>
-            <Button className="bg-accent text-accent-foreground" onClick={() => {
-              if (viewBooking) updateBooking(viewBooking, { status: "confirmed", notes: issueNotes });
+            <Button className="bg-accent text-accent-foreground" disabled={!!actionLoading} onClick={() => {
+              if (viewBooking) updateBooking(viewBooking, { status: "ticketed", paymentStatus: "paid", notes: issueNotes ? `${viewBooking.notes ? viewBooking.notes + '\n' : ''}[Ticket Issued] ${issueNotes}` : viewBooking.notes });
               setIssueTicketOpen(false); setViewBooking(null);
-              toast({ title: "Ticket Issued", description: `Booking ${viewBooking?.id} ticket issued.` });
-            }}>Issue Ticket</Button>
+            }}>
+              {actionLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Ticket className="w-4 h-4 mr-1" />}
+              Issue Ticket
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
