@@ -9,8 +9,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Plus, MoreHorizontal, Edit2, Trash2, Copy, Eye } from "lucide-react";
-import { PROMOTIONS } from "@/lib/content-data";
-import { getCollection, addToCollection, updateInCollection, removeFromCollection } from "@/lib/local-store";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 const STORE_KEY = "cms_promotions";

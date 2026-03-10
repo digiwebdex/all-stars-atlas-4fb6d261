@@ -5,8 +5,7 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Search, Upload, Grid3X3, List, MoreHorizontal, Trash2, Download, Copy, Eye, Image, FileText, Film } from "lucide-react";
-import { MEDIA_FILES } from "@/lib/content-data";
-import { getCollection, addToCollection, removeFromCollection } from "@/lib/local-store";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 

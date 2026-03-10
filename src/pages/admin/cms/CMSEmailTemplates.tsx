@@ -9,8 +9,8 @@ import { Mail, Plus, Eye, PenLine, MoreHorizontal, Trash2, Search } from "lucide
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { EMAIL_TEMPLATES } from "@/lib/content-data";
-import { getCollection, addToCollection, updateInCollection, removeFromCollection } from "@/lib/local-store";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 const STORE_KEY = "cms_email_templates";

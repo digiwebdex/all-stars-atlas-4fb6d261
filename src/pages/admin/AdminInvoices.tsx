@@ -17,7 +17,7 @@ import DataLoader from "@/components/DataLoader";
 
 import { generateInvoicePDF, printInvoicePDF, generateMoneyReceiptPDF } from "@/lib/pdf-generator";
 import { downloadCSV } from "@/lib/csv-export";
-import { getCollection, addToCollection } from "@/lib/local-store";
+
 
 const statusColors: Record<string, string> = {
   Paid: "bg-success/10 text-success border-success/20",

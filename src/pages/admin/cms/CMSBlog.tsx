@@ -18,8 +18,8 @@ import {
   ArrowLeft, Save, Clock, Globe, FileText, Tag, BarChart3, Settings2,
   Copy, ExternalLink, Pilcrow, Minus, Table, Youtube, ImagePlus
 } from "lucide-react";
-import { BLOG_POSTS } from "@/lib/content-data";
-import { getCollection, addToCollection, updateInCollection, removeFromCollection } from "@/lib/local-store";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,11 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Plus, MoreHorizontal, Edit2, Trash2, Eye, Megaphone, Bell, Image, MonitorSmartphone, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getCollection, addToCollection, removeFromCollection, updateInCollection } from "@/lib/local-store";
-
-const POPUP_KEY = "cms_popups";
-const BANNER_KEY = "cms_banners";
-const PUSH_KEY = "cms_push_notifications";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
 const statusColors: Record<string, string> = {
   active: "bg-success/10 text-success",
@@ -26,19 +23,27 @@ const statusColors: Record<string, string> = {
   expired: "bg-warning/10 text-warning",
 };
 
-const defaultPopups: any[] = [];
-const defaultBanners: any[] = [];
-const defaultPush: any[] = [];
-
 const emptyPopup = { title: "", content: "", imageUrl: "", ctaText: "", ctaUrl: "", trigger: "on_load", delay: 3, frequency: "once_per_session", status: "draft", startDate: "", endDate: "", pages: "all" };
 const emptyBanner = { title: "", position: "top_bar", bgColor: "#3b82f6", textColor: "#ffffff", ctaText: "", ctaUrl: "", status: "draft", startDate: "", endDate: "", dismissible: true };
 const emptyPush = { title: "", body: "", type: "promotional", status: "draft", audience: "all_users", scheduledAt: "" };
 
 const CMSPopups = () => {
   const { toast } = useToast();
-  const [popups, setPopups] = useState(() => getCollection(POPUP_KEY, defaultPopups));
-  const [banners, setBanners] = useState(() => getCollection(BANNER_KEY, defaultBanners));
-  const [pushNotifs, setPushNotifs] = useState(() => getCollection(PUSH_KEY, defaultPush));
+  const { data: apiData } = useQuery({ queryKey: ['cms', 'popups'], queryFn: () => api.get('/cms/popups'), retry: 1 });
+  const [popups, setPopups] = useState<any[]>([]);
+  const [banners, setBanners] = useState<any[]>([]);
+  const [pushNotifs, setPushNotifs] = useState<any[]>([]);
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (apiData && !initialized) {
+      const d = apiData as any;
+      setPopups(d.popups || []);
+      setBanners(d.banners || []);
+      setPushNotifs(d.push || []);
+      setInitialized(true);
+    }
+  }, [apiData, initialized]);
 
   // Popup state
   const [showPopupDialog, setShowPopupDialog] = useState(false);
@@ -56,55 +61,73 @@ const CMSPopups = () => {
   const [pushForm, setPushForm] = useState(emptyPush);
 
   // ── Popup CRUD ──
-  const savePopup = () => {
+  const savePopup = async () => {
     if (!popupForm.title) { toast({ title: "Error", description: "Title is required", variant: "destructive" }); return; }
-    if (editingPopup) {
-      const updated = updateInCollection(POPUP_KEY, defaultPopups, editingPopup.id, popupForm);
-      setPopups([...updated]);
-      toast({ title: "Updated", description: `Popup "${popupForm.title}" updated.` });
-    } else {
-      const newItem = { ...popupForm, id: `POP-${Date.now()}` };
-      const updated = addToCollection(POPUP_KEY, defaultPopups, newItem);
-      setPopups([...updated]);
-      toast({ title: "Created", description: `Popup "${popupForm.title}" created.` });
+    try {
+      if (editingPopup) {
+        await api.put(`/cms/popups/${editingPopup.id}`, popupForm);
+        setPopups(prev => prev.map(p => p.id === editingPopup.id ? { ...p, ...popupForm } : p));
+      } else {
+        const result = await api.post('/cms/popups', popupForm) as any;
+        setPopups(prev => [{ ...popupForm, id: result?.id || `POP-${Date.now()}` }, ...prev]);
+      }
+      toast({ title: editingPopup ? "Updated" : "Created", description: `Popup "${popupForm.title}" saved.` });
+    } catch {
+      toast({ title: "Error", description: "Failed to save popup", variant: "destructive" });
     }
     setShowPopupDialog(false); setEditingPopup(null); setPopupForm(emptyPopup);
   };
-  const deletePopup = (p: any) => { setPopups([...removeFromCollection(POPUP_KEY, defaultPopups, p.id)]); toast({ title: "Deleted", description: `"${p.title}" removed.` }); };
+  const deletePopup = async (p: any) => {
+    try { await api.delete(`/cms/popups/${p.id}`); } catch {}
+    setPopups(prev => prev.filter(x => x.id !== p.id));
+    toast({ title: "Deleted", description: `"${p.title}" removed.` });
+  };
 
   // ── Banner CRUD ──
-  const saveBanner = () => {
+  const saveBanner = async () => {
     if (!bannerForm.title) { toast({ title: "Error", description: "Title is required", variant: "destructive" }); return; }
-    if (editingBanner) {
-      const updated = updateInCollection(BANNER_KEY, defaultBanners, editingBanner.id, bannerForm);
-      setBanners([...updated]);
-      toast({ title: "Updated", description: `Banner "${bannerForm.title}" updated.` });
-    } else {
-      const newItem = { ...bannerForm, id: `BNR-${Date.now()}` };
-      const updated = addToCollection(BANNER_KEY, defaultBanners, newItem);
-      setBanners([...updated]);
-      toast({ title: "Created", description: `Banner "${bannerForm.title}" created.` });
+    try {
+      if (editingBanner) {
+        await api.put(`/cms/banners/${editingBanner.id}`, bannerForm);
+        setBanners(prev => prev.map(b => b.id === editingBanner.id ? { ...b, ...bannerForm } : b));
+      } else {
+        const result = await api.post('/cms/banners', bannerForm) as any;
+        setBanners(prev => [{ ...bannerForm, id: result?.id || `BNR-${Date.now()}` }, ...prev]);
+      }
+      toast({ title: editingBanner ? "Updated" : "Created", description: `Banner "${bannerForm.title}" saved.` });
+    } catch {
+      toast({ title: "Error", description: "Failed to save banner", variant: "destructive" });
     }
     setShowBannerDialog(false); setEditingBanner(null); setBannerForm(emptyBanner);
   };
-  const deleteBanner = (b: any) => { setBanners([...removeFromCollection(BANNER_KEY, defaultBanners, b.id)]); toast({ title: "Deleted", description: `"${b.title}" removed.` }); };
+  const deleteBanner = async (b: any) => {
+    try { await api.delete(`/cms/banners/${b.id}`); } catch {}
+    setBanners(prev => prev.filter(x => x.id !== b.id));
+    toast({ title: "Deleted", description: `"${b.title}" removed.` });
+  };
 
   // ── Push CRUD ──
-  const savePush = () => {
+  const savePush = async () => {
     if (!pushForm.title) { toast({ title: "Error", description: "Title is required", variant: "destructive" }); return; }
-    if (editingPush) {
-      const updated = updateInCollection(PUSH_KEY, defaultPush, editingPush.id, pushForm);
-      setPushNotifs([...updated]);
-      toast({ title: "Updated", description: `Notification "${pushForm.title}" updated.` });
-    } else {
-      const newItem = { ...pushForm, id: `PUSH-${Date.now()}` };
-      const updated = addToCollection(PUSH_KEY, defaultPush, newItem);
-      setPushNotifs([...updated]);
-      toast({ title: "Created", description: `Notification "${pushForm.title}" created.` });
+    try {
+      if (editingPush) {
+        await api.put(`/cms/push/${editingPush.id}`, pushForm);
+        setPushNotifs(prev => prev.map(p => p.id === editingPush.id ? { ...p, ...pushForm } : p));
+      } else {
+        const result = await api.post('/cms/push', pushForm) as any;
+        setPushNotifs(prev => [{ ...pushForm, id: result?.id || `PUSH-${Date.now()}` }, ...prev]);
+      }
+      toast({ title: editingPush ? "Updated" : "Created", description: `Notification "${pushForm.title}" saved.` });
+    } catch {
+      toast({ title: "Error", description: "Failed to save notification", variant: "destructive" });
     }
     setShowPushDialog(false); setEditingPush(null); setPushForm(emptyPush);
   };
-  const deletePush = (p: any) => { setPushNotifs([...removeFromCollection(PUSH_KEY, defaultPush, p.id)]); toast({ title: "Deleted", description: `"${p.title}" removed.` }); };
+  const deletePush = async (p: any) => {
+    try { await api.delete(`/cms/push/${p.id}`); } catch {}
+    setPushNotifs(prev => prev.filter(x => x.id !== p.id));
+    toast({ title: "Deleted", description: `"${p.title}" removed.` });
+  };
 
   const stats = {
     activePopups: popups.filter(p => p.status === "active").length,
