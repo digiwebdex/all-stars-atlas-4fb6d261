@@ -174,8 +174,8 @@ function parsePassportText(text) {
 
       // Sex: position 20
       const sex = mrz2.charAt(20);
-      if (sex === 'M') { result.gender = 'Male'; result.title = 'MR'; }
-      else if (sex === 'F') { result.gender = 'Female'; result.title = 'MS'; }
+      if (sex === 'M') { result.gender = 'Male'; if (!result.title) result.title = 'MR'; }
+      else if (sex === 'F') { result.gender = 'Female'; if (!result.title) result.title = 'MS'; }
 
       // Expiry: positions 21-26 (YYMMDD)
       const expStr = mrz2.substring(21, 27);
