@@ -465,7 +465,7 @@ router.get('/invoices', async (req, res) => {
       if (b.payment_status === 'paid') status = 'Paid';
       else if (b.payment_status === 'partial') status = 'Partial';
       
-      const details = JSON.parse(b.details || '{}');
+      const details = safeJsonParse(b.details, {});
       
       return {
         id: b.id,
