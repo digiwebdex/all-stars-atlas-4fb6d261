@@ -481,19 +481,28 @@ const AdminBookings = () => {
 
                 <Separator />
 
+                <h4 className="text-sm font-bold mb-3">Manage Flight Booking</h4>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button variant="outline" size="sm" className="border-accent text-accent" onClick={() => { setIssueTicketOpen(true); }}>
+                    <Ticket className="w-4 h-4 mr-1" /> Issue Ticket
+                  </Button>
+                  <Button variant="outline" size="sm" className="border-destructive text-destructive" onClick={() => { setCancelFlightOpen(true); }}>
+                    <Ban className="w-4 h-4 mr-1" /> Cancel Flight
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => { setPayLinkEmail(viewBooking?.email || ""); setSendPayLinkOpen(true); }}>
+                    <Send className="w-4 h-4 mr-1" /> Send Pay Link
+                  </Button>
+                </div>
+
+                <Separator />
+
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={saveEdits} disabled={!!actionLoading} className="bg-primary">
                     {actionLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
                     Save Changes
                   </Button>
-
-                  {viewBooking.status === "on_hold" && (
-                    <Button variant="outline" className="border-emerald-500 text-emerald-600 hover:bg-emerald-50" onClick={() => { updateBooking(viewBooking, { status: "confirmed" }); setViewBooking(null); }}>
-                      <CheckCircle2 className="w-4 h-4 mr-1" /> Approve & Confirm
-                    </Button>
-                  )}
-                  {viewBooking.status === "pending" && (
-                    <Button variant="outline" className="border-emerald-500 text-emerald-600 hover:bg-emerald-50" onClick={() => { updateBooking(viewBooking, { status: "confirmed" }); setViewBooking(null); }}>
+                  {(viewBooking.status === "on_hold" || viewBooking.status === "pending") && (
+                    <Button variant="outline" className="border-emerald-500 text-emerald-600" onClick={() => { updateBooking(viewBooking, { status: "confirmed" }); setViewBooking(null); }}>
                       <CheckCircle2 className="w-4 h-4 mr-1" /> Approve & Confirm
                     </Button>
                   )}
@@ -509,7 +518,7 @@ const AdminBookings = () => {
                     <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
                     <div className="text-sm">
                       <p className="font-semibold text-warning">Booking on Hold</p>
-                      <p className="text-muted-foreground">This booking is awaiting payment or admin approval. Review passenger details and confirm or cancel.</p>
+                      <p className="text-muted-foreground">Awaiting payment or admin approval.</p>
                       {viewBooking.paymentDeadline && <p className="text-warning font-medium mt-1">Deadline: {fmtDate(viewBooking.paymentDeadline)}</p>}
                     </div>
                   </div>
@@ -527,6 +536,74 @@ const AdminBookings = () => {
               </Button>
             </DialogFooter>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Issue Ticket Modal */}
+      <Dialog open={issueTicketOpen} onOpenChange={setIssueTicketOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Ticket className="w-5 h-5" /> Issue Ticket — {viewBooking?.id}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Please provide notes for ticket issuance.</p>
+          <Textarea value={issueNotes} onChange={(e) => setIssueNotes(e.target.value)} placeholder="Type notes..." rows={3} />
+          <p className="text-xs text-muted-foreground">Are you agree with the authorized price modification during ticket issuance?</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIssueTicketOpen(false)}>Close</Button>
+            <Button className="bg-accent text-accent-foreground" onClick={() => {
+              if (viewBooking) updateBooking(viewBooking, { status: "confirmed", notes: issueNotes });
+              setIssueTicketOpen(false); setViewBooking(null);
+              toast({ title: "Ticket Issued", description: `Booking ${viewBooking?.id} ticket issued.` });
+            }}>Issue Ticket</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Flight Modal */}
+      <Dialog open={cancelFlightOpen} onOpenChange={setCancelFlightOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle className="flex items-center gap-2 text-destructive"><Ban className="w-5 h-5" /> Cancel Flight — {viewBooking?.id}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Type reason to cancel the flight ticket:</p>
+          <Textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Type reason to cancel the booking..." rows={3} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelFlightOpen(false)}>Close</Button>
+            <Button variant="destructive" onClick={() => {
+              if (viewBooking) updateBooking(viewBooking, { status: "cancelled", notes: cancelReason });
+              setCancelFlightOpen(false); setViewBooking(null);
+            }}>Cancel Flight</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Pay Link Modal */}
+      <Dialog open={sendPayLinkOpen} onOpenChange={setSendPayLinkOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Send className="w-5 h-5 text-accent" /> Send Pay Link — {viewBooking?.id}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium">Enter your name</label>
+              <Input value={payLinkName} onChange={(e) => setPayLinkName(e.target.value)} placeholder="Your Name" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium">Select Platform Type</label>
+              <Select value={payLinkPlatform} onValueChange={setPayLinkPlatform}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="sms">SMS</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium">Enter Receiver {payLinkPlatform === "email" ? "Email" : "Phone"}</label>
+              <Input value={payLinkEmail} onChange={(e) => setPayLinkEmail(e.target.value)} placeholder={payLinkPlatform === "email" ? "email@example.com" : "+880 1XXX"} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendPayLinkOpen(false)}>Close</Button>
+            <Button className="bg-accent text-accent-foreground" onClick={() => {
+              toast({ title: "Pay Link Sent", description: `Payment link sent to ${payLinkEmail}` });
+              setSendPayLinkOpen(false);
+            }}>Send {payLinkPlatform === "email" ? "Email" : "SMS"}</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
