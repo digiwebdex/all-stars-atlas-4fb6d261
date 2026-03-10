@@ -1517,8 +1517,21 @@ Same request/response as `/auth/login`. The frontend checks that `user.role` is 
 
 ### `PUT /admin/bookings/:id`
 
-**Request:** `{ status, notes }`
-**Response (200):** Updated booking.
+**Request:** `{ status, notes, paymentStatus, paymentMethod, totalAmount, passengerInfo, contactInfo, details }`
+**Response (200):** Updated booking with optional `gdsAction` result (for flight bookings, triggers real GDS ticketing/cancellation).
+
+### `PATCH /admin/bookings/:id/archive`
+
+**Request:** `{ archived: true|false }`
+**Response (200):** `{ message: "Booking archived", id }`
+
+Soft-archives a booking. Archived bookings are hidden from all dashboard listings and statistics but remain in the database.
+
+### `DELETE /admin/bookings/:id`
+
+**Response (200):** `{ message: "Booking permanently deleted", id, bookingRef }`
+
+Permanently deletes a booking and all related tickets and transactions. **Irreversible.**
 
 ### `GET /admin/payments`
 

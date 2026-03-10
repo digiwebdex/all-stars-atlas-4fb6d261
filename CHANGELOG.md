@@ -4,6 +4,29 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [3.1.0] — 2026-03-10 — Enterprise Booking Management & Full Audit
+
+### Added — Admin Booking Lifecycle
+- **Archive Booking** (`PATCH /admin/bookings/:id/archive`): Soft-archive bookings to hide from all dashboards while preserving DB records
+- **Delete Booking** (`DELETE /admin/bookings/:id`): Permanently delete bookings with related tickets and transactions, with confirmation dialog
+- Archive/delete options added to admin booking dropdown menu with destructive action confirmation
+- Archived bookings are excluded from all dashboard stats, counts, and listing queries (admin + customer)
+
+### Fixed — Status Filter Tabs
+- Customer dashboard booking tabs ("On Hold", "In Progress", "Un-Confirmed") now correctly map to backend snake_case format (`on_hold`, `in_progress`, `un_confirmed`)
+
+### Fixed — E-Ticket PDF
+- Logo aspect ratio preserved (no longer stretched/squished) using dynamic `getImageProperties` sizing
+- 4-column flight segment layout with full details: Aircraft, Terminal, Baggage, Meals, Distance, CO2 emissions
+- Robust TTI date parsing (`/Date(ms+offset)/` format) preventing "Invalid Date" errors
+
+### Fixed — Archived Booking Filtering
+- All 8 booking-related SQL queries now filter `(archived IS NULL OR archived = 0)`:
+  - Admin: dashboard stats, bookings list, recent bookings, bookings by type
+  - Customer: dashboard stats, upcoming trips, booking breakdown, recent bookings, booking list
+
+---
+
 ## [3.0.0] — 2026-03-10 — Complete Platform Audit v2 & Production Finalization
 
 ### Fixed — Booking Flows Now Call Real APIs
