@@ -53,7 +53,7 @@ function mapBooking(b: any) {
   const arrivalTime = outbound.arrivalTime || details.arrivalTime || "";
   const duration = outbound.duration || details.duration || "";
   const stops = outbound.stops ?? details.stops ?? 0;
-  const baggage = outbound.baggage || details.baggage || "20kg";
+  const baggage = outbound.baggage || details.baggage || null;
   const refundable = outbound.refundable ?? details.refundable ?? false;
   const legs = outbound.legs || [];
   const seatsAvailable = outbound.seatsAvailable || details.seatsAvailable || null;

@@ -60,8 +60,8 @@ const AdminDiscounts = () => {
     queryFn: () => api.get<any>('/admin/discounts'),
   });
 
-  const discounts: any[] = apiData?.discounts || defaultDiscounts;
-  const priceRules: any[] = apiData?.priceRules || defaultPriceRules;
+  const discounts: any[] = apiData?.discounts || [];
+  const priceRules: any[] = apiData?.priceRules || [];
 
   const saveDiscounts = useMutation({
     mutationFn: (newDiscounts: any[]) => api.put('/admin/discounts', { section: 'discounts', discounts: newDiscounts }),

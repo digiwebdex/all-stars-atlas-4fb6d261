@@ -28,10 +28,10 @@ router.get('/stats', async (req, res) => {
 
     // Stats array for frontend
     const stats = [
-      { label: 'Total Bookings', value: bookingCount[0].total, change: '+12%' },
-      { label: 'Upcoming Trips', value: upcoming[0].total, change: '+5%' },
-      { label: 'Total Spent', value: `৳${parseFloat(totalSpent[0].total).toLocaleString()}`, change: '+8%' },
-      { label: 'Saved Travellers', value: travellers[0].total, change: '+2' },
+      { label: 'Total Bookings', value: bookingCount[0].total },
+      { label: 'Upcoming Trips', value: upcoming[0].total },
+      { label: 'Total Spent', value: `৳${parseFloat(totalSpent[0].total).toLocaleString()}` },
+      { label: 'Saved Travellers', value: travellers[0].total },
     ];
 
     // Upcoming trip

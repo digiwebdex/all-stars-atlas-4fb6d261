@@ -130,7 +130,7 @@ const BookingConfirmation = () => {
           arrivalTime: ret.arrivalTime || "",
           duration: ret.duration || "",
           cabinClass: ret.cabinClass || cabin,
-          baggage: ret.baggage || "20kg",
+          baggage: ret.baggage || "As per airline policy",
           status: "Confirmed",
           meal: booking.meal || "Meals",
         });
