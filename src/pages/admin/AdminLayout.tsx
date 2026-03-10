@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Suspense, useState } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
 
 // Using inline gradient styles since Tailwind can't generate dynamic classes
 const sidebarGroups = [
@@ -112,6 +113,7 @@ const SidebarNav = ({ location, onNav }: { location: ReturnType<typeof useLocati
 const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -142,17 +144,14 @@ const AdminLayout = () => {
           <ThemeToggle className="text-white/50 hover:text-white hover:bg-white/10" />
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
             <div className="w-2 h-2 rounded-full bg-success animate-pulse shadow-[0_0_8px_hsl(152,69%,41%)]" />
-            <span className="text-xs text-white/60 font-medium">Online</span>
+            <span className="text-xs text-white/60 font-medium">{user?.email || 'Admin'}</span>
           </div>
           <Button
             variant="ghost"
             size="sm"
             className="text-white/50 hover:text-white hover:bg-white/10"
             onClick={() => {
-              localStorage.removeItem('auth_token');
-              localStorage.removeItem('refresh_token');
-              localStorage.removeItem('user');
-              window.dispatchEvent(new Event('auth:logout'));
+              logout();
               navigate("/admin/login", { replace: true });
             }}
           >
