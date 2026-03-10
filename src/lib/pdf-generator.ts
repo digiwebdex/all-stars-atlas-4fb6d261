@@ -1224,10 +1224,7 @@ export async function printTicketPDF(ticket: TicketData) {
   }
 }
 
-interface TicketData {
-  id?: string;
-  airline?: string;
-  flightNo?: string;
+
   from?: string;
   to?: string;
   date?: string;
