@@ -59,10 +59,9 @@ async function loadImageBase64(url: string): Promise<string | null> {
   }
 }
 
-function addLogo(doc: jsPDF, logo: string | null, x: number, y: number, h: number) {
+function addLogo(doc: jsPDF, logo: string | null, x: number, y: number, w: number, h: number) {
   if (!logo) return;
   try {
-    const w = h * 4;
     doc.addImage(logo, "PNG", x, y, w, h);
   } catch { /* fallback */ }
 }
@@ -75,26 +74,46 @@ async function generateQRDataUrl(text: string): Promise<string | null> {
   }
 }
 
-function drawCompanyHeader(doc: jsPDF, logo: string | null, w: number): number {
-  // Logo
-  addLogo(doc, logo, 20, 12, 12);
-  const startX = logo ? 20 : 20;
-  const textY = logo ? 30 : 20;
+/**
+ * Draws the standard company header matching the reference PDF exactly:
+ * - Purple decorative top stripe
+ * - Large logo (~50mm wide)
+ * - Company contact info below logo
+ * - QR code in top-right corner
+ */
+function drawReferenceHeader(doc: jsPDF, logo: string | null, w: number, qr: string | null): number {
+  // Purple decorative stripe at very top
+  doc.setFillColor(120, 90, 220);
+  doc.rect(0, 0, w, 4, "F");
 
-  if (!logo) {
-    doc.setFontSize(18);
+  // Large logo
+  if (logo) {
+    addLogo(doc, logo, 20, 10, 50, 18);
+  } else {
+    doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(0);
-    doc.text(COMPANY.name, 20, 22);
+    doc.setTextColor(40, 180, 160);
+    doc.text("Seven Trip", 20, 24);
   }
 
+  // QR code top-right
+  if (qr) {
+    try { doc.addImage(qr, "PNG", w - 42, 8, 22, 22); } catch { /* skip */ }
+  }
+
+  // Company contact info below logo
+  let y = 32;
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(100);
-  doc.text(`Call: ${COMPANY.phone}`, 20, textY + 4);
-  doc.text(COMPANY.address, 20, textY + 9, { maxWidth: 90 });
+  doc.setTextColor(80);
+  doc.text(`Call: ${COMPANY.phone}`, 20, y);
+  y += 4;
+  doc.text("Beena Kanon, Flat-4A, House-03,", 20, y);
+  y += 4;
+  doc.text("Road-17, Block-E, Banani, Dhaka-1213", 20, y);
+  y += 8;
 
-  return textY + 18;
+  return y;
 }
 
 function numberToWords(n: number): string {
