@@ -9,6 +9,7 @@ const path = require('path');
 const authRoutes = require('./src/routes/auth');
 const socialAuthRoutes = require('./src/routes/social-auth');
 const flightRoutes = require('./src/routes/flights');
+const ancillaryRoutes = require('./src/routes/ancillaries');
 const hotelRoutes = require('./src/routes/hotels');
 const serviceRoutes = require('./src/routes/services');
 const dashboardRoutes = require('./src/routes/dashboard');
