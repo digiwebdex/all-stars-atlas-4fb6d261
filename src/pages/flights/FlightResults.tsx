@@ -484,16 +484,19 @@ const FlightResults = () => {
   const departDate = searchParams.get("depart") || "";
   const returnDate = searchParams.get("return") || "";
   const adults = searchParams.get("adults") || "1";
-  const cabinClass = searchParams.get("class") || searchParams.get("cabin") || "";
+  const children = searchParams.get("children") || "0";
+  const infants = searchParams.get("infants") || "0";
+  const cabinClass = searchParams.get("cabin") || searchParams.get("class") || "";
+  const totalPax = parseInt(adults) + parseInt(children) + parseInt(infants);
   const hasRequiredParams = !!fromCode && !!toCode && !!departDate;
   const isRoundTrip = !!returnDate;
 
   const params = hasRequiredParams ? {
     from: fromCode, to: toCode, date: departDate,
     return: returnDate || undefined, adults,
-    children: searchParams.get("children") || undefined,
-    infants: searchParams.get("infants") || undefined,
-    class: cabinClass || undefined,
+    children: children !== "0" ? children : undefined,
+    infants: infants !== "0" ? infants : undefined,
+    cabinClass: cabinClass || undefined,
   } : undefined;
 
   const { data: rawData, isLoading, error, refetch } = useFlightSearch(params);
