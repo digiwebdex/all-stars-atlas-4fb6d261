@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [3.2.0] — 2026-03-10 — Full Platform Audit & Production Hardening
+
+### Fixed — Flight Booking Tax Calculation
+- **Taxes now use real GDS data**: `outboundFlight.taxes` and `returnFlight.taxes` from TTI/BDFare/FlyHub/Sabre responses are used directly instead of a hardcoded 12% calculation
+- **Service charge**: Now reads from flight object (`outboundFlight.serviceCharge`) with `0` fallback instead of hardcoded `৳250`
+- Base fare calculation uses `baseFare` field from GDS when available, falling back to `price` field
+
+### Fixed — Backend Admin Settings
+- **Markup config**: Admin Settings PUT endpoint now properly handles `markup_config` JSON persistence to `system_settings` table
+- **Currency rates**: Admin Settings PUT endpoint now properly handles `currency_rates` JSON persistence
+- **Settings GET response**: Now returns parsed `markup_config` and `currency_rates` in the `settings` object instead of raw strings
+- **Invoice payment reminders**: `POST /admin/invoices/:id/remind` now sends real email notification via the notification service instead of returning a placeholder response
+
+### Removed — Dead Code (Zero-Mock Policy)
+- Removed `defaultDiscounts` array (7 hardcoded discount entries) from `AdminDiscounts.tsx` — data is fetched from `/admin/discounts` API
+- Removed `defaultPriceRules` array (7 hardcoded price rule entries) from `AdminDiscounts.tsx`
+- Added `PAY_LATER` to `PAYMENT_METHODS` constant for completeness
+
+### Documentation
+- Updated `README.md` with v3.2 audit status, Sabre GDS in integrations table, markup/currency admin modules, corrected domain references
+- Updated `CHANGELOG.md` with full v3.2 changes
+
+---
+
 ## [3.1.0] — 2026-03-10 — Enterprise Booking Management & Full Audit
 
 ### Added — Admin Booking Lifecycle
