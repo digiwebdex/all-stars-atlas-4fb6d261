@@ -220,6 +220,9 @@ const FlightCard = ({
             <div>
               <p className="text-xs sm:text-sm font-bold leading-tight">{flight.airline}</p>
               <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5">{flightNo}</p>
+              {availableSeats !== null && availableSeats <= 9 && (
+                <p className="text-[10px] sm:text-[11px] font-bold text-orange-500 mt-0.5">{availableSeats} Seat{availableSeats !== 1 ? "s" : ""} Left</p>
+              )}
             </div>
           </div>
 

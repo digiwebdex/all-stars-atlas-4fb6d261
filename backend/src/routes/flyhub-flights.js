@@ -127,6 +127,19 @@ function normalizeFlyHubResponse(response, originCode, destinationCode, isRoundT
       const baseFare = fareInfo.reduce((s, f) => s + (f.BaseFare || 0), 0);
       const totalFare = item.TotalFare || fareInfo.reduce((s, f) => s + (f.BaseFare || 0) + (f.Tax || 0) + (f.OtherCharges || 0), 0);
 
+      // Extract seat availability from fare info
+      let minSeats = Infinity;
+      for (const f of fareInfo) {
+        const seats = f.AvailableSeats ?? f.SeatAvailability ?? f.Availability ?? null;
+        if (seats !== null && typeof seats === 'number' && seats < minSeats) minSeats = seats;
+      }
+      // Also check segment-level availability
+      for (const seg of segments) {
+        const seats = seg.AvailableSeats ?? seg.Availability ?? seg.NoOfSeatAvailable ?? null;
+        if (seats !== null && typeof seats === 'number' && seats < minSeats) minSeats = seats;
+      }
+      const availableSeats = minSeats === Infinity ? null : minSeats;
+
       flights.push({
         id: `fh-${item.ResultID || item.resultId || flights.length}`,
         source: 'flyhub',
@@ -143,6 +156,8 @@ function normalizeFlyHubResponse(response, originCode, destinationCode, isRoundT
         stops: legs.length - 1,
         stopCodes: legs.length > 1 ? legs.slice(0, -1).map(l => l.destination) : [],
         cabinClass: item.CabinClass || 'Economy',
+        bookingClass: fareInfo[0]?.BookingClass || '',
+        availableSeats: availableSeats,
         price: totalFare || baseFare,
         currency: item.Currency || 'BDT',
         refundable: item.IsRefundable || false,
@@ -150,7 +165,7 @@ function normalizeFlyHubResponse(response, originCode, destinationCode, isRoundT
         aircraft: legs[0]?.aircraft || '',
         legs,
         timeLimit: item.LastTicketDate || item.TicketTimeLimit || null,
-        fareDetails: fareInfo.map(f => ({ fareBasis: f.FareBasis || '', bookingClass: f.BookingClass || '', cabinClass: f.CabinClass || '' })),
+        fareDetails: fareInfo.map(f => ({ fareBasis: f.FareBasis || '', bookingClass: f.BookingClass || '', cabinClass: f.CabinClass || '', availableSeats: f.AvailableSeats ?? null })),
         _flyhubResultId: item.ResultID || null,
         validatingAirline: item.ValidatingAirline || firstSeg.Airline?.AirlineCode || '',
       });

@@ -190,16 +190,31 @@ function normalizeTTIResponse(response, originCode, destinationCode, isRoundTrip
       }
     }
 
-    // Get fare details for the itinerary (including seat availability)
+    // Get fare details for the itinerary (including seat availability + refundability)
     const fareDetails = [];
     let minAvailableSeats = Infinity;
+    let isRefundable = false;
     for (const f of fares) {
+      // Check refundability at fare level
+      if (f.IsRefundable === true || f.Refundable === true || f.PenaltyDetails?.IsRefundable === true) {
+        isRefundable = true;
+      }
       const odFares = f.OriginDestinationFares || [];
       for (const odf of odFares) {
+        // Check refundability at OD fare level
+        if (odf.IsRefundable === true || odf.Refundable === true) isRefundable = true;
         const couponFares = odf.ETCouponFares || odf.CouponFares || [];
         for (const cf of couponFares) {
-          const seats = cf.AvailableSeats ?? cf.SeatsAvailable ?? cf.Availability ?? cf.AvailableCount ?? null;
-          if (seats !== null && seats < minAvailableSeats) minAvailableSeats = seats;
+          // Broaden seat extraction — TTI uses various field names across versions
+          const seats = cf.AvailableSeats ?? cf.SeatsAvailable ?? cf.Availability ?? cf.AvailableCount
+            ?? cf.AvailableSeatCount ?? cf.SeatCount ?? cf.Seats ?? cf.NoOfSeats
+            ?? cf.AvailableQuantity ?? null;
+          if (seats !== null && typeof seats === 'number' && seats < minAvailableSeats) minAvailableSeats = seats;
+          // Also check nested properties
+          if (seats === null && cf.SeatAvailability) {
+            const nested = cf.SeatAvailability.AvailableSeats ?? cf.SeatAvailability.Count ?? null;
+            if (nested !== null && typeof nested === 'number' && nested < minAvailableSeats) minAvailableSeats = nested;
+          }
           fareDetails.push({
             fareBasis: cf.FareBasisCode || '',
             bookingClass: cf.BookingClassCode || '',
@@ -314,7 +329,7 @@ function normalizeTTIResponse(response, originCode, destinationCode, isRoundTrip
         price: pricePerDirection,
         totalRoundTripPrice: isRoundTrip && odCount > 1 ? totalItinPrice : undefined,
         currency: currency,
-        refundable: false,
+        refundable: isRefundable,
         baggage: '20kg',
         aircraft: firstLeg.aircraft,
         legs: legs,
