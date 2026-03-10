@@ -431,11 +431,46 @@ function normalizeTTIResponse(response, originCode, destinationCode, isRoundTrip
 
       // Collect the raw segments used by this OD for booking
       const rawOdSegments = [];
+      const odSegmentRefs = new Set();
       for (const coupon of coupons) {
         const ref = coupon.RefSegment || coupon.Ref || coupon;
+        odSegmentRefs.add(ref);
         const seg = segmentMap[ref];
         if (seg) rawOdSegments.push(seg);
       }
+
+      // ── Build per-direction raw data for CreateBooking ──
+      // Filter itinerary's AirOriginDestinations to only this OD's segments
+      const filteredItinerary = {
+        ...itin,
+        AirOriginDestinations: airODs
+          .filter(aod => (aod.AirCoupons || []).some(c => odSegmentRefs.has(c.RefSegment)))
+          .map(aod => ({
+            ...aod,
+            AirCoupons: (aod.AirCoupons || []).filter(c => odSegmentRefs.has(c.RefSegment)),
+          })),
+      };
+
+      // Recalculate per-direction SaleCurrencyAmount
+      if (odCount > 1 && filteredItinerary.SaleCurrencyAmount) {
+        filteredItinerary.SaleCurrencyAmount = {
+          ...filteredItinerary.SaleCurrencyAmount,
+          BaseAmount: Math.round(baseFareTotal / odCount),
+          TaxAmount: Math.round(taxesTotal / odCount),
+          TotalAmount: pricePerDirection,
+        };
+      }
+
+      // Filter ETTicketFares to only this OD's segments
+      const filteredFares = fares.map(fare => ({
+        ...fare,
+        OriginDestinationFares: (fare.OriginDestinationFares || [])
+          .filter(odf => (odf.CouponFares || []).some(cf => odSegmentRefs.has(cf.RefSegment)))
+          .map(odf => ({
+            ...odf,
+            CouponFares: (odf.CouponFares || []).filter(cf => odSegmentRefs.has(cf.RefSegment)),
+          })),
+      }));
 
       flights.push({
         id: `tti-${itin.Ref}-${direction}`,
@@ -474,9 +509,9 @@ function normalizeTTIResponse(response, originCode, destinationCode, isRoundTrip
         cancellationPolicy: cancellationPolicy,
         dateChangePolicy: dateChangePolicy,
         _ttiItineraryRef: itin.Ref,
-        // ── Raw TTI data needed for CreateBooking ──
-        _ttiRawItinerary: itin,
-        _ttiRawFares: fares,
+        // ── Per-direction raw TTI data for CreateBooking (already filtered) ──
+        _ttiRawItinerary: filteredItinerary,
+        _ttiRawFares: filteredFares,
         _ttiRawSegments: rawOdSegments,
       });
     }
