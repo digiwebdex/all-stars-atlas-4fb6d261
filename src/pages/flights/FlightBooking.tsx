@@ -797,7 +797,6 @@ const FlightBooking = () => {
                     <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Add-ons</p>
                     {mealCost > 0 && <div className="flex justify-between text-xs"><span className="text-muted-foreground">{mealOptions.find(m => m.id === selectedMeal)?.name}</span><span>৳{mealCost.toLocaleString()}</span></div>}
                     {baggageCost > 0 && selectedBaggage.map(id => { const bag = baggageOptions.find(b => b.id === id); return bag ? <div key={id} className="flex justify-between text-xs"><span className="text-muted-foreground">{bag.name}</span><span>৳{bag.price.toLocaleString()}</span></div> : null; })}
-                    {seatCost > 0 && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Seat Selection</span><span>৳{seatCost.toLocaleString()}</span></div>}
                   </>
                 )}
 
