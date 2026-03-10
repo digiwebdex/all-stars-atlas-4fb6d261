@@ -106,6 +106,7 @@ const AdminBookings = () => {
       customer, email: b.user?.email || "",
       type: b.bookingType || "flight",
       route,
+      pnr: b.pnr || b.details?.gdsPnr || "—",
       date: b.bookedAt ? new Date(b.bookedAt).toLocaleDateString('en-GB') : "—",
       status: b.status, amount: `৳${(b.totalAmount || 0).toLocaleString()}`,
       rawAmount: b.totalAmount || 0, paymentMethod: b.paymentMethod || "—",
