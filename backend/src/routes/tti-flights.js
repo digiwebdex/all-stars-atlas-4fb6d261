@@ -565,4 +565,103 @@ async function createBooking({ flightData, passengers, contactInfo }) {
   }
 }
 
-module.exports = { searchFlights, createBooking, ttiRequest, getTTIConfig, getAirlineName, clearTTIConfigCache };
+/**
+ * Issue/confirm a ticket for an existing TTI booking (PNR)
+ * TTI method: TicketBooking / IssueTicket
+ */
+async function issueTicket({ pnr, bookingId }) {
+  const config = await getTTIConfig();
+  if (!config) throw new Error('TTI API not configured');
+
+  console.log('[TTI] Issuing ticket for PNR:', pnr);
+
+  try {
+    const response = await ttiRequest('TicketBooking', {
+      RequestInfo: { AuthenticationKey: config.key },
+      BookingReference: pnr,
+      BookingId: bookingId || undefined,
+      AgencyInfo: { AgencyId: config.agencyId, AgencyName: config.agencyName },
+    });
+
+    if (response.ResponseInfo?.Error) {
+      throw new Error(`TTI ticketing error: ${response.ResponseInfo.Error.Message || response.ResponseInfo.Error.Code}`);
+    }
+
+    const ticketNumbers = [];
+    const tickets = response.Tickets || response.ETickets || response.TicketDetails || [];
+    if (Array.isArray(tickets)) {
+      tickets.forEach(t => {
+        const num = t.TicketNumber || t.ETicketNumber || t.Number;
+        if (num) ticketNumbers.push(num);
+      });
+    }
+
+    console.log('[TTI] Ticket issued — tickets:', ticketNumbers);
+    return { success: true, ticketNumbers, rawResponse: response };
+  } catch (err) {
+    console.error('[TTI] IssueTicket failed:', err.message);
+    return { success: false, error: err.message, ticketNumbers: [] };
+  }
+}
+
+/**
+ * Cancel a TTI booking by PNR
+ * TTI method: CancelBooking
+ */
+async function cancelBooking({ pnr, bookingId }) {
+  const config = await getTTIConfig();
+  if (!config) throw new Error('TTI API not configured');
+
+  console.log('[TTI] Cancelling booking PNR:', pnr);
+
+  try {
+    const response = await ttiRequest('CancelBooking', {
+      RequestInfo: { AuthenticationKey: config.key },
+      BookingReference: pnr,
+      BookingId: bookingId || undefined,
+      AgencyInfo: { AgencyId: config.agencyId, AgencyName: config.agencyName },
+    });
+
+    if (response.ResponseInfo?.Error) {
+      throw new Error(`TTI cancel error: ${response.ResponseInfo.Error.Message || response.ResponseInfo.Error.Code}`);
+    }
+
+    console.log('[TTI] Booking cancelled — PNR:', pnr);
+    return { success: true, rawResponse: response };
+  } catch (err) {
+    console.error('[TTI] CancelBooking failed:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Void a ticket in TTI
+ * TTI method: VoidTicket
+ */
+async function voidTicket({ pnr, ticketNumber }) {
+  const config = await getTTIConfig();
+  if (!config) throw new Error('TTI API not configured');
+
+  console.log('[TTI] Voiding ticket:', ticketNumber, 'PNR:', pnr);
+
+  try {
+    const response = await ttiRequest('VoidTicket', {
+      RequestInfo: { AuthenticationKey: config.key },
+      BookingReference: pnr,
+      TicketNumber: ticketNumber,
+      AgencyInfo: { AgencyId: config.agencyId, AgencyName: config.agencyName },
+    });
+
+    if (response.ResponseInfo?.Error) {
+      throw new Error(`TTI void error: ${response.ResponseInfo.Error.Message || response.ResponseInfo.Error.Code}`);
+    }
+
+    console.log('[TTI] Ticket voided:', ticketNumber);
+    return { success: true, rawResponse: response };
+  } catch (err) {
+    console.error('[TTI] VoidTicket failed:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+module.exports = { searchFlights, createBooking, issueTicket, cancelBooking, voidTicket, ttiRequest, getTTIConfig, getAirlineName, clearTTIConfigCache };

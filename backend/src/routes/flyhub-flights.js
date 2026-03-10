@@ -189,4 +189,132 @@ function getAirlineName(code) {
   return map[code] || code || '';
 }
 
-module.exports = { searchFlights, getFlyHubConfig, clearFlyHubConfigCache };
+/**
+ * Pre-book (AirPreBook) then book (AirBook) via FlyHub
+ * ResultID comes from normalized search results (_flyhubResultId)
+ */
+async function createBooking({ resultId, passengers, contactInfo }) {
+  const config = await getFlyHubConfig();
+  if (!config) throw new Error('FlyHub API not configured');
+  const token = await getToken(config);
+  if (!token) throw new Error('FlyHub auth failed');
+
+  console.log('[FlyHub] Creating booking for resultId:', resultId);
+
+  try {
+    // Step 1: AirPreBook (price verification)
+    const preBookRes = await fetch(`${config.baseUrl}/AirPreBook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ SearchID: resultId?.split('-')[0], ResultID: resultId }),
+      signal: AbortSignal.timeout(30000),
+    });
+    const preBookData = await preBookRes.json();
+    if (preBookData.Error) throw new Error(preBookData.Error.ErrorMessage || 'PreBook failed');
+
+    // Step 2: AirBook
+    const paxList = passengers.map((p, i) => ({
+      Title: p.title || 'Mr',
+      FirstName: p.firstName,
+      LastName: p.lastName,
+      PaxType: p.type || 'Adult',
+      DateOfBirth: p.dob,
+      Gender: p.title === 'Mr' ? 'Male' : 'Female',
+      PassportNumber: p.passport || '',
+      PassportExpiryDate: p.passportExpiry || '',
+      PassportNationality: p.nationality || 'BD',
+      Address1: contactInfo?.address || '',
+      CountryCode: 'BD',
+      Nationality: p.nationality || 'BD',
+      ContactNumber: contactInfo?.phone || '',
+      Email: contactInfo?.email || '',
+    }));
+
+    const bookRes = await fetch(`${config.baseUrl}/AirBook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        SearchID: resultId?.split('-')[0],
+        ResultID: resultId,
+        Passengers: paxList,
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+    const bookData = await bookRes.json();
+    if (bookData.Error) throw new Error(bookData.Error.ErrorMessage || 'AirBook failed');
+
+    const pnr = bookData.BookingID || bookData.PNR || bookData.Result?.BookingID || null;
+    console.log('[FlyHub] Booking created — PNR:', pnr);
+    return { success: true, pnr, bookingId: pnr, rawResponse: bookData };
+  } catch (err) {
+    console.error('[FlyHub] CreateBooking failed:', err.message);
+    return { success: false, error: err.message, pnr: null };
+  }
+}
+
+/**
+ * Issue ticket via FlyHub AirTicketing
+ */
+async function issueTicket({ bookingId, pnr }) {
+  const config = await getFlyHubConfig();
+  if (!config) throw new Error('FlyHub API not configured');
+  const token = await getToken(config);
+  if (!token) throw new Error('FlyHub auth failed');
+
+  console.log('[FlyHub] Issuing ticket for BookingID:', bookingId || pnr);
+
+  try {
+    const res = await fetch(`${config.baseUrl}/AirTicketing`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ BookingID: bookingId || pnr, IsAcceptedPrice: true }),
+      signal: AbortSignal.timeout(30000),
+    });
+    const data = await res.json();
+    if (data.Error) throw new Error(data.Error.ErrorMessage || 'AirTicketing failed');
+
+    const ticketNumbers = [];
+    if (data.Result?.Passengers) {
+      data.Result.Passengers.forEach(p => {
+        if (p.Ticket?.TicketNo) ticketNumbers.push(p.Ticket.TicketNo);
+      });
+    }
+
+    console.log('[FlyHub] Tickets issued:', ticketNumbers);
+    return { success: true, ticketNumbers, rawResponse: data };
+  } catch (err) {
+    console.error('[FlyHub] IssueTicket failed:', err.message);
+    return { success: false, error: err.message, ticketNumbers: [] };
+  }
+}
+
+/**
+ * Cancel a FlyHub booking via AirCancel
+ */
+async function cancelBooking({ bookingId, pnr }) {
+  const config = await getFlyHubConfig();
+  if (!config) throw new Error('FlyHub API not configured');
+  const token = await getToken(config);
+  if (!token) throw new Error('FlyHub auth failed');
+
+  console.log('[FlyHub] Cancelling BookingID:', bookingId || pnr);
+
+  try {
+    const res = await fetch(`${config.baseUrl}/AirCancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ BookingID: bookingId || pnr }),
+      signal: AbortSignal.timeout(30000),
+    });
+    const data = await res.json();
+    if (data.Error) throw new Error(data.Error.ErrorMessage || 'AirCancel failed');
+
+    console.log('[FlyHub] Booking cancelled');
+    return { success: true, rawResponse: data };
+  } catch (err) {
+    console.error('[FlyHub] CancelBooking failed:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+module.exports = { searchFlights, createBooking, issueTicket, cancelBooking, getFlyHubConfig, clearFlyHubConfigCache };

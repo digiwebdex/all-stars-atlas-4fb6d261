@@ -561,4 +561,142 @@ function getAirlineName(code) {
   return names[code] || code || 'Unknown';
 }
 
-module.exports = { searchFlights, getSabreConfig, clearSabreConfigCache };
+/**
+ * Create a PNR in Sabre using CreatePassengerNameRecordRQ
+ */
+async function createBooking({ flightData, passengers, contactInfo }) {
+  const config = await getSabreConfig();
+  if (!config) throw new Error('Sabre API not configured');
+
+  console.log('[Sabre] Creating PNR for', flightData?.origin, '→', flightData?.destination);
+
+  try {
+    const paxSegments = [];
+    const legs = flightData?.legs || [];
+    const segs = legs.length > 0 ? legs : [flightData];
+
+    segs.forEach((seg, i) => {
+      paxSegments.push({
+        DepartureDateTime: seg.departureTime?.replace('Z', '').split('.')[0],
+        ArrivalDateTime: seg.arrivalTime?.replace('Z', '').split('.')[0],
+        FlightNumber: String(seg.flightNumber || '').replace(/[A-Z]{2}/i, ''),
+        NumberInParty: String(passengers.length),
+        ResBookDesigCode: seg.bookingClass || 'Y',
+        Status: 'NN',
+        OriginLocation: { LocationCode: seg.origin || flightData.origin },
+        DestinationLocation: { LocationCode: seg.destination || flightData.destination },
+        MarketingAirline: { Code: seg.airlineCode || flightData.airlineCode, FlightNumber: String(seg.flightNumber || '').replace(/[A-Z]{2}/i, '') },
+      });
+    });
+
+    const travelersInfo = passengers.map((p, i) => ({
+      PersonName: {
+        NameNumber: `${i + 1}.1`,
+        GivenName: (p.firstName || '').toUpperCase(),
+        Surname: (p.lastName || '').toUpperCase(),
+      },
+    }));
+
+    const body = {
+      CreatePassengerNameRecordRQ: {
+        targetCity: config.pcc,
+        TravelItineraryAddInfo: {
+          AgencyInfo: { Ticketing: { TicketType: '7TAW' } },
+          CustomerInfo: {
+            ContactNumbers: {
+              ContactNumber: [{
+                Phone: contactInfo?.phone || '01700000000',
+                PhoneUseType: 'H',
+              }],
+            },
+            Email: [{ Address: contactInfo?.email || '', Type: 'TO' }],
+            PersonName: travelersInfo.map(t => t.PersonName),
+          },
+        },
+        AirBook: {
+          HaltOnStatus: [{ Code: 'NN' }, { Code: 'UC' }, { Code: 'US' }, { Code: 'UN' }],
+          OriginDestinationInformation: {
+            FlightSegment: paxSegments,
+          },
+        },
+        PostProcessing: {
+          EndTransaction: { Source: { ReceivedFrom: 'SEVEN TRIP API' } },
+        },
+      },
+    };
+
+    const response = await sabreRequest(config, '/v2.4.0/passenger/records?mode=create', body);
+
+    const pnr = response.CreatePassengerNameRecordRS?.ItineraryRef?.ID || null;
+    console.log('[Sabre] PNR created:', pnr);
+
+    return { success: !!pnr, pnr, rawResponse: response };
+  } catch (err) {
+    console.error('[Sabre] CreateBooking failed:', err.message);
+    return { success: false, error: err.message, pnr: null };
+  }
+}
+
+/**
+ * Issue ticket via Sabre AirTicketRQ
+ */
+async function issueTicket({ pnr }) {
+  const config = await getSabreConfig();
+  if (!config) throw new Error('Sabre API not configured');
+
+  console.log('[Sabre] Issuing ticket for PNR:', pnr);
+
+  try {
+    const body = {
+      AirTicketRQ: {
+        DesignatePrinter: { Printers: { Hardcopy: { LNIATA: '000000' }, Ticket: { CountryCode: 'BD' } } },
+        Itinerary: { ID: pnr },
+        Ticketing: [{ PricingQualifiers: { PriceQuote: [{ Record: [{ Number: '1', Reissue: false }] }] } }],
+        PostProcessing: { EndTransaction: { Source: { ReceivedFrom: 'SEVEN TRIP API' } } },
+      },
+    };
+
+    const response = await sabreRequest(config, '/v1.2.1/air/ticket', body);
+
+    const ticketNumbers = [];
+    const docs = response.AirTicketRS?.Summary || [];
+    if (Array.isArray(docs)) {
+      docs.forEach(s => { if (s.DocumentNumber) ticketNumbers.push(s.DocumentNumber); });
+    }
+
+    console.log('[Sabre] Tickets issued:', ticketNumbers);
+    return { success: true, ticketNumbers, rawResponse: response };
+  } catch (err) {
+    console.error('[Sabre] IssueTicket failed:', err.message);
+    return { success: false, error: err.message, ticketNumbers: [] };
+  }
+}
+
+/**
+ * Cancel/void a Sabre PNR via OTA_CancelLLSRQ
+ */
+async function cancelBooking({ pnr }) {
+  const config = await getSabreConfig();
+  if (!config) throw new Error('Sabre API not configured');
+
+  console.log('[Sabre] Cancelling PNR:', pnr);
+
+  try {
+    const body = {
+      OTA_CancelRQ: {
+        Version: '2.0.2',
+        UniqueID: { ID: pnr },
+        Segment: [{ Type: 'entire' }],
+      },
+    };
+
+    const response = await sabreRequest(config, '/v2.0.2/booking/cancel', body);
+    console.log('[Sabre] PNR cancelled:', pnr);
+    return { success: true, rawResponse: response };
+  } catch (err) {
+    console.error('[Sabre] CancelBooking failed:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+module.exports = { searchFlights, createBooking, issueTicket, cancelBooking, getSabreConfig, clearSabreConfigCache };

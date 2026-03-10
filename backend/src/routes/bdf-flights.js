@@ -166,4 +166,128 @@ function normalizeBDFareResponse(response, originCode, destinationCode) {
   });
 }
 
-module.exports = { searchFlights, getBDFareConfig, clearBDFareConfigCache };
+/**
+ * Book a flight via BDFare AirBook endpoint
+ * Requires the _bdfOfferId from search results
+ */
+async function createBooking({ offerId, passengers, contactInfo }) {
+  const config = await getBDFareConfig();
+  if (!config) throw new Error('BDFare API not configured');
+
+  console.log('[BDFare] Creating booking for offerId:', offerId);
+
+  try {
+    const body = {
+      offerId,
+      passengers: passengers.map((p, i) => ({
+        type: p.type || 'ADT',
+        title: p.title || 'Mr',
+        firstName: p.firstName,
+        lastName: p.lastName,
+        dateOfBirth: p.dob,
+        gender: p.title === 'Mr' ? 'Male' : 'Female',
+        nationality: p.nationality || 'BD',
+        passport: p.passport || null,
+        passportExpiry: p.passportExpiry || null,
+      })),
+      contact: {
+        email: contactInfo?.email || '',
+        phone: contactInfo?.phone || '',
+      },
+    };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
+    const res = await fetch(`${config.baseUrl}/flights/book`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json',
+        ...(config.username ? { 'X-Username': config.username } : {}),
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || `BDFare booking failed (${res.status})`);
+
+    const pnr = data.pnr || data.bookingReference || data.booking?.pnr || null;
+    const orderId = data.orderId || data.booking?.orderId || data.id || null;
+
+    console.log('[BDFare] Booking created — PNR:', pnr, 'OrderId:', orderId);
+    return { success: true, pnr, orderId, rawResponse: data };
+  } catch (err) {
+    console.error('[BDFare] CreateBooking failed:', err.message);
+    return { success: false, error: err.message, pnr: null };
+  }
+}
+
+/**
+ * Issue ticket for BDFare booking
+ */
+async function issueTicket({ orderId, pnr }) {
+  const config = await getBDFareConfig();
+  if (!config) throw new Error('BDFare API not configured');
+
+  console.log('[BDFare] Issuing ticket for order:', orderId || pnr);
+
+  try {
+    const res = await fetch(`${config.baseUrl}/flights/ticket`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json',
+        ...(config.username ? { 'X-Username': config.username } : {}),
+      },
+      body: JSON.stringify({ orderId, pnr }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || `BDFare ticketing failed (${res.status})`);
+
+    const ticketNumbers = data.ticketNumbers || data.tickets?.map(t => t.number) || [];
+    console.log('[BDFare] Tickets issued:', ticketNumbers);
+    return { success: true, ticketNumbers, rawResponse: data };
+  } catch (err) {
+    console.error('[BDFare] IssueTicket failed:', err.message);
+    return { success: false, error: err.message, ticketNumbers: [] };
+  }
+}
+
+/**
+ * Cancel a BDFare booking
+ */
+async function cancelBooking({ orderId, pnr }) {
+  const config = await getBDFareConfig();
+  if (!config) throw new Error('BDFare API not configured');
+
+  console.log('[BDFare] Cancelling order:', orderId || pnr);
+
+  try {
+    const res = await fetch(`${config.baseUrl}/flights/cancel`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json',
+        ...(config.username ? { 'X-Username': config.username } : {}),
+      },
+      body: JSON.stringify({ orderId, pnr }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || `BDFare cancel failed (${res.status})`);
+
+    console.log('[BDFare] Booking cancelled');
+    return { success: true, rawResponse: data };
+  } catch (err) {
+    console.error('[BDFare] CancelBooking failed:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+module.exports = { searchFlights, createBooking, issueTicket, cancelBooking, getBDFareConfig, clearBDFareConfigCache };
