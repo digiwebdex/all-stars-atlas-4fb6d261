@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Star, MapPin, Calendar, CheckCircle2, ArrowRight, Clock } from "lucide-react";
 import { Link, useParams, useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
 import { useHolidayDetails } from "@/hooks/useApiData";
 import { useAuth } from "@/hooks/useAuth";
 import AuthGateModal from "@/components/AuthGateModal";
