@@ -146,6 +146,8 @@ const FlightCard = ({
   const toCode = flight.destination || "";
   const flightNo = flight.flightNumber || "";
   const cabin = flight.cabinClass || "Economy";
+  const bookingClass = flight.bookingClass || "";
+  const availableSeats = flight.availableSeats ?? null;
   const duration = flight.duration || "";
   const stops = flight.stops ?? 0;
   const price = flight.price ?? 0;
@@ -160,6 +162,7 @@ const FlightCard = ({
 
   const stopsLabel = stops === 0 ? "Non-Stop" : `${stops} Stop${stops > 1 ? "s" : ""} Flight`;
   const refundLabel = refundable ? "Refundable" : "Partially-Refundable";
+  const cabinDisplay = bookingClass ? `${cabin} - ${bookingClass}` : cabin;
 
   return (
     <Card className={`overflow-hidden transition-all border ${isSelected ? "border-accent ring-2 ring-accent/20 shadow-lg" : isExpanded ? "border-accent/30 shadow-md" : "border-border hover:shadow-md"}`}>
@@ -246,7 +249,10 @@ const FlightCard = ({
         {/* ── Info bar ── */}
         <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1.5 px-3 sm:px-5 py-2.5 bg-muted/30 border-t border-border/50 text-[10px] sm:text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1 font-medium"><Luggage className="w-3 h-3" /> {baggage}</span>
-          <span>{cabin}</span>
+          <span className="font-medium">{cabinDisplay}</span>
+          {availableSeats !== null && availableSeats <= 9 && (
+            <span className="text-destructive font-bold">{availableSeats} Seat{availableSeats !== 1 ? "s" : ""} Left</span>
+          )}
           {aircraft && <span className="hidden sm:inline">Aircraft: {aircraft}</span>}
           <span className={refundable ? "text-accent font-semibold" : ""}>{refundLabel}</span>
           {source === "tti" && <span className="text-accent font-semibold">Air Astra</span>}
@@ -291,11 +297,15 @@ const FlightCard = ({
                             {/* Segment card */}
                             <div className="border border-border rounded-xl overflow-hidden">
                               {/* Segment header */}
-                              <div className="bg-accent/5 px-4 py-2.5 flex items-center gap-3 border-b border-border/50">
+                              <div className="bg-accent/5 px-4 py-2.5 flex flex-wrap items-center gap-2 sm:gap-3 border-b border-border/50">
                                 {legLogo && <img src={legLogo} alt="" className="w-6 h-6 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                                 <span className="text-sm font-bold">{leg.airlineCode || flight.airline}</span>
                                 <span className="text-xs text-muted-foreground">{leg.flightNumber}</span>
-                                {leg.aircraft && <span className="text-xs text-muted-foreground">· Aircraft: {leg.aircraft}</span>}
+                                {leg.aircraft && <span className="text-xs text-muted-foreground">· {leg.aircraft}</span>}
+                                <span className="text-xs font-medium">{cabinDisplay}</span>
+                                {availableSeats !== null && availableSeats <= 9 && (
+                                  <span className="text-xs text-destructive font-bold">{availableSeats} Seats Left</span>
+                                )}
                               </div>
                               {/* Segment body - responsive grid */}
                               <div className="grid grid-cols-3 sm:grid-cols-5 gap-0 text-center divide-x divide-border/50">
