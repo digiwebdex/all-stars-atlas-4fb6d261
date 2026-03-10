@@ -597,17 +597,17 @@ async function createBooking({ flightData, passengers, contactInfo }) {
     Extensions: null,
   }));
 
-  // ── TTI CreateBooking requires the original FareInfo (Itineraries + ETTicketFares) 
-  // and Segments from the SearchFlights response to be echoed back ──
-  const rawItinerary = flightData._ttiRawItinerary || null;
-  const rawFares = flightData._ttiRawFares || [];
+  // ── TTI CreateBooking requires the COMPLETE FareInfo and ALL Segments ──
+  // from the original SearchFlights response echoed back exactly
+  const fullFareInfo = flightData._ttiFullFareInfo || null;
+  const allSegments = flightData._ttiAllSegments || [];
   const rawSegments = flightData._ttiRawSegments || [];
 
-  // Use raw segments if available, otherwise build from legs
-  let segments = [];
-  if (rawSegments.length > 0) {
-    segments = rawSegments;
-  } else {
+  // Use ALL segments from the original search response (TTI needs complete context)
+  let segments = allSegments.length > 0 ? allSegments : rawSegments;
+  
+  // Fallback: build from legs if no raw data
+  if (segments.length === 0) {
     const legs = flightData.legs || [];
     if (legs.length > 0) {
       legs.forEach((leg, i) => {
@@ -621,27 +621,14 @@ async function createBooking({ flightData, passengers, contactInfo }) {
           CabinClass: flightData.cabinClass || 'Economy',
         });
       });
-    } else {
-      segments.push({
-        Ref: '1',
-        FlightNumber: flightData.flightNumber,
-        AirlineCode: flightData.airlineCode,
-        Origin: flightData.origin,
-        Destination: flightData.destination,
-        DepartureDate: flightData.departureTime ? `/Date(${new Date(flightData.departureTime).getTime()})/` : null,
-        CabinClass: flightData.cabinClass || 'Economy',
-      });
     }
   }
 
-  // Build FareInfo from complete, unmodified raw search data (TTI requires exact echo-back)
-  const fareInfo = {};
-  if (rawItinerary) {
-    fareInfo.Itineraries = [rawItinerary];
-  }
-  if (rawFares.length > 0) {
-    fareInfo.ETTicketFares = rawFares;
-  }
+  // Use the COMPLETE FareInfo from search response (includes FareRules, WebClasses, etc.)
+  const fareInfo = fullFareInfo || {};
+  
+  console.log('[TTI BOOKING] Using full FareInfo keys:', Object.keys(fareInfo));
+  console.log('[TTI BOOKING] Segments count:', segments.length, '| FareInfo.Itineraries:', (fareInfo.Itineraries || []).length, '| FareInfo.ETTicketFares:', (fareInfo.ETTicketFares || []).length);
 
   const request = {
     RequestInfo: { AuthenticationKey: config.key },
