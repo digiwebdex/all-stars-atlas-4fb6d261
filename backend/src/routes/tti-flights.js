@@ -175,17 +175,99 @@ function normalizeTTIResponse(response, originCode, destinationCode, isRoundTrip
     const airODs = itin.AirOriginDestinations || [];
     const fares = itinFareMap[itin.Ref] || [];
 
-    // Calculate total itinerary price
+    // Calculate total itinerary price with base/tax breakdown
     let totalItinPrice = 0;
+    let baseFareTotal = 0;
+    let taxesTotal = 0;
     let currency = 'BDT';
     if (itin.SaleCurrencyAmount) {
       totalItinPrice = itin.SaleCurrencyAmount.TotalAmount || itin.SaleCurrencyAmount.Amount || itin.SaleCurrencyAmount.Value || 0;
+      baseFareTotal = itin.SaleCurrencyAmount.BaseFare || itin.SaleCurrencyAmount.BaseAmount || 0;
+      taxesTotal = itin.SaleCurrencyAmount.TaxAmount || itin.SaleCurrencyAmount.Taxes || (totalItinPrice - baseFareTotal) || 0;
       currency = itin.SaleCurrencyAmount.CurrencyCode || 'BDT';
     } else if (fares.length > 0) {
       for (const f of fares) {
         if (f.SaleCurrencyAmount) {
           totalItinPrice += f.SaleCurrencyAmount.Amount || f.SaleCurrencyAmount.Value || 0;
+          baseFareTotal += f.SaleCurrencyAmount.BaseFare || f.SaleCurrencyAmount.BaseAmount || 0;
+          taxesTotal += f.SaleCurrencyAmount.TaxAmount || f.SaleCurrencyAmount.Taxes || 0;
           currency = f.SaleCurrencyAmount.CurrencyCode || currency;
+        }
+      }
+    }
+    if (baseFareTotal === 0) baseFareTotal = totalItinPrice;
+    if (taxesTotal === 0 && baseFareTotal < totalItinPrice) taxesTotal = totalItinPrice - baseFareTotal;
+
+    // Extract baggage allowance from fare data
+    let checkedBaggage = null;
+    let handBaggage = null;
+    for (const f of fares) {
+      const odFares = f.OriginDestinationFares || [];
+      for (const odf of odFares) {
+        // Check baggage at OD level
+        if (odf.FreeBaggageAllowance || odf.BaggageAllowance || odf.Baggage) {
+          const bag = odf.FreeBaggageAllowance || odf.BaggageAllowance || odf.Baggage;
+          if (bag.Weight || bag.Quantity || bag.Allowance) {
+            checkedBaggage = bag.Weight ? `${bag.Weight}${bag.WeightUnit || 'kg'}` : bag.Quantity ? `${bag.Quantity} piece${bag.Quantity > 1 ? 's' : ''}` : `${bag.Allowance}`;
+          } else if (typeof bag === 'string') {
+            checkedBaggage = bag;
+          } else if (typeof bag === 'number') {
+            checkedBaggage = `${bag}kg`;
+          }
+        }
+        if (odf.HandBaggage || odf.CabinBaggage) {
+          const hb = odf.HandBaggage || odf.CabinBaggage;
+          handBaggage = typeof hb === 'string' ? hb : hb.Weight ? `${hb.Weight}${hb.WeightUnit || 'kg'}` : null;
+        }
+        // Also check coupon-level baggage
+        const couponFares = odf.ETCouponFares || odf.CouponFares || [];
+        for (const cf of couponFares) {
+          if (!checkedBaggage && (cf.FreeBaggageAllowance || cf.BaggageAllowance)) {
+            const bag = cf.FreeBaggageAllowance || cf.BaggageAllowance;
+            if (bag.Weight) checkedBaggage = `${bag.Weight}${bag.WeightUnit || 'kg'}`;
+            else if (bag.Quantity) checkedBaggage = `${bag.Quantity} piece${bag.Quantity > 1 ? 's' : ''}`;
+            else if (typeof bag === 'string') checkedBaggage = bag;
+            else if (typeof bag === 'number') checkedBaggage = `${bag}kg`;
+          }
+        }
+      }
+    }
+
+    // Extract penalty/fare rules for cancellation & date change
+    let cancellationPolicy = null;
+    let dateChangePolicy = null;
+    for (const f of fares) {
+      if (f.PenaltyDetails || f.Penalties) {
+        const pd = f.PenaltyDetails || f.Penalties;
+        if (pd.CancellationCharge !== undefined || pd.RefundPenalty !== undefined) {
+          cancellationPolicy = {
+            beforeDeparture: pd.CancellationCharge ?? pd.RefundPenalty ?? null,
+            afterDeparture: pd.PostDepartureCancellation ?? 'Non-refundable',
+            noShow: pd.NoShowPenalty ?? pd.NoShowCharge ?? 'Non-refundable',
+            currency: currency,
+          };
+        }
+        if (pd.DateChangeCharge !== undefined || pd.ReissuePenalty !== undefined || pd.ChangePenalty !== undefined) {
+          dateChangePolicy = {
+            changeAllowed: true,
+            changeFee: pd.DateChangeCharge ?? pd.ReissuePenalty ?? pd.ChangePenalty ?? null,
+            currency: currency,
+          };
+        }
+      }
+      if (f.FareRules || f.Rules) {
+        const rules = f.FareRules || f.Rules;
+        if (Array.isArray(rules)) {
+          for (const rule of rules) {
+            if (rule.Category === 'CANCELLATION' || rule.Type === 'cancellation') {
+              cancellationPolicy = cancellationPolicy || {};
+              cancellationPolicy.ruleText = rule.Text || rule.Description || rule.RuleText || null;
+            }
+            if (rule.Category === 'DATE_CHANGE' || rule.Category === 'REISSUE' || rule.Type === 'reissue') {
+              dateChangePolicy = dateChangePolicy || {};
+              dateChangePolicy.ruleText = rule.Text || rule.Description || rule.RuleText || null;
+            }
+          }
         }
       }
     }
