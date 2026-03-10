@@ -769,7 +769,7 @@ async function drawFlightSegment(
 
   doc.setTextColor(0);
   doc.setFontSize(10);
-  doc.text("▶", col2X + 35, y + 12);
+  doc.text(">", col2X + 35, y + 12);
 
   doc.setFontSize(8);
   doc.setTextColor(80);
@@ -887,7 +887,7 @@ export async function generateTicketPDF(ticket: TicketData) {
   doc.setTextColor(255);
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  doc.text(`${departDate}  ▸  TRIP TO ${destCity.toUpperCase()}`, lm + (logo ? 45 : 52), 9);
+  doc.text(`${departDate}  >  TRIP TO ${destCity.toUpperCase()}`, lm + (logo ? 45 : 52), 9);
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.text(`${COMPANY.parent} | ${COMPANY.website} | ${COMPANY.phone}`, lm + (logo ? 45 : 52), 16);

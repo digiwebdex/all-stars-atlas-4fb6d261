@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { downloadCSV } from "@/lib/csv-export";
 import { generateTicketPDF } from "@/lib/pdf-generator";
+import { AIRPORTS } from "@/lib/airports";
 import { useDashboardBookings } from "@/hooks/useApiData";
 import DataLoader from "@/components/DataLoader";
 import { useToast } from "@/hooks/use-toast";
@@ -70,7 +71,7 @@ function mapBooking(b: any) {
     id: b.bookingRef || b.id, rawId: b.id, type: b.bookingType || "flight", status: b.status || "pending", title,
     amount: `৳${(b.totalAmount || 0).toLocaleString()}`, rawAmount: b.totalAmount || 0,
     date: b.bookedAt ? new Date(b.bookedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—",
-    pnr: b.pnr || "—", pax: paxCount, paxNames, ticketNo: b.ticketNo || "—",
+    pnr: b.pnr || details.gdsPnr || "—", pax: paxCount, paxNames, ticketNo: b.ticketNo || "—",
     paymentMethod: b.paymentMethod || "—", paymentStatus: b.paymentStatus || "—", paymentDeadline: b.paymentDeadline || null,
     airline, airlineCode, flightNumber, cabinClass, aircraft, departureTime, arrivalTime, duration, stops, baggage, refundable,
     legs, seatsAvailable, returnFlight, isRoundTrip, source, fareDetails, timeLimit, origin, destination,
@@ -333,11 +334,60 @@ const BookingDetailDialog = ({ booking, onClose }: { booking: any; onClose: () =
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={() => {
+              // Build proper segment data for the PDF from stored flight details
+              const getCity = (code: string) => {
+                const ap = AIRPORTS.find(a => a.code === code?.toUpperCase());
+                return ap ? `${ap.city}, ${ap.country}` : "";
+              };
+              const buildSegment = (f: any) => ({
+                airline: f?.airline || "Seven Trip",
+                airlineCode: f?.airlineCode || "",
+                flightNumber: f?.flightNumber || "",
+                origin: f?.origin || "",
+                originCity: f?.originCity || getCity(f?.origin),
+                destination: f?.destination || "",
+                destinationCity: f?.destinationCity || getCity(f?.destination),
+                departureTime: f?.departureTime || "",
+                arrivalTime: f?.arrivalTime || "",
+                duration: f?.duration || "",
+                cabinClass: f?.cabinClass || "Economy",
+                aircraft: f?.aircraft || f?.legs?.[0]?.aircraft || "",
+                terminal: f?.terminal || "",
+                arrivalTerminal: f?.arrivalTerminal || "",
+                baggage: f?.baggage || "20kg",
+                status: "Confirmed",
+                meal: f?.meal || "Meals",
+                stops: f?.stops ?? 0,
+              });
+
+              const outbound = booking.details?.outbound;
+              const returnFlt = booking.returnFlight || booking.details?.return;
+              const outboundSegs = outbound ? [buildSegment(outbound)] : [];
+              const returnSegs = returnFlt ? [buildSegment(returnFlt)] : [];
+
               generateTicketPDF({
-                id: booking.id, pnr: booking.pnr || booking.id, airline: booking.airline || "Seven Trip",
-                flightNo: booking.flightNumber || "ST-001", from: booking.origin || "Origin", to: booking.destination || "Destination",
-                date: booking.date, time: fmtTime(booking.departureTime), passenger: booking.paxNames?.[0] || "Traveller",
-                seat: "—", class: booking.cabinClass || "Economy",
+                id: booking.id,
+                pnr: booking.pnr !== "—" ? booking.pnr : undefined,
+                bookingRef: booking.pnr !== "—" ? booking.pnr : booking.id,
+                airline: booking.airline || "Seven Trip",
+                flightNo: booking.flightNumber || "",
+                from: booking.origin || "",
+                to: booking.destination || "",
+                date: booking.departureTime || booking.date,
+                time: booking.departureTime || "",
+                passenger: booking.paxNames?.[0] || "Traveller",
+                seat: "—",
+                class: booking.cabinClass || "Economy",
+                isRoundTrip: booking.isRoundTrip,
+                outbound: outboundSegs,
+                returnSegments: returnSegs,
+                passengers: booking.passengers?.map((p: any) => ({
+                  title: p.title || "",
+                  firstName: p.firstName || "",
+                  lastName: p.lastName || "",
+                  passport: p.passport || "",
+                  seat: "",
+                })) || [],
               });
             }}>
               <Download className="w-4 h-4 mr-1.5" /> Download E-Ticket
