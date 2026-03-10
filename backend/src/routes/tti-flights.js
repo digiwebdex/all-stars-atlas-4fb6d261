@@ -583,15 +583,6 @@ async function createBooking({ flightData, passengers, contactInfo }) {
   const rawFares = flightData._ttiRawFares || [];
   const rawSegments = flightData._ttiRawSegments || [];
 
-  // Build FareInfo from raw search data
-  const fareInfo = {};
-  if (rawItinerary) {
-    fareInfo.Itineraries = [rawItinerary];
-  }
-  if (rawFares.length > 0) {
-    fareInfo.ETTicketFares = rawFares;
-  }
-
   // Use raw segments if available, otherwise build from legs
   let segments = [];
   if (rawSegments.length > 0) {
@@ -621,6 +612,40 @@ async function createBooking({ flightData, passengers, contactInfo }) {
         CabinClass: flightData.cabinClass || 'Economy',
       });
     }
+  }
+
+  // Collect valid segment Refs to filter fare data (one-way booking may have round-trip fare data)
+  const validSegmentRefs = new Set(segments.map(s => s.Ref));
+  console.log('[TTI BOOKING] Valid segment refs:', [...validSegmentRefs]);
+
+  // Build FareInfo from raw search data, filtering to only include booked segments
+  const fareInfo = {};
+  if (rawItinerary) {
+    const filteredItinerary = { ...rawItinerary };
+    if (filteredItinerary.AirOriginDestinations) {
+      filteredItinerary.AirOriginDestinations = filteredItinerary.AirOriginDestinations.filter(aod => {
+        if (!aod.AirCoupons) return true;
+        return aod.AirCoupons.some(c => validSegmentRefs.has(c.RefSegment));
+      });
+      // Also filter coupons within each AirOriginDestination
+      filteredItinerary.AirOriginDestinations = filteredItinerary.AirOriginDestinations.map(aod => ({
+        ...aod,
+        AirCoupons: (aod.AirCoupons || []).filter(c => validSegmentRefs.has(c.RefSegment)),
+      }));
+    }
+    fareInfo.Itineraries = [filteredItinerary];
+  }
+  if (rawFares.length > 0) {
+    fareInfo.ETTicketFares = rawFares.map(fare => ({
+      ...fare,
+      OriginDestinationFares: (fare.OriginDestinationFares || []).filter(odf => {
+        if (!odf.CouponFares) return true;
+        return odf.CouponFares.some(cf => validSegmentRefs.has(cf.RefSegment));
+      }).map(odf => ({
+        ...odf,
+        CouponFares: (odf.CouponFares || []).filter(cf => validSegmentRefs.has(cf.RefSegment)),
+      })),
+    }));
   }
 
   const request = {
