@@ -35,10 +35,7 @@ const ESIMPlans = () => {
   }, {} as Record<string, any>);
   const countries = Object.values(groupedByCountry);
 
-  const countryFilters = listing?.esimCountries || [
-    { value: "thailand", label: "Thailand" }, { value: "malaysia", label: "Malaysia" },
-    { value: "singapore", label: "Singapore" }, { value: "india", label: "India" },
-  ];
+  const countryFilters = listing?.esimCountries || [];
 
   return (
     <div className="min-h-screen bg-muted/30">

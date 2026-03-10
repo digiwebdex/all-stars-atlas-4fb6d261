@@ -104,10 +104,12 @@ const DashboardHome = () => {
                     <div className={`w-11 h-11 rounded-xl ${meta.iconClass} flex items-center justify-center`}>
                       <Icon className="w-5 h-5" />
                     </div>
-                    <div className="flex items-center gap-0.5 text-xs font-bold text-success">
-                      <ArrowUpRight className="w-3.5 h-3.5" />
-                      {stat.change || '+0%'}
-                    </div>
+                    {stat.change && (
+                      <div className="flex items-center gap-0.5 text-xs font-bold text-success">
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                        {stat.change}
+                      </div>
+                    )}
                   </div>
                   <p className="text-2xl sm:text-3xl font-black tracking-tight">{stat.value}</p>
                   <p className="text-xs text-muted-foreground mt-1 font-medium">{stat.label}</p>

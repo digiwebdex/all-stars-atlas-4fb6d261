@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,12 +51,20 @@ const ESIMPurchase = () => {
     return true;
   };
 
-  const handleFinalAction = () => {
+  const handleFinalAction = async () => {
     if (!validateForm()) return;
     if (!isAuthenticated) { setAuthOpen(true); return; }
-    navigate("/booking/confirmation", {
-      state: { booking: { type: "eSIM", route: `${country} — ${plan}`, baseFare: config?.totalAmount || 0, total: config?.totalAmount || 0, paymentMethod: "Pending" } },
-    });
+    try {
+      const result: any = await api.post('/esim/purchase', {
+        country, plan, formData, activation: searchParams.get("activation") || '',
+        amount: config?.totalAmount || 0,
+      });
+      navigate("/booking/confirmation", {
+        state: { booking: { type: "eSIM", bookingRef: result.bookingRef || result.id, route: `${country} — ${plan}`, baseFare: config?.totalAmount || 0, total: config?.totalAmount || 0, paymentMethod: "Pending" } },
+      });
+    } catch (err: any) {
+      toast({ title: "Purchase Failed", description: err?.message || "Could not complete purchase", variant: "destructive" });
+    }
   };
 
   if (isLoading) {

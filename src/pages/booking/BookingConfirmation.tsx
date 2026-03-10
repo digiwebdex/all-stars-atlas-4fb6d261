@@ -13,16 +13,16 @@ const BookingConfirmation = () => {
 
   const booking = (location.state as any)?.booking || {};
   const bookingRef = booking.bookingRef || `BK-${Date.now().toString(36).toUpperCase()}`;
-  const route = booking.route || "Dhaka → Cox's Bazar";
+  const route = booking.route || "";
   const date = booking.date || new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-  const flightNo = booking.flightNo || "BG-435";
+  const flightNo = booking.flightNo || "";
   const cabin = booking.class || "Economy";
-  const departTime = booking.departTime || "07:30";
-  const arriveTime = booking.arriveTime || "08:35";
-  const stops = booking.stops || "Non-stop";
+  const departTime = booking.departTime || "";
+  const arriveTime = booking.arriveTime || "";
+  const stops = booking.stops || "";
   const passenger = booking.passenger || "Traveller";
   const pnr = booking.pnr || bookingRef.substring(0, 6).toUpperCase();
-  const ticketNo = booking.ticketNo || `997-${Math.floor(Math.random() * 9000000000 + 1000000000)}`;
+  const ticketNo = booking.ticketNo || "";
   const baseFare = booking.baseFare || 0;
   const taxes = booking.taxes || 0;
   const serviceCharge = booking.serviceCharge || 0;

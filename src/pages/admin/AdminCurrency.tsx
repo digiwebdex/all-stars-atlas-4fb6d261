@@ -50,13 +50,7 @@ const AdminCurrency = () => {
         if (Array.isArray(saved) && saved.length > 0) {
           setRates(saved);
         } else {
-          setRates([
-            { id: "1", fromCurrency: "USD", toCurrency: "BDT", exchangeRate: 121.50, markupPercent: 0, markupFixed: 0, yourRate: 121.50, status: "active", autoUpdate: true, lastUpdate: new Date().toISOString() },
-            { id: "2", fromCurrency: "USD", toCurrency: "SGD", exchangeRate: 1.34, markupPercent: 0, markupFixed: 0, yourRate: 1.34, status: "active", autoUpdate: true, lastUpdate: new Date().toISOString() },
-            { id: "3", fromCurrency: "USD", toCurrency: "AED", exchangeRate: 3.67, markupPercent: 0, markupFixed: 0, yourRate: 3.67, status: "active", autoUpdate: true, lastUpdate: new Date().toISOString() },
-            { id: "4", fromCurrency: "USD", toCurrency: "INR", exchangeRate: 86.42, markupPercent: 0, markupFixed: 0, yourRate: 86.42, status: "active", autoUpdate: true, lastUpdate: new Date().toISOString() },
-            { id: "5", fromCurrency: "BDT", toCurrency: "USD", exchangeRate: 0.0082, markupPercent: 0, markupFixed: 0, yourRate: 0.0082, status: "active", autoUpdate: true, lastUpdate: new Date().toISOString() },
-          ]);
+          setRates([]);
         }
       } catch {
         setRates([]);

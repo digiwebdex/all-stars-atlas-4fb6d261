@@ -85,9 +85,11 @@ const AdminDashboard = () => {
                     <p className="text-xs text-muted-foreground truncate font-medium">{stat.label}</p>
                     <p className="text-xl sm:text-2xl font-black tracking-tight">{stat.value}</p>
                   </div>
-                  <div className="flex items-center gap-0.5 text-xs font-bold text-success shrink-0 bg-success/10 px-2 py-1 rounded-full">
-                    <ArrowUpRight className="w-3.5 h-3.5" /> {stat.change}
-                  </div>
+                  {stat.change && (
+                    <div className="flex items-center gap-0.5 text-xs font-bold text-success shrink-0 bg-success/10 px-2 py-1 rounded-full">
+                      <ArrowUpRight className="w-3.5 h-3.5" /> {stat.change}
+                    </div>
+                  )}
                 </div>
               </div>
             );

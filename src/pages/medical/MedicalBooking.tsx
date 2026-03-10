@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { api } from "@/lib/api";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -57,11 +58,18 @@ const MedicalBooking = () => {
     if (validateStep(step)) setStep(step + 1);
   };
 
-  const handleFinalAction = () => {
+  const handleFinalAction = async () => {
     if (!isAuthenticated) { setAuthOpen(true); return; }
-    navigate("/booking/confirmation", {
-      state: { booking: { type: "Medical", route: `Hospital #${hospitalId || "—"}`, paymentMethod: "Pending" } },
-    });
+    try {
+      const result: any = await api.post('/medical/book', {
+        hospitalId, formData, totalAmount: config?.totalAmount || 0,
+      });
+      navigate("/booking/confirmation", {
+        state: { booking: { type: "Medical", bookingRef: result.bookingRef || result.id, route: `Hospital #${hospitalId || "—"}`, baseFare: config?.totalAmount || 0, total: config?.totalAmount || 0, paymentMethod: "Pending" } },
+      });
+    } catch (err: any) {
+      toast({ title: "Booking Failed", description: err?.message || "Could not complete booking", variant: "destructive" });
+    }
   };
 
   if (isLoading) {

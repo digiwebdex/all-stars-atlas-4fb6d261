@@ -40,13 +40,9 @@ const HolidayPackages = () => {
   const apiData = (rawData as any) || {};
   const packages = apiData.data || apiData.packages || [];
 
-  const includes = listing?.holidayIncludes || [
-    { icon: "Plane", label: "Flights" }, { icon: "Building2", label: "Hotels" },
-    { icon: "UtensilsCrossed", label: "Meals" }, { icon: "Camera", label: "Sightseeing" }, { icon: "Users", label: "Guide" },
-  ];
+  const includes = listing?.holidayIncludes || [];
   const filters = listing?.holidayFilters || [
-    { value: "all", label: "All" }, { value: "budget", label: "Budget" },
-    { value: "luxury", label: "Luxury" }, { value: "domestic", label: "Domestic" },
+    { value: "all", label: "All" },
   ];
 
   return (

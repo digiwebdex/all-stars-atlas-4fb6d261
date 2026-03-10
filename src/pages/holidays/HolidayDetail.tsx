@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Star, MapPin, Calendar, CheckCircle2, ArrowRight, Clock } from "lucide-react";
 import { Link, useParams, useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
 import { useHolidayDetails } from "@/hooks/useApiData";
 import { useAuth } from "@/hooks/useAuth";
 import AuthGateModal from "@/components/AuthGateModal";
@@ -15,6 +17,8 @@ const HolidayDetail = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const { toast } = useToast();
   const { data, isLoading, error, refetch } = useHolidayDetails(id);
   const pkg = (data as any)?.package || {};
   const itinerary = (data as any)?.itinerary || [];
@@ -27,20 +31,37 @@ const HolidayDetail = () => {
     navigateToConfirmation();
   };
 
-  const navigateToConfirmation = () => {
-    navigate("/booking/confirmation", {
-      state: {
-        booking: {
-          type: "Holiday",
-          route: pkg.destination || pkg.name,
-          date: pkg.nextAvailable || "—",
-          baseFare: pkg.price || 0,
-          taxes: Math.round((pkg.price || 0) * 0.05),
-          total: Math.round((pkg.price || 0) * 1.05),
-          paymentMethod: "Pending",
+  const navigateToConfirmation = async () => {
+    setBookingLoading(true);
+    try {
+      const result: any = await api.post('/holidays/book', {
+        packageId: id,
+        packageName: pkg.name,
+        destination: pkg.destination,
+        duration: pkg.duration,
+        price: pkg.price || 0,
+        taxes: Math.round((pkg.price || 0) * 0.05),
+        total: Math.round((pkg.price || 0) * 1.05),
+      });
+      navigate("/booking/confirmation", {
+        state: {
+          booking: {
+            type: "Holiday",
+            bookingRef: result.bookingRef || result.id,
+            route: pkg.destination || pkg.name,
+            date: pkg.nextAvailable || "—",
+            baseFare: pkg.price || 0,
+            taxes: Math.round((pkg.price || 0) * 0.05),
+            total: Math.round((pkg.price || 0) * 1.05),
+            paymentMethod: "Pending",
+          },
         },
-      },
-    });
+      });
+    } catch (err: any) {
+      toast({ title: "Booking Failed", description: err?.message || "Could not complete booking", variant: "destructive" });
+    } finally {
+      setBookingLoading(false);
+    }
   };
 
   return (

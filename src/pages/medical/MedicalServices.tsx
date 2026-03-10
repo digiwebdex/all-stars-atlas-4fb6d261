@@ -43,15 +43,8 @@ const MedicalServices = () => {
   const { data: rawData, isLoading, error, refetch } = useMedicalHospitals(params);
   const hospitals = (rawData as any)?.data || (rawData as any)?.hospitals || [];
 
-  const countries = listing?.medicalCountries || [
-    { value: "india", label: "India" }, { value: "thailand", label: "Thailand" },
-    { value: "singapore", label: "Singapore" }, { value: "turkey", label: "Turkey" }, { value: "malaysia", label: "Malaysia" },
-  ];
-  const treatments = listing?.medicalTreatments || [
-    { value: "cardiac", label: "Cardiac" }, { value: "dental", label: "Dental" },
-    { value: "orthopedic", label: "Orthopedic" }, { value: "eye", label: "Eye Care" },
-    { value: "cosmetic", label: "Cosmetic Surgery" }, { value: "cancer", label: "Cancer Treatment" },
-  ];
+  const countries = listing?.medicalCountries || [];
+  const treatments = listing?.medicalTreatments || [];
 
   return (
     <div className="min-h-screen bg-muted/30">
