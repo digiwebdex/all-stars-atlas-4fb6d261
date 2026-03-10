@@ -110,6 +110,7 @@ const FlightCard = ({
   selectionMode?: boolean; isSelected?: boolean; onSelect?: () => void;
 }) => {
   const cardNavigate = useNavigate();
+  const [cardSearchParams] = useSearchParams();
   const logo = getAirlineLogo(flight.airlineCode);
   const departTime = formatTime(flight.departureTime);
   const arriveTime = formatTime(flight.arrivalTime);
