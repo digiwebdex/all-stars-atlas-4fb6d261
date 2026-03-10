@@ -99,42 +99,44 @@ const BookingDetailDialog = ({ booking, onClose }: { booking: any; onClose: () =
 
   return (
     <Dialog open={!!booking} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0 w-[95vw] sm:w-auto">
         {/* Header with Booking ID */}
-        <div className="bg-accent text-accent-foreground px-6 py-4">
+        <div className="bg-accent text-accent-foreground px-4 sm:px-6 py-3 sm:py-4">
           <DialogHeader>
-            <DialogTitle className="text-accent-foreground flex items-center gap-3">
-              <Plane className="w-5 h-5" />
-              <span>Booking ID: {booking.id}</span>
-              <Badge className="bg-accent-foreground/20 text-accent-foreground border-0 ml-auto text-xs">
-                Booking Status: {booking.status}
+            <DialogTitle className="text-accent-foreground flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+              <div className="flex items-center gap-2">
+                <Plane className="w-5 h-5 shrink-0" />
+                <span className="text-sm sm:text-base truncate">Booking: {booking.id}</span>
+              </div>
+              <Badge className="bg-accent-foreground/20 text-accent-foreground border-0 text-xs w-fit">
+                {booking.status}
               </Badge>
             </DialogTitle>
           </DialogHeader>
         </div>
 
-        <div className="px-6 py-4 space-y-4">
-          {/* Booking meta table */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3 bg-muted/30 rounded-lg">
-              <p className="text-[10px] uppercase text-muted-foreground font-medium">Booking ID</p>
-              <p className="text-sm font-bold font-mono flex items-center gap-1">{booking.id}
-                <button onClick={() => copyText(booking.id, "Booking ID")}><Copy className="w-3 h-3 text-muted-foreground hover:text-foreground" /></button>
+        <div className="px-4 sm:px-6 py-4 space-y-4">
+          {/* Booking meta */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+            <div className="p-2 sm:p-3 bg-muted/30 rounded-lg">
+              <p className="text-[9px] sm:text-[10px] uppercase text-muted-foreground font-medium">Booking ID</p>
+              <p className="text-xs sm:text-sm font-bold font-mono flex items-center gap-1 truncate">{booking.id}
+                <button onClick={() => copyText(booking.id, "Booking ID")} className="shrink-0"><Copy className="w-3 h-3 text-muted-foreground hover:text-foreground" /></button>
               </p>
             </div>
-            <div className="p-3 bg-muted/30 rounded-lg">
-              <p className="text-[10px] uppercase text-muted-foreground font-medium">Airlines PNR</p>
-              <p className="text-sm font-bold font-mono flex items-center gap-1">{booking.pnr}
-                {booking.pnr !== "—" && <button onClick={() => copyText(booking.pnr, "PNR")}><Copy className="w-3 h-3 text-muted-foreground hover:text-foreground" /></button>}
+            <div className="p-2 sm:p-3 bg-muted/30 rounded-lg">
+              <p className="text-[9px] sm:text-[10px] uppercase text-muted-foreground font-medium">Airlines PNR</p>
+              <p className="text-xs sm:text-sm font-bold font-mono flex items-center gap-1">{booking.pnr}
+                {booking.pnr !== "—" && <button onClick={() => copyText(booking.pnr, "PNR")} className="shrink-0"><Copy className="w-3 h-3 text-muted-foreground hover:text-foreground" /></button>}
               </p>
             </div>
-            <div className="p-3 bg-muted/30 rounded-lg">
-              <p className="text-[10px] uppercase text-muted-foreground font-medium">Booking Class</p>
-              <p className="text-sm font-bold">{booking.cabinClass}</p>
+            <div className="p-2 sm:p-3 bg-muted/30 rounded-lg">
+              <p className="text-[9px] sm:text-[10px] uppercase text-muted-foreground font-medium">Booking Class</p>
+              <p className="text-xs sm:text-sm font-bold">{booking.cabinClass}</p>
             </div>
-            <div className="p-3 bg-muted/30 rounded-lg">
-              <p className="text-[10px] uppercase text-muted-foreground font-medium">Journey Type</p>
-              <p className="text-sm font-bold">{booking.isRoundTrip ? "Round Trip" : "One Way"}</p>
+            <div className="p-2 sm:p-3 bg-muted/30 rounded-lg">
+              <p className="text-[9px] sm:text-[10px] uppercase text-muted-foreground font-medium">Journey Type</p>
+              <p className="text-xs sm:text-sm font-bold">{booking.isRoundTrip ? "Round Trip" : "One Way"}</p>
             </div>
           </div>
 

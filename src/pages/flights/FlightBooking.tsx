@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,13 +13,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plane, ArrowRight, User, Clock, Luggage, Shield, CreditCard,
   UtensilsCrossed, Armchair, Plus, Briefcase, Users, FileText,
-  AlertCircle, CheckCircle2, Timer, AlertTriangle,
+  AlertCircle, CheckCircle2, Timer, AlertTriangle, Package, Weight,
 } from "lucide-react";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useCmsPageContent } from "@/hooks/useCmsContent";
 import { useAuth } from "@/hooks/useAuth";
 import AuthGateModal from "@/components/AuthGateModal";
 import { api } from "@/lib/api";
+import SeatMap from "@/components/flights/SeatMap";
 import type { BookingFormField } from "@/lib/cms-defaults";
 
 // ─── Bangladesh domestic airports ───
@@ -69,42 +70,39 @@ function getAirlineLogo(code?: string): string | null {
 function fmtTime(dt?: string) { if (!dt) return "—"; try { const d = new Date(dt); return isNaN(d.getTime()) ? dt : d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }); } catch { return dt; } }
 function fmtDate(dt?: string) { if (!dt) return "—"; try { const d = new Date(dt); return isNaN(d.getTime()) ? dt : d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }); } catch { return dt; } }
 
-/* ─── Extras data ─── */
-const MEAL_OPTIONS = [
-  { id: "standard", name: "Standard Meal", price: 0, desc: "Included with your fare" },
-  { id: "vegetarian", name: "Vegetarian", price: 0, desc: "Lacto-ovo vegetarian meal" },
-  { id: "vegan", name: "Vegan", price: 200, desc: "Plant-based meal" },
-  { id: "halal", name: "Halal Meal", price: 0, desc: "Halal certified preparation" },
-  { id: "kosher", name: "Kosher Meal", price: 300, desc: "Kosher certified meal" },
-  { id: "child", name: "Child Meal", price: 0, desc: "Kid-friendly options" },
-  { id: "diabetic", name: "Diabetic Meal", price: 0, desc: "Low sugar, balanced nutrition" },
+/* ─── Default Extras data (used as fallback) ─── */
+const DEFAULT_MEALS = [
+  { id: "standard", name: "Standard Meal", price: 0, desc: "Included with your fare", icon: "🍽️" },
+  { id: "vegetarian", name: "Vegetarian", price: 0, desc: "Lacto-ovo vegetarian meal", icon: "🥗" },
+  { id: "vegan", name: "Vegan", price: 200, desc: "Plant-based meal", icon: "🌱" },
+  { id: "halal", name: "Halal Meal", price: 0, desc: "Halal certified preparation", icon: "☪️" },
+  { id: "kosher", name: "Kosher Meal", price: 300, desc: "Kosher certified meal", icon: "✡️" },
+  { id: "child", name: "Child Meal", price: 0, desc: "Kid-friendly options", icon: "🧒" },
+  { id: "diabetic", name: "Diabetic Meal", price: 0, desc: "Low sugar, balanced nutrition", icon: "💊" },
+  { id: "seafood", name: "Seafood Meal", price: 350, desc: "Fresh seafood selection", icon: "🦐" },
+  { id: "fruit", name: "Fruit Platter", price: 150, desc: "Fresh fruit selection", icon: "🍎" },
 ];
-const BAGGAGE_OPTIONS = [
-  { id: "extra5", name: "+5 kg Extra Baggage", price: 500, desc: "Total: 25kg checked" },
-  { id: "extra10", name: "+10 kg Extra Baggage", price: 900, desc: "Total: 30kg checked" },
-  { id: "extra15", name: "+15 kg Extra Baggage", price: 1200, desc: "Total: 35kg checked" },
-  { id: "extra20", name: "+20 kg Extra Baggage", price: 1500, desc: "Total: 40kg checked" },
-  { id: "sport", name: "Sports Equipment", price: 2000, desc: "Golf, ski, surfboard etc." },
-  { id: "fragile", name: "Fragile Handling", price: 800, desc: "Priority fragile handling" },
-];
-const SEAT_CLASSES = [
-  { id: "standard", name: "Standard Seat", price: 0, desc: "Pre-assigned at check-in", icon: "🪑" },
-  { id: "window", name: "Window Seat", price: 300, desc: "Enjoy the view", icon: "🪟" },
-  { id: "aisle", name: "Aisle Seat", price: 300, desc: "Easy access", icon: "🚶" },
-  { id: "extra-leg", name: "Extra Legroom", price: 800, desc: "More space for comfort", icon: "🦵" },
-  { id: "front", name: "Front Row", price: 600, desc: "Quick exit after landing", icon: "⬆️" },
-  { id: "emergency", name: "Emergency Exit Row", price: 500, desc: "Maximum legroom", icon: "🚪" },
+const DEFAULT_BAGGAGE = [
+  { id: "extra5", name: "+5 kg Extra Baggage", price: 500, desc: "Total: 25kg checked", icon: "🧳" },
+  { id: "extra10", name: "+10 kg Extra Baggage", price: 900, desc: "Total: 30kg checked", icon: "🧳" },
+  { id: "extra15", name: "+15 kg Extra Baggage", price: 1200, desc: "Total: 35kg checked", icon: "🧳" },
+  { id: "extra20", name: "+20 kg Extra Baggage", price: 1500, desc: "Total: 40kg checked", icon: "🧳" },
+  { id: "extra30", name: "+30 kg Extra Baggage", price: 2200, desc: "Total: 50kg checked", icon: "🧳" },
+  { id: "sport", name: "Sports Equipment", price: 2000, desc: "Golf, ski, surfboard etc.", icon: "⚽" },
+  { id: "fragile", name: "Fragile Handling", price: 800, desc: "Priority fragile handling", icon: "📦" },
+  { id: "musical", name: "Musical Instrument", price: 1500, desc: "Guitar, violin etc.", icon: "🎸" },
 ];
 
-const AddOnCard = ({ item, selected, onSelect }: { item: { id: string; name: string; price: number; desc: string; icon?: string }; selected: boolean; onSelect: () => void }) => (
-  <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+/* ─── Add-on Card ─── */
+const AddOnCard = ({ item, selected, onSelect, multi }: { item: { id: string; name: string; price: number; desc: string; icon?: string }; selected: boolean; onSelect: () => void; multi?: boolean }) => (
+  <label className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${
     selected ? "border-accent bg-accent/5 shadow-sm" : "border-border hover:border-accent/40"
   }`}>
     <Checkbox checked={selected} onCheckedChange={onSelect} />
-    {item.icon && <span className="text-lg">{item.icon}</span>}
+    {item.icon && <span className="text-lg shrink-0">{item.icon}</span>}
     <div className="flex-1 min-w-0"><p className="text-sm font-medium">{item.name}</p><p className="text-xs text-muted-foreground">{item.desc}</p></div>
     <span className={`text-sm font-bold shrink-0 ${item.price === 0 ? "text-accent" : "text-foreground"}`}>
-      {item.price === 0 ? "Free" : `৳${item.price}`}
+      {item.price === 0 ? "Free" : `৳${item.price.toLocaleString()}`}
     </span>
   </label>
 );
@@ -120,10 +118,11 @@ const SessionTimer = ({ minutes = 20 }: { minutes?: number }) => {
   const s = secondsLeft % 60;
   const isUrgent = secondsLeft < 300;
   return (
-    <div className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold ${isUrgent ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"}`}>
-      <Timer className="w-4 h-4" />
-      <span>Session Timeout in</span>
-      <span className="font-mono text-base">{String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}</span>
+    <div className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold ${isUrgent ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"}`}>
+      <Timer className="w-4 h-4 shrink-0" />
+      <span className="hidden sm:inline">Session Timeout in</span>
+      <span className="sm:hidden">Timeout</span>
+      <span className="font-mono text-sm sm:text-base">{String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}</span>
     </div>
   );
 };
@@ -131,7 +130,6 @@ const SessionTimer = ({ minutes = 20 }: { minutes?: number }) => {
 /* ─── Compact flight segment card ─── */
 const FlightSegmentCard = ({ flight, label }: { flight: any; label: string }) => {
   const logo = getAirlineLogo(flight?.airlineCode);
-  const legs = flight?.legs || [];
   if (!flight) return (
     <Card className="border-dashed"><CardContent className="py-8 text-center">
       <AlertCircle className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
@@ -143,33 +141,33 @@ const FlightSegmentCard = ({ flight, label }: { flight: any; label: string }) =>
     <Card className="overflow-hidden border-accent/20">
       <div className="bg-accent px-4 py-2 flex items-center gap-2">
         <Plane className={`w-4 h-4 text-accent-foreground ${label === "Return" ? "rotate-180" : ""}`} />
-        <span className="text-sm font-bold text-accent-foreground">{label}: {flight.origin} → {flight.destination}</span>
-        <span className="text-xs text-accent-foreground/70 ml-auto">{fmtDate(flight.departureTime)}</span>
+        <span className="text-xs sm:text-sm font-bold text-accent-foreground">{label}: {flight.origin} → {flight.destination}</span>
+        <span className="text-[10px] sm:text-xs text-accent-foreground/70 ml-auto">{fmtDate(flight.departureTime)}</span>
       </div>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-4">
-          {logo && <img src={logo} alt={flight.airline} className="w-10 h-10 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
-          <div className="flex-1 flex items-center gap-4">
-            <div className="text-center">
-              <p className="text-xl font-black">{fmtTime(flight.departureTime)}</p>
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-center gap-3 sm:gap-4">
+          {logo && <img src={logo} alt={flight.airline} className="w-8 h-8 sm:w-10 sm:h-10 object-contain shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+          <div className="flex-1 flex items-center gap-2 sm:gap-4 min-w-0">
+            <div className="text-center shrink-0">
+              <p className="text-lg sm:text-xl font-black">{fmtTime(flight.departureTime)}</p>
               <p className="text-[10px] text-muted-foreground font-semibold">{flight.origin}</p>
             </div>
-            <div className="flex-1 flex flex-col items-center gap-0.5">
+            <div className="flex-1 flex flex-col items-center gap-0.5 min-w-0">
               <p className="text-[10px] text-muted-foreground">{flight.duration}</p>
-              <div className="w-full flex items-center"><div className="w-2 h-2 rounded-full bg-accent" /><div className="flex-1 h-px bg-accent/30" /><div className="w-2 h-2 rounded-full bg-accent" /></div>
+              <div className="w-full flex items-center"><div className="w-2 h-2 rounded-full bg-accent shrink-0" /><div className="flex-1 h-px bg-accent/30" /><div className="w-2 h-2 rounded-full bg-accent shrink-0" /></div>
               <p className="text-[10px] text-accent font-semibold">{flight.stops === 0 ? "Non-stop" : `${flight.stops} Stop`}</p>
             </div>
-            <div className="text-center">
-              <p className="text-xl font-black">{fmtTime(flight.arrivalTime)}</p>
+            <div className="text-center shrink-0">
+              <p className="text-lg sm:text-xl font-black">{fmtTime(flight.arrivalTime)}</p>
               <p className="text-[10px] text-muted-foreground font-semibold">{flight.destination}</p>
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-3 mt-3 text-[11px] text-muted-foreground">
+        <div className="flex flex-wrap gap-2 sm:gap-3 mt-3 text-[10px] sm:text-[11px] text-muted-foreground">
           <span>{flight.airline} · {flight.flightNumber}</span>
           <span>· {flight.cabinClass || "Economy"}</span>
           <span className="flex items-center gap-1"><Luggage className="w-3 h-3" /> {flight.baggage || "20kg"}</span>
-          {flight.aircraft && <span>· Aircraft: {flight.aircraft}</span>}
+          {flight.aircraft && <span className="hidden sm:inline">· Aircraft: {flight.aircraft}</span>}
         </div>
       </CardContent>
     </Card>
@@ -192,7 +190,13 @@ const FlightBooking = () => {
 
   const [selectedMeal, setSelectedMeal] = useState("standard");
   const [selectedBaggage, setSelectedBaggage] = useState<string[]>([]);
-  const [selectedSeat, setSelectedSeat] = useState("standard");
+  const [selectedSeats, setSelectedSeats] = useState<Record<number, string>>({});
+  const [seatPrices, setSeatPrices] = useState<Record<number, number>>({});
+
+  // Ancillary data from API
+  const [mealOptions, setMealOptions] = useState(DEFAULT_MEALS);
+  const [baggageOptions, setBaggageOptions] = useState(DEFAULT_BAGGAGE);
+  const [ancillarySource, setAncillarySource] = useState("standard");
 
   const [passengers, setPassengers] = useState([{
     title: "", firstName: "", lastName: "", dob: "", nationality: "", passport: "", passportExpiry: "", email: "", phone: "", gender: "",
@@ -209,9 +213,41 @@ const FlightBooking = () => {
   const isBiman = isBimanAirline(outboundFlight?.airlineCode) || isBimanAirline(returnFlight?.airlineCode);
   const domestic = isDomesticRoute(outboundFlight?.origin, outboundFlight?.destination);
 
-  const mealCost = MEAL_OPTIONS.find(m => m.id === selectedMeal)?.price || 0;
-  const baggageCost = selectedBaggage.reduce((sum, id) => sum + (BAGGAGE_OPTIONS.find(b => b.id === id)?.price || 0), 0);
-  const seatCost = SEAT_CLASSES.find(s => s.id === selectedSeat)?.price || 0;
+  // Fetch ancillaries from API
+  useEffect(() => {
+    if (!outboundFlight) return;
+    const fetchAncillaries = async () => {
+      try {
+        const params: Record<string, string> = {
+          airlineCode: outboundFlight.airlineCode || "",
+          origin: outboundFlight.origin || "",
+          destination: outboundFlight.destination || "",
+        };
+        if (outboundFlight._ttiItineraryRef) params.itineraryRef = outboundFlight._ttiItineraryRef;
+        if (outboundFlight.cabinClass) params.cabinClass = outboundFlight.cabinClass;
+
+        const data = await api.get<any>("/flights/ancillaries", params);
+        if (data?.meals?.length > 0) {
+          setMealOptions(data.meals.map((m: any) => ({
+            id: m.id, name: m.name, price: m.price || 0, desc: m.description || "", icon: m.category === "dietary" ? "🥗" : m.category === "premium" ? "🦐" : "🍽️",
+          })));
+        }
+        if (data?.baggage?.length > 0) {
+          setBaggageOptions(data.baggage.map((b: any) => ({
+            id: b.id, name: b.name, price: b.price || 0, desc: b.description || "", icon: b.type === "special" ? "📦" : "🧳",
+          })));
+        }
+        if (data?.source) setAncillarySource(data.source);
+      } catch {
+        // Silently fall back to defaults
+      }
+    };
+    fetchAncillaries();
+  }, [outboundFlight]);
+
+  const mealCost = mealOptions.find(m => m.id === selectedMeal)?.price || 0;
+  const baggageCost = selectedBaggage.reduce((sum, id) => sum + (baggageOptions.find(b => b.id === id)?.price || 0), 0);
+  const seatCost = Object.values(seatPrices).reduce((a, b) => a + b, 0);
   const addOnTotal = mealCost + baggageCost + seatCost;
   const outboundPrice = outboundFlight?.price || 0;
   const returnPrice = returnFlight?.price || 0;
@@ -221,6 +257,15 @@ const FlightBooking = () => {
   const grandTotal = baseFare + taxes + serviceCharge + addOnTotal;
 
   const deadlineInfo = resolveDeadlineInfo(outboundFlight, domestic);
+
+  const handleSeatSelect = (paxIdx: number, seatId: string, price: number) => {
+    setSelectedSeats(prev => ({ ...prev, [paxIdx]: seatId }));
+    setSeatPrices(prev => ({ ...prev, [paxIdx]: price }));
+  };
+  const handleSeatDeselect = (paxIdx: number) => {
+    setSelectedSeats(prev => { const n = { ...prev }; delete n[paxIdx]; return n; });
+    setSeatPrices(prev => { const n = { ...prev }; delete n[paxIdx]; return n; });
+  };
 
   const validateStep = (currentStep: number): boolean => {
     const errors: Record<string, string> = {};
@@ -250,11 +295,18 @@ const FlightBooking = () => {
   const createBooking = async (payLater: boolean) => {
     setBookingLoading(true);
     try {
+      const seatSelections = Object.entries(selectedSeats).map(([paxIdx, seatId]) => ({
+        passenger: Number(paxIdx), seat: seatId, price: seatPrices[Number(paxIdx)] || 0,
+      }));
       const bookingData = {
         flightData: outboundFlight, returnFlightData: returnFlight, passengers, isRoundTrip, isDomestic: domestic, payLater,
         paymentMethod: payLater ? "pay_later" : (selectedPaymentMethod || "card"), totalAmount: grandTotal, baseFare, taxes, serviceCharge,
-        addOns: { meal: MEAL_OPTIONS.find(m => m.id === selectedMeal)?.name, seat: SEAT_CLASSES.find(s => s.id === selectedSeat)?.name,
-          baggage: selectedBaggage.map(id => BAGGAGE_OPTIONS.find(b => b.id === id)?.name).filter(Boolean), total: addOnTotal },
+        addOns: {
+          meal: mealOptions.find(m => m.id === selectedMeal)?.name,
+          seats: seatSelections,
+          baggage: selectedBaggage.map(id => baggageOptions.find(b => b.id === id)?.name).filter(Boolean),
+          total: addOnTotal,
+        },
         contactInfo: { email: passengers[0]?.email, phone: passengers[0]?.phone },
       };
       const result = await api.post<any>("/flights/book", bookingData);
@@ -301,8 +353,8 @@ const FlightBooking = () => {
               <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-8 h-8 text-accent" />
               </div>
-              <h2 className="text-2xl font-black">Booking {bookingResult.payLater ? "On Hold" : "Confirmed"} ✓</h2>
-              <p className="text-muted-foreground">
+              <h2 className="text-xl sm:text-2xl font-black">Booking {bookingResult.payLater ? "On Hold" : "Confirmed"} ✓</h2>
+              <p className="text-sm text-muted-foreground">
                 {bookingResult.payLater ? "Your booking has been placed on hold. Complete payment before the deadline." : "Your booking and payment have been confirmed."}
               </p>
               <div className="bg-muted/50 rounded-xl p-4 text-left space-y-2">
@@ -380,14 +432,14 @@ const FlightBooking = () => {
     <div className="min-h-screen bg-muted/30 pt-20 lg:pt-28 pb-10">
       <div className="container mx-auto px-4">
         {/* Session timer + Progress */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-6">
-          <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto w-full sm:w-auto scrollbar-none">
             {STEPS.map((s, i) => {
               const Icon = s.icon;
               return (
-                <div key={i} className="flex items-center gap-1 sm:gap-2">
+                <div key={i} className="flex items-center gap-1 sm:gap-2 shrink-0">
                   <button onClick={() => i + 1 < step && setStep(i + 1)}
-                    className={`flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-colors ${
+                    className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-2 rounded-lg text-[11px] sm:text-sm font-semibold transition-colors whitespace-nowrap ${
                       step > i + 1 ? "bg-accent/10 text-accent cursor-pointer" :
                       step === i + 1 ? "bg-accent text-accent-foreground" :
                       "bg-muted text-muted-foreground"
@@ -396,7 +448,7 @@ const FlightBooking = () => {
                     <span className="hidden sm:inline">{s.label}</span>
                     <span className="sm:hidden">{i + 1}</span>
                   </button>
-                  {i < STEPS.length - 1 && <div className="w-4 sm:w-8 h-px bg-border" />}
+                  {i < STEPS.length - 1 && <div className="w-3 sm:w-8 h-px bg-border" />}
                 </div>
               );
             })}
@@ -415,8 +467,8 @@ const FlightBooking = () => {
           </div>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-5">
+        <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-5">
             {/* STEP 1: Flight Details */}
             {step === 1 && (
               <>
@@ -428,32 +480,32 @@ const FlightBooking = () => {
               </>
             )}
 
-            {/* STEP 2: Passenger Info (Inno Travel Tech style) */}
+            {/* STEP 2: Passenger Info */}
             {step === 2 && (
               <Card>
                 <CardHeader className="bg-accent/5 border-b border-border">
-                  <CardTitle className="text-base flex items-center gap-2">
+                  <CardTitle className="text-sm sm:text-base flex items-center gap-2">
                     <Users className="w-5 h-5 text-accent" /> Enter Traveler Details
                   </CardTitle>
                   <p className="text-xs text-muted-foreground">Enter details exactly as they appear on your passport/ID</p>
                 </CardHeader>
-                <CardContent className="p-5">
+                <CardContent className="p-3 sm:p-5">
                   {passengers.map((pax, pi) => (
-                    <div key={pi} className="space-y-4">
+                    <div key={pi} className="space-y-3 sm:space-y-4">
                       {pi > 0 && <Separator className="my-4" />}
                       <Badge variant="outline" className="text-xs mb-3">Adult Traveler {pi + 1}</Badge>
 
-                      {/* Row 1: Title + Gender */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      {/* Row 1: Title + Gender + DOB + Nationality */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                         <div className="space-y-1.5">
-                          <Label className={fieldErrors.title ? "text-destructive" : ""}>Title *</Label>
+                          <Label className={`text-xs sm:text-sm ${fieldErrors.title ? "text-destructive" : ""}`}>Title *</Label>
                           <Select value={pax.title} onValueChange={(v) => {
                             const updated = [...passengers]; updated[pi].title = v;
                             if (v === "Mr" || v === "Master") updated[pi].gender = "Male";
                             else updated[pi].gender = "Female";
                             setPassengers(updated); setFieldErrors(prev => { const n = {...prev}; delete n.title; return n; });
                           }}>
-                            <SelectTrigger className={`h-11 ${fieldErrors.title ? "border-destructive ring-destructive/20 ring-2" : ""}`}><SelectValue placeholder="Title" /></SelectTrigger>
+                            <SelectTrigger className={`h-10 sm:h-11 ${fieldErrors.title ? "border-destructive ring-destructive/20 ring-2" : ""}`}><SelectValue placeholder="Title" /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="Mr">Mr</SelectItem><SelectItem value="Mrs">Mrs</SelectItem>
                               <SelectItem value="Ms">Ms</SelectItem><SelectItem value="Master">Master</SelectItem><SelectItem value="Miss">Miss</SelectItem>
@@ -461,66 +513,66 @@ const FlightBooking = () => {
                           </Select>
                         </div>
                         <div className="space-y-1.5">
-                          <Label>Gender *</Label>
-                          <div className="flex gap-2 h-11">
+                          <Label className="text-xs sm:text-sm">Gender *</Label>
+                          <div className="flex gap-2 h-10 sm:h-11">
                             {["Male", "Female"].map(g => (
                               <button key={g} onClick={() => { const updated = [...passengers]; updated[pi].gender = g; setPassengers(updated); }}
-                                className={`flex-1 rounded-md border text-sm font-medium transition-colors ${
+                                className={`flex-1 rounded-md border text-xs sm:text-sm font-medium transition-colors ${
                                   pax.gender === g ? "bg-accent text-accent-foreground border-accent" : "bg-card border-border hover:border-accent/40"
                                 }`}>{g}</button>
                             ))}
                           </div>
                         </div>
                         <div className="space-y-1.5">
-                          <Label className={fieldErrors.dob ? "text-destructive" : ""}>Date of Birth *</Label>
+                          <Label className={`text-xs sm:text-sm ${fieldErrors.dob ? "text-destructive" : ""}`}>Date of Birth *</Label>
                           <Input type="date" value={pax.dob} onChange={(e) => {
                             const updated = [...passengers]; updated[pi].dob = e.target.value; setPassengers(updated);
                             setFieldErrors(prev => { const n = {...prev}; delete n.dob; return n; });
-                          }} className={`h-11 ${fieldErrors.dob ? "border-destructive ring-destructive/20 ring-2" : ""}`} />
+                          }} className={`h-10 sm:h-11 ${fieldErrors.dob ? "border-destructive ring-destructive/20 ring-2" : ""}`} />
                         </div>
                         <div className="space-y-1.5">
-                          <Label className={fieldErrors.nationality ? "text-destructive" : ""}>Nationality *</Label>
+                          <Label className={`text-xs sm:text-sm ${fieldErrors.nationality ? "text-destructive" : ""}`}>Nationality *</Label>
                           <Input value={pax.nationality} onChange={(e) => {
                             const updated = [...passengers]; updated[pi].nationality = e.target.value; setPassengers(updated);
                             setFieldErrors(prev => { const n = {...prev}; delete n.nationality; return n; });
-                          }} placeholder="e.g. Bangladeshi" className={`h-11 ${fieldErrors.nationality ? "border-destructive ring-destructive/20 ring-2" : ""}`} />
+                          }} placeholder="e.g. Bangladeshi" className={`h-10 sm:h-11 ${fieldErrors.nationality ? "border-destructive ring-destructive/20 ring-2" : ""}`} />
                         </div>
                       </div>
 
                       {/* Row 2: Names */}
-                      <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
                         <div className="space-y-1.5">
-                          <Label className={fieldErrors.firstName ? "text-destructive" : ""}>First/Given Name *</Label>
+                          <Label className={`text-xs sm:text-sm ${fieldErrors.firstName ? "text-destructive" : ""}`}>First/Given Name *</Label>
                           <Input value={pax.firstName} onChange={(e) => {
                             const updated = [...passengers]; updated[pi].firstName = e.target.value; setPassengers(updated);
                             setFieldErrors(prev => { const n = {...prev}; delete n.firstName; return n; });
-                          }} placeholder="As on passport" className={`h-11 ${fieldErrors.firstName ? "border-destructive ring-destructive/20 ring-2" : ""}`} />
+                          }} placeholder="As on passport" className={`h-10 sm:h-11 ${fieldErrors.firstName ? "border-destructive ring-destructive/20 ring-2" : ""}`} />
                         </div>
                         <div className="space-y-1.5">
-                          <Label className={fieldErrors.lastName ? "text-destructive" : ""}>Surname/Family/Last Name *</Label>
+                          <Label className={`text-xs sm:text-sm ${fieldErrors.lastName ? "text-destructive" : ""}`}>Surname/Family/Last Name *</Label>
                           <Input value={pax.lastName} onChange={(e) => {
                             const updated = [...passengers]; updated[pi].lastName = e.target.value; setPassengers(updated);
                             setFieldErrors(prev => { const n = {...prev}; delete n.lastName; return n; });
-                          }} placeholder="As on passport" className={`h-11 ${fieldErrors.lastName ? "border-destructive ring-destructive/20 ring-2" : ""}`} />
+                          }} placeholder="As on passport" className={`h-10 sm:h-11 ${fieldErrors.lastName ? "border-destructive ring-destructive/20 ring-2" : ""}`} />
                         </div>
                       </div>
 
                       {/* Row 3: Document info */}
-                      <div className="grid sm:grid-cols-3 gap-4">
+                      <div className="grid sm:grid-cols-3 gap-3 sm:gap-4">
                         <div className="space-y-1.5">
-                          <Label>Document Issue Country</Label>
-                          <Input value={pax.nationality || "Bangladesh (BD)"} readOnly className="h-11 bg-muted/30" />
+                          <Label className="text-xs sm:text-sm">Document Issue Country</Label>
+                          <Input value={pax.nationality || "Bangladesh (BD)"} readOnly className="h-10 sm:h-11 bg-muted/30" />
                         </div>
                         <div className="space-y-1.5">
-                          <Label className={fieldErrors.passport ? "text-destructive" : ""}>{domestic ? "Document Number" : "Document Number *"}</Label>
+                          <Label className={`text-xs sm:text-sm ${fieldErrors.passport ? "text-destructive" : ""}`}>{domestic ? "Document Number" : "Document Number *"}</Label>
                           <Input value={pax.passport} onChange={(e) => {
                             const updated = [...passengers]; updated[pi].passport = e.target.value; setPassengers(updated);
                             setFieldErrors(prev => { const n = {...prev}; delete n.passport; return n; });
-                          }} placeholder="e.g. A0123456789" className={`h-11 ${fieldErrors.passport ? "border-destructive ring-destructive/20 ring-2" : ""}`} />
+                          }} placeholder="e.g. A0123456789" className={`h-10 sm:h-11 ${fieldErrors.passport ? "border-destructive ring-destructive/20 ring-2" : ""}`} />
                         </div>
                         <div className="space-y-1.5">
-                          <Label>Expiration Date</Label>
-                          <Input type="date" value={pax.passportExpiry} onChange={(e) => { const updated = [...passengers]; updated[pi].passportExpiry = e.target.value; setPassengers(updated); }} className="h-11" />
+                          <Label className="text-xs sm:text-sm">Expiration Date</Label>
+                          <Input type="date" value={pax.passportExpiry} onChange={(e) => { const updated = [...passengers]; updated[pi].passportExpiry = e.target.value; setPassengers(updated); }} className="h-10 sm:h-11" />
                         </div>
                       </div>
 
@@ -529,20 +581,20 @@ const FlightBooking = () => {
                         <>
                           <Separator />
                           <p className="text-sm font-semibold flex items-center gap-2"><User className="w-4 h-4 text-accent" /> Enter Contact Details</p>
-                          <div className="grid sm:grid-cols-2 gap-4">
+                          <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
                             <div className="space-y-1.5">
-                              <Label className={fieldErrors.phone ? "text-destructive" : ""}>Mobile Number *</Label>
+                              <Label className={`text-xs sm:text-sm ${fieldErrors.phone ? "text-destructive" : ""}`}>Mobile Number *</Label>
                               <Input type="tel" value={pax.phone} onChange={(e) => {
                                 const updated = [...passengers]; updated[pi].phone = e.target.value; setPassengers(updated);
                                 setFieldErrors(prev => { const n = {...prev}; delete n.phone; return n; });
-                              }} placeholder="+880 1XXX-XXXXXX" className={`h-11 ${fieldErrors.phone ? "border-destructive ring-destructive/20 ring-2" : ""}`} />
+                              }} placeholder="+880 1XXX-XXXXXX" className={`h-10 sm:h-11 ${fieldErrors.phone ? "border-destructive ring-destructive/20 ring-2" : ""}`} />
                             </div>
                             <div className="space-y-1.5">
-                              <Label className={fieldErrors.email ? "text-destructive" : ""}>E-mail *</Label>
+                              <Label className={`text-xs sm:text-sm ${fieldErrors.email ? "text-destructive" : ""}`}>E-mail *</Label>
                               <Input type="email" value={pax.email} onChange={(e) => {
                                 const updated = [...passengers]; updated[pi].email = e.target.value; setPassengers(updated);
                                 setFieldErrors(prev => { const n = {...prev}; delete n.email; return n; });
-                              }} placeholder="email@example.com" className={`h-11 ${fieldErrors.email ? "border-destructive ring-destructive/20 ring-2" : ""}`} />
+                              }} placeholder="email@example.com" className={`h-10 sm:h-11 ${fieldErrors.email ? "border-destructive ring-destructive/20 ring-2" : ""}`} />
                             </div>
                           </div>
                         </>
@@ -553,34 +605,74 @@ const FlightBooking = () => {
               </Card>
             )}
 
-            {/* STEP 3: Extras */}
+            {/* STEP 3: Extras — Meal, Baggage, Seat Selection */}
             {step === 3 && (
               <Card>
                 <CardHeader className="bg-accent/5 border-b border-border">
-                  <CardTitle className="text-base flex items-center gap-2"><Plus className="w-5 h-5 text-accent" /> Customize Your Flight</CardTitle>
+                  <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                    <Plus className="w-5 h-5 text-accent" /> Customize Your Flight
+                    {ancillarySource !== "standard" && (
+                      <Badge className="bg-accent/10 text-accent border-0 text-[9px] ml-2">Live Airline Data</Badge>
+                    )}
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="p-5">
-                  <Tabs defaultValue="meal" className="w-full">
-                    <TabsList className="w-full grid grid-cols-3 mb-4">
-                      <TabsTrigger value="meal" className="gap-1.5 text-xs sm:text-sm"><UtensilsCrossed className="w-3.5 h-3.5" /> Meal</TabsTrigger>
-                      <TabsTrigger value="baggage" className="gap-1.5 text-xs sm:text-sm"><Luggage className="w-3.5 h-3.5" /> Baggage</TabsTrigger>
-                      <TabsTrigger value="seat" className="gap-1.5 text-xs sm:text-sm"><Armchair className="w-3.5 h-3.5" /> Seat</TabsTrigger>
+                <CardContent className="p-3 sm:p-5">
+                  <Tabs defaultValue="seat" className="w-full">
+                    <TabsList className="w-full grid grid-cols-3 mb-4 h-auto">
+                      <TabsTrigger value="seat" className="gap-1 sm:gap-1.5 text-[11px] sm:text-sm py-2"><Armchair className="w-3.5 h-3.5" /><span className="hidden xs:inline">Seat</span><span className="xs:hidden">🪑</span></TabsTrigger>
+                      <TabsTrigger value="baggage" className="gap-1 sm:gap-1.5 text-[11px] sm:text-sm py-2"><Luggage className="w-3.5 h-3.5" /><span className="hidden xs:inline">Baggage</span><span className="xs:hidden">🧳</span></TabsTrigger>
+                      <TabsTrigger value="meal" className="gap-1 sm:gap-1.5 text-[11px] sm:text-sm py-2"><UtensilsCrossed className="w-3.5 h-3.5" /><span className="hidden xs:inline">Meal</span><span className="xs:hidden">🍽️</span></TabsTrigger>
                     </TabsList>
-                    <TabsContent value="meal" className="space-y-3">
-                      <p className="text-sm text-muted-foreground mb-2">Select your preferred meal for this flight.</p>
-                      {MEAL_OPTIONS.map(meal => <AddOnCard key={meal.id} item={meal} selected={selectedMeal === meal.id} onSelect={() => setSelectedMeal(meal.id)} />)}
-                    </TabsContent>
-                    <TabsContent value="baggage" className="space-y-3">
-                      <div className="flex items-center gap-2 p-3 bg-accent/5 rounded-lg mb-2 border border-accent/10">
-                        <Briefcase className="w-4 h-4 text-accent" />
-                        <div><p className="text-sm font-medium">Included: 20kg Checked + 7kg Cabin</p><p className="text-xs text-muted-foreground">Your fare includes standard baggage allowance</p></div>
-                      </div>
-                      {BAGGAGE_OPTIONS.map(bag => <AddOnCard key={bag.id} item={bag} selected={selectedBaggage.includes(bag.id)}
-                        onSelect={() => setSelectedBaggage(prev => prev.includes(bag.id) ? prev.filter(x => x !== bag.id) : [...prev, bag.id])} />)}
-                    </TabsContent>
+
+                    {/* ── SEAT SELECTION (Interactive Seat Map) ── */}
                     <TabsContent value="seat" className="space-y-3">
-                      <p className="text-sm text-muted-foreground mb-2">Choose your preferred seating.</p>
-                      <div className="grid sm:grid-cols-2 gap-3">{SEAT_CLASSES.map(seat => <AddOnCard key={seat.id} item={seat} selected={selectedSeat === seat.id} onSelect={() => setSelectedSeat(seat.id)} />)}</div>
+                      <div className="flex items-center gap-2 p-3 bg-accent/5 rounded-lg border border-accent/10">
+                        <Armchair className="w-4 h-4 text-accent shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium">Select Your Preferred Seat</p>
+                          <p className="text-xs text-muted-foreground">Tap on a seat to assign it to the active passenger</p>
+                        </div>
+                      </div>
+                      <SeatMap
+                        flightNumber={outboundFlight?.flightNumber || ""}
+                        aircraft={outboundFlight?.aircraft || outboundFlight?.legs?.[0]?.aircraft || ""}
+                        cabinClass={outboundFlight?.cabinClass || "Economy"}
+                        passengers={passengers}
+                        selectedSeats={selectedSeats}
+                        onSeatSelect={handleSeatSelect}
+                        onSeatDeselect={handleSeatDeselect}
+                        isDomestic={domestic}
+                      />
+                    </TabsContent>
+
+                    {/* ── EXTRA BAGGAGE ── */}
+                    <TabsContent value="baggage" className="space-y-3">
+                      <div className="flex items-center gap-2 p-3 bg-accent/5 rounded-lg border border-accent/10">
+                        <Briefcase className="w-4 h-4 text-accent shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium">Included: 20kg Checked + 7kg Cabin</p>
+                          <p className="text-xs text-muted-foreground">Your fare includes standard baggage allowance</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {baggageOptions.map(bag => (
+                          <AddOnCard key={bag.id} item={bag} multi
+                            selected={selectedBaggage.includes(bag.id)}
+                            onSelect={() => setSelectedBaggage(prev => prev.includes(bag.id) ? prev.filter(x => x !== bag.id) : [...prev, bag.id])} />
+                        ))}
+                      </div>
+                    </TabsContent>
+
+                    {/* ── MEAL SELECTION ── */}
+                    <TabsContent value="meal" className="space-y-3">
+                      <p className="text-sm text-muted-foreground">Select your preferred meal for this flight.</p>
+                      <div className="space-y-2">
+                        {mealOptions.map(meal => (
+                          <AddOnCard key={meal.id} item={meal}
+                            selected={selectedMeal === meal.id}
+                            onSelect={() => setSelectedMeal(meal.id)} />
+                        ))}
+                      </div>
                     </TabsContent>
                   </Tabs>
                 </CardContent>
@@ -592,9 +684,9 @@ const FlightBooking = () => {
               <>
                 <Card>
                   <CardHeader className="bg-accent/5 border-b border-border">
-                    <CardTitle className="text-base flex items-center gap-2"><FileText className="w-5 h-5 text-accent" /> Booking Review</CardTitle>
+                    <CardTitle className="text-sm sm:text-base flex items-center gap-2"><FileText className="w-5 h-5 text-accent" /> Booking Review</CardTitle>
                   </CardHeader>
-                  <CardContent className="p-5 space-y-4">
+                  <CardContent className="p-3 sm:p-5 space-y-4">
                     <div className="space-y-3">
                       <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Flight Itinerary</h4>
                       <div className="p-3 bg-muted/50 rounded-lg space-y-2">
@@ -603,7 +695,7 @@ const FlightBooking = () => {
                           <span className="text-sm font-semibold">{outboundFlight?.origin} → {outboundFlight?.destination}</span>
                           <span className="text-xs text-muted-foreground">{fmtDate(outboundFlight?.departureTime)}</span>
                           <span className="text-xs">{fmtTime(outboundFlight?.departureTime)} – {fmtTime(outboundFlight?.arrivalTime)}</span>
-                          <span className="text-xs text-muted-foreground ml-auto">{outboundFlight?.airline} {outboundFlight?.flightNumber}</span>
+                          <span className="text-xs text-muted-foreground sm:ml-auto">{outboundFlight?.airline} {outboundFlight?.flightNumber}</span>
                         </div>
                         {isRoundTrip && returnFlight && (
                           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -611,7 +703,7 @@ const FlightBooking = () => {
                             <span className="text-sm font-semibold">{returnFlight.origin} → {returnFlight.destination}</span>
                             <span className="text-xs text-muted-foreground">{fmtDate(returnFlight.departureTime)}</span>
                             <span className="text-xs">{fmtTime(returnFlight.departureTime)} – {fmtTime(returnFlight.arrivalTime)}</span>
-                            <span className="text-xs text-muted-foreground ml-auto">{returnFlight.airline} {returnFlight.flightNumber}</span>
+                            <span className="text-xs text-muted-foreground sm:ml-auto">{returnFlight.airline} {returnFlight.flightNumber}</span>
                           </div>
                         )}
                       </div>
@@ -620,9 +712,10 @@ const FlightBooking = () => {
                       <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Passengers</h4>
                       {passengers.map((p, i) => (
                         <div key={i} className="flex items-center gap-3 text-sm p-2 bg-muted/30 rounded-lg">
-                          <User className="w-4 h-4 text-muted-foreground" />
+                          <User className="w-4 h-4 text-muted-foreground shrink-0" />
                           <span className="font-medium">{p.title} {p.firstName} {p.lastName}</span>
-                          {p.passport && <span className="text-xs text-muted-foreground">Passport: {p.passport}</span>}
+                          {p.passport && <span className="text-xs text-muted-foreground hidden sm:inline">Passport: {p.passport}</span>}
+                          {selectedSeats[i] && <Badge className="bg-accent/10 text-accent border-0 text-[9px]">Seat {selectedSeats[i]}</Badge>}
                         </div>
                       ))}
                     </div>
@@ -630,9 +723,11 @@ const FlightBooking = () => {
                       <div>
                         <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Selected Extras</h4>
                         <div className="flex flex-wrap gap-2">
-                          {selectedMeal !== "standard" && <Badge variant="outline" className="text-xs"><UtensilsCrossed className="w-3 h-3 mr-1" />{MEAL_OPTIONS.find(m => m.id === selectedMeal)?.name}</Badge>}
-                          {selectedBaggage.map(id => <Badge key={id} variant="outline" className="text-xs"><Luggage className="w-3 h-3 mr-1" />{BAGGAGE_OPTIONS.find(b => b.id === id)?.name}</Badge>)}
-                          {selectedSeat !== "standard" && <Badge variant="outline" className="text-xs"><Armchair className="w-3 h-3 mr-1" />{SEAT_CLASSES.find(s => s.id === selectedSeat)?.name}</Badge>}
+                          {selectedMeal !== "standard" && <Badge variant="outline" className="text-xs"><UtensilsCrossed className="w-3 h-3 mr-1" />{mealOptions.find(m => m.id === selectedMeal)?.name}</Badge>}
+                          {selectedBaggage.map(id => <Badge key={id} variant="outline" className="text-xs"><Luggage className="w-3 h-3 mr-1" />{baggageOptions.find(b => b.id === id)?.name}</Badge>)}
+                          {Object.entries(selectedSeats).map(([idx, seatId]) => (
+                            <Badge key={idx} variant="outline" className="text-xs"><Armchair className="w-3 h-3 mr-1" />Seat {seatId} (Pax {Number(idx) + 1})</Badge>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -641,15 +736,15 @@ const FlightBooking = () => {
 
                 {isBiman ? (
                   <Card>
-                    <CardHeader><CardTitle className="text-base flex items-center gap-2"><CreditCard className="w-5 h-5 text-accent" /> Payment (Required)</CardTitle></CardHeader>
+                    <CardHeader><CardTitle className="text-sm sm:text-base flex items-center gap-2"><CreditCard className="w-5 h-5 text-accent" /> Payment (Required)</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="grid sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-3">
                         {["bKash", "Nagad", "Visa/Master Card", "Bank Transfer"].map((m) => (
-                          <label key={m} className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
+                          <label key={m} className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border cursor-pointer transition-colors ${
                             selectedPaymentMethod === m ? "border-accent bg-accent/5" : "border-border hover:border-accent/40"
                           }`}>
                             <input type="radio" name="payMethod" className="accent-[hsl(var(--accent))]" checked={selectedPaymentMethod === m} onChange={() => setSelectedPaymentMethod(m)} />
-                            <span className="text-sm font-medium">{m}</span>
+                            <span className="text-xs sm:text-sm font-medium">{m}</span>
                           </label>
                         ))}
                       </div>
@@ -702,14 +797,14 @@ const FlightBooking = () => {
           </div>
 
           {/* ─── FARE SUMMARY SIDEBAR ─── */}
-          <div>
+          <div className="order-first lg:order-last">
             <Card className="sticky top-28 border-accent/20">
               <CardHeader className="bg-accent/5 border-b border-border pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="text-sm sm:text-base flex items-center gap-2">
                   <FileText className="w-4 h-4 text-accent" /> Fare Summary
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-4 space-y-3 text-sm">
+              <CardContent className="p-3 sm:p-4 space-y-3 text-sm">
                 <div className="space-y-1.5">
                   <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Fare/Pax Type</p>
                   {isRoundTrip ? (
@@ -728,9 +823,9 @@ const FlightBooking = () => {
                   <>
                     <Separator />
                     <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Add-ons</p>
-                    {mealCost > 0 && <div className="flex justify-between text-xs"><span className="text-muted-foreground">{MEAL_OPTIONS.find(m => m.id === selectedMeal)?.name}</span><span>৳{mealCost}</span></div>}
-                    {baggageCost > 0 && selectedBaggage.map(id => { const bag = BAGGAGE_OPTIONS.find(b => b.id === id); return bag ? <div key={id} className="flex justify-between text-xs"><span className="text-muted-foreground">{bag.name}</span><span>৳{bag.price}</span></div> : null; })}
-                    {seatCost > 0 && <div className="flex justify-between text-xs"><span className="text-muted-foreground">{SEAT_CLASSES.find(s => s.id === selectedSeat)?.name}</span><span>৳{seatCost}</span></div>}
+                    {mealCost > 0 && <div className="flex justify-between text-xs"><span className="text-muted-foreground">{mealOptions.find(m => m.id === selectedMeal)?.name}</span><span>৳{mealCost.toLocaleString()}</span></div>}
+                    {baggageCost > 0 && selectedBaggage.map(id => { const bag = baggageOptions.find(b => b.id === id); return bag ? <div key={id} className="flex justify-between text-xs"><span className="text-muted-foreground">{bag.name}</span><span>৳{bag.price.toLocaleString()}</span></div> : null; })}
+                    {seatCost > 0 && <div className="flex justify-between text-xs"><span className="text-muted-foreground">Seat Selection</span><span>৳{seatCost.toLocaleString()}</span></div>}
                   </>
                 )}
 
