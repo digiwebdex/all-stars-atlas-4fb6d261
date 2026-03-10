@@ -395,102 +395,78 @@ async function buildInvoiceDoc(inv: InvoiceData): Promise<jsPDF> {
   if (inv.customerAddress) { doc.text(inv.customerAddress, 20, y); y += 5; }
   y += 4;
 
-  // Line items table
-  if (inv.lineItems && inv.lineItems.length > 0) {
-    // Determine columns from first item's extra keys
-    const extraKeys = inv.lineItems[0]?.extra ? Object.keys(inv.lineItems[0].extra) : [];
+  // Build effective line items — always show a proper table
+  const effectiveItems: InvoiceLineItem[] = (inv.lineItems && inv.lineItems.length > 0)
+    ? inv.lineItems
+    : [{
+        name: inv.serviceType
+          ? `${inv.serviceType.charAt(0).toUpperCase() + inv.serviceType.slice(1)} Booking`
+          : "Service",
+        description: inv.bookingRef ? `Ref: ${inv.bookingRef}` : undefined,
+        quantity: 1,
+        unitPrice: inv.subtotal || inv.amount || 0,
+        totalPrice: inv.subtotal || inv.amount || 0,
+      }];
 
-    // Header
-    doc.setFillColor(240, 240, 240);
-    doc.rect(15, y - 4, w - 30, 8, "F");
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(60);
+  // Determine columns from first item's extra keys
+  const extraKeys = effectiveItems[0]?.extra ? Object.keys(effectiveItems[0].extra) : [];
 
-    let cx = 18;
-    doc.text("No.", cx, y + 1); cx += 10;
-    doc.text("Name", cx, y + 1); cx += 45;
-    extraKeys.forEach(k => {
-      doc.text(k, cx, y + 1); cx += 22;
-    });
-    doc.text("Total Price", w - 20, y + 1, { align: "right" });
-    y += 8;
+  // Table header
+  doc.setFillColor(240, 240, 240);
+  doc.rect(15, y - 4, w - 30, 8, "F");
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(60);
 
-    // Rows
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(0);
+  let cx = 18;
+  doc.text("No.", cx, y + 1); cx += 10;
+  doc.text("Name", cx, y + 1); cx += 45;
+  extraKeys.forEach(k => {
+    doc.text(k, cx, y + 1); cx += 22;
+  });
+  doc.text("Total Price", w - 20, y + 1, { align: "right" });
+  y += 8;
 
-    let pageItemCount = 0;
-    inv.lineItems.forEach((item, i) => {
-      if (y > 265) {
-        doc.addPage();
-        y = 20;
-        // Repeat header
-        doc.setFillColor(240, 240, 240);
-        doc.rect(15, y - 4, w - 30, 8, "F");
-        doc.setFontSize(7);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(60);
-        let hx = 18;
-        doc.text("No.", hx, y + 1); hx += 10;
-        doc.text("Name", hx, y + 1); hx += 45;
-        extraKeys.forEach(k => { doc.text(k, hx, y + 1); hx += 22; });
-        doc.text("Total Price", w - 20, y + 1, { align: "right" });
-        y += 8;
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(7.5);
-        doc.setTextColor(0);
-      }
+  // Table rows
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(0);
 
-      let rx = 18;
-      doc.text(String(i + 1).padStart(2, "0"), rx, y + 1); rx += 10;
-      doc.text(item.name.substring(0, 28), rx, y + 1); rx += 45;
-      extraKeys.forEach(k => {
-        const val = item.extra?.[k];
-        doc.text(String(val ?? ""), rx, y + 1); rx += 22;
-      });
-      doc.text(`${item.totalPrice.toLocaleString()}৳`, w - 20, y + 1, { align: "right" });
-      y += 6;
-      doc.setDrawColor(235);
-      doc.line(15, y - 2, w - 15, y - 2);
-      pageItemCount++;
-    });
-  } else {
-    // Simple table (legacy)
-    doc.setFillColor(245, 245, 245);
-    doc.rect(20, y - 4, w - 40, 8, "F");
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(80);
-    doc.text("Description", 25, y + 1);
-    doc.text("Amount", w - 25, y + 1, { align: "right" });
-    y += 10;
-
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(0);
-    doc.setFontSize(10);
-
-    doc.text("Subtotal", 25, y);
-    doc.text(`BDT ${inv.subtotal?.toLocaleString()}`, w - 25, y, { align: "right" });
-    y += 8;
-
-    if (inv.tax > 0) {
-      doc.text("Tax", 25, y);
-      doc.text(`BDT ${inv.tax?.toLocaleString()}`, w - 25, y, { align: "right" });
+  effectiveItems.forEach((item, i) => {
+    if (y > 265) {
+      doc.addPage();
+      y = 20;
+      // Repeat header on new page
+      doc.setFillColor(240, 240, 240);
+      doc.rect(15, y - 4, w - 30, 8, "F");
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(60);
+      let hx = 18;
+      doc.text("No.", hx, y + 1); hx += 10;
+      doc.text("Name", hx, y + 1); hx += 45;
+      extraKeys.forEach(k => { doc.text(k, hx, y + 1); hx += 22; });
+      doc.text("Total Price", w - 20, y + 1, { align: "right" });
       y += 8;
-    }
-
-    if (inv.discount > 0) {
-      doc.setTextColor(0, 150, 0);
-      doc.text("Discount", 25, y);
-      doc.text(`-BDT ${inv.discount?.toLocaleString()}`, w - 25, y, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
       doc.setTextColor(0);
-      y += 8;
     }
-  }
 
-  // Totals
+    let rx = 18;
+    doc.text(String(i + 1).padStart(2, "0"), rx, y + 1); rx += 10;
+    doc.text(item.name.substring(0, 28), rx, y + 1); rx += 45;
+    extraKeys.forEach(k => {
+      const val = item.extra?.[k];
+      doc.text(String(val ?? ""), rx, y + 1); rx += 22;
+    });
+    doc.text(`${item.totalPrice.toLocaleString()}৳`, w - 20, y + 1, { align: "right" });
+    y += 6;
+    doc.setDrawColor(235);
+    doc.line(15, y - 2, w - 15, y - 2);
+  });
+
+  // Totals section
   y += 4;
   doc.setDrawColor(180);
   doc.line(w - 90, y, w - 20, y);
@@ -501,22 +477,20 @@ async function buildInvoiceDoc(inv: InvoiceData): Promise<jsPDF> {
   doc.setFont("helvetica", "normal");
   doc.setTextColor(0);
 
-  if (inv.lineItems && inv.lineItems.length > 0) {
-    doc.text("Subtotal:", totalsX, y);
-    doc.text(`${inv.subtotal.toLocaleString()}৳`, w - 22, y, { align: "right" });
+  doc.text("Subtotal:", totalsX, y);
+  doc.text(`${(inv.subtotal || inv.amount || 0).toLocaleString()}৳`, w - 22, y, { align: "right" });
+  y += 6;
+  if (inv.tax > 0) {
+    doc.text("Tax:", totalsX, y);
+    doc.text(`${inv.tax.toLocaleString()}৳`, w - 22, y, { align: "right" });
     y += 6;
-    if (inv.tax > 0) {
-      doc.text("Tax:", totalsX, y);
-      doc.text(`${inv.tax.toLocaleString()}৳`, w - 22, y, { align: "right" });
-      y += 6;
-    }
-    if (inv.discount > 0) {
-      doc.setTextColor(0, 130, 0);
-      doc.text("Discount:", totalsX, y);
-      doc.text(`-${inv.discount.toLocaleString()}৳`, w - 22, y, { align: "right" });
-      doc.setTextColor(0);
-      y += 6;
-    }
+  }
+  if (inv.discount > 0) {
+    doc.setTextColor(0, 130, 0);
+    doc.text("Discount:", totalsX, y);
+    doc.text(`-${inv.discount.toLocaleString()}৳`, w - 22, y, { align: "right" });
+    doc.setTextColor(0);
+    y += 6;
   }
 
   doc.setFontSize(12);
