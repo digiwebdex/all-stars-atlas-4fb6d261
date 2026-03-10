@@ -28,10 +28,10 @@ const AdminDashboard = () => {
 
   // Map backend response to UI format
   const stats = resolved.stats || [
-    { label: 'Total Bookings', value: resolved.totalBookings ?? 0, change: '+12%' },
-    { label: 'Total Users', value: resolved.totalUsers ?? 0, change: '+8%' },
-    { label: 'Revenue', value: resolved.totalRevenue ? `৳${Number(resolved.totalRevenue).toLocaleString()}` : '৳0', change: '+15%' },
-    { label: 'Active Visas', value: resolved.activeVisaApplications ?? 0, change: '+5%' },
+    { label: 'Total Bookings', value: resolved.totalBookings ?? 0 },
+    { label: 'Total Users', value: resolved.totalUsers ?? 0 },
+    { label: 'Revenue', value: resolved.totalRevenue ? `৳${Number(resolved.totalRevenue).toLocaleString()}` : '৳0' },
+    { label: 'Active Visas', value: resolved.activeVisaApplications ?? 0 },
   ];
 
   const revenueData = resolved.revenueData || (resolved.monthlyRevenue || []).map((m: any) => ({
