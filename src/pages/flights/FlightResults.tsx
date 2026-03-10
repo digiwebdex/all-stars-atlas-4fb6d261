@@ -239,7 +239,7 @@ const FlightCard = ({
                 {isSelected ? <><Check className="w-3.5 h-3.5 mr-1" /> Selected</> : "Select Flight"}
               </Button>
             ) : (
-              <Button size="sm" className="font-bold h-9 px-5 rounded-full bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => cardNavigate(`/flights/book`, { state: { outboundFlight: flight } })}>
+              <Button size="sm" className="font-bold h-9 px-5 rounded-full bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => cardNavigate(`/flights/book?adults=${searchParams.get("adults") || "1"}&children=${searchParams.get("children") || "0"}&infants=${searchParams.get("infants") || "0"}&cabin=${searchParams.get("cabin") || "economy"}`, { state: { outboundFlight: flight } })}>
                 View Prices <ChevronDown className="w-3.5 h-3.5 ml-1" />
               </Button>
             )}
