@@ -242,6 +242,7 @@ const SearchWidget = () => {
   const [cabinClass, setCabinClass] = useState("economy");
   const [fareType, setFareType] = useState("regular");
   const [flightScope, setFlightScope] = useState<"domestic" | "international">("domestic");
+  const [preferredCarrier, setPreferredCarrier] = useState("any");
 
   // Multi-city segments
   interface FlightSegment {
