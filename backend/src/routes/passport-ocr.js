@@ -6,7 +6,7 @@ const express = require('express');
 const router = express.Router();
 const { getDb } = require('../config/db');
 
-// Cache config for 5 minutes
+// The admin panel saves under setting_key = 'api_google_vision'
 let configCache = null;
 let configCacheTime = 0;
 

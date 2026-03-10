@@ -45,6 +45,7 @@ const apiIntegrations = [
 
   // ── Maps & Location ──
   { id: 'google_maps', name: 'Google Maps Platform', description: 'Maps, places autocomplete, directions & geocoding for hotels/medical/cars', fields: [{ key: 'enabled', label: 'Enabled', placeholder: '', type: 'select', options: ['true', 'false'] }, { key: 'api_key', label: 'API Key', placeholder: 'AIzaSy...', type: 'password' }], docs: 'https://developers.google.com/maps', category: 'utility' },
+  { id: 'google_vision', name: 'Google Cloud Vision (Passport OCR)', description: 'Passport & NID scanning — extracts name, DOB, passport number, expiry from uploaded images using Google Cloud Vision AI', fields: [{ key: 'enabled', label: 'Enabled', placeholder: '', type: 'select', options: ['true', 'false'] }, { key: 'apiKey', label: 'API Key', placeholder: 'AIzaSy...', type: 'password' }], docs: 'https://cloud.google.com/vision/docs', category: 'utility' },
 ];
 
 interface BankAccount {
@@ -381,8 +382,9 @@ const AdminSettings = () => {
               <TabsTrigger value="digital">Digital Services</TabsTrigger>
               <TabsTrigger value="payment">Payment Gateways</TabsTrigger>
               <TabsTrigger value="communication">Communication</TabsTrigger>
+              <TabsTrigger value="utility">Utility & AI</TabsTrigger>
             </TabsList>
-            {['travel', 'digital', 'payment', 'communication'].map(cat => (
+            {['travel', 'digital', 'payment', 'communication', 'utility'].map(cat => (
               <TabsContent key={cat} value={cat} className="space-y-4">
                 {apiIntegrations.filter(a => a.category === cat).map(apiItem => (
                   <div key={apiItem.id} className="border rounded-lg p-4 space-y-3">
