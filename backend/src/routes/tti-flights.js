@@ -895,75 +895,121 @@ async function issueTicket({ pnr, bookingId }) {
 
   console.log('[TTI TICKET] Issuing ticket for PNR:', pnr, '| BookingId:', bookingId);
 
-  try {
-    // Attempt 1: Use "Cancel" method with a "Confirm/Ticket" action
-    // Some PSS APIs use the Cancel endpoint with action type to confirm/ticket
-    const request = {
-      RequestInfo: { AuthenticationKey: config.key },
-      BookingReference: pnr,
-      BookingId: bookingId || undefined,
-      AgencyInfo: { AgencyId: config.agencyId, AgencyName: config.agencyName },
-      CancelTicketSettings: {
-        Action: 'Ticket',
-        Type: 'Confirm',
+  const requestVariants = [
+    {
+      label: 'Bare + BookingRef inside CancelTicketSettings',
+      bare: true,
+      body: {
+        RequestInfo: { AuthenticationKey: config.key },
+        CancelTicketSettings: {
+          Action: 'Ticket',
+          BookingReference: pnr,
+          BookingId: bookingId || undefined,
+        },
       },
-    };
+    },
+    {
+      label: 'Bare + BookingRef top-level',
+      bare: true,
+      body: {
+        RequestInfo: { AuthenticationKey: config.key },
+        BookingReference: pnr,
+        BookingId: bookingId || undefined,
+        CancelTicketSettings: { Action: 'Ticket', Type: 'Confirm' },
+      },
+    },
+    {
+      label: 'Wrapped + BookingRef inside CancelTicketSettings',
+      bare: false,
+      body: {
+        RequestInfo: { AuthenticationKey: config.key },
+        CancelTicketSettings: {
+          Action: 'Ticket',
+          BookingReference: pnr,
+          BookingId: bookingId || undefined,
+        },
+      },
+    },
+    {
+      label: 'Wrapped + BookingRef top-level',
+      bare: false,
+      body: {
+        RequestInfo: { AuthenticationKey: config.key },
+        BookingReference: pnr,
+        BookingId: bookingId || undefined,
+        AgencyInfo: { AgencyId: config.agencyId, AgencyName: config.agencyName },
+        CancelTicketSettings: { Action: 'Ticket', Type: 'Confirm' },
+      },
+    },
+  ];
 
-    console.log('[TTI TICKET] Attempting via Cancel method with Ticket action:', JSON.stringify(request));
+  for (const variant of requestVariants) {
+    try {
+      console.log(`[TTI TICKET] Trying: ${variant.label}`);
+      const response = variant.bare
+        ? await ttiRequestBare('Cancel', variant.body)
+        : await ttiRequest('Cancel', variant.body);
 
-    const response = await ttiRequest('Cancel', request);
+      console.log('[TTI TICKET] Response keys:', Object.keys(response));
+      console.log('[TTI TICKET] Response:', JSON.stringify(response).substring(0, 3000));
 
-    console.log('[TTI TICKET] Full response keys:', Object.keys(response));
-    console.log('[TTI TICKET] Full response:', JSON.stringify(response).substring(0, 3000));
-
-    if (response.ResponseInfo?.Error) {
-      const errMsg = response.ResponseInfo.Error.Message || response.ResponseInfo.Error.Code || 'Unknown';
-      console.error('[TTI TICKET] ❌ API Error:', errMsg);
-      
-      // If the Cancel method doesn't support ticketing, return helpful message
-      if (errMsg.includes('CancelTicketSettings') || errMsg.includes('not supported') || errMsg.includes('invalid')) {
-        return {
-          success: false,
-          error: `TTI API does not support remote ticketing via this endpoint. Ticketing may need to be done via Air Astra's back-office or GDS terminal. Error: ${errMsg}`,
-          ticketNumbers: [],
-          hint: 'Contact TTI/Air Astra for ticketing API access or use their admin portal.',
-        };
+      if (response.ResponseInfo?.Error) {
+        const errMsg = response.ResponseInfo.Error.Message || response.ResponseInfo.Error.Code || 'Unknown';
+        console.error(`[TTI TICKET] ❌ Variant "${variant.label}" error: ${errMsg}`);
+        if (errMsg.includes('Missing field') || errMsg.includes('not found') || errMsg.includes('NullReference')) {
+          continue;
+        }
+        // If ticketing isn't supported at all
+        if (errMsg.includes('not supported') || errMsg.includes('invalid')) {
+          return {
+            success: false,
+            error: `TTI API does not support remote ticketing. Use Air Astra back-office. Error: ${errMsg}`,
+            ticketNumbers: [],
+            hint: 'Contact TTI/Air Astra for ticketing API access or use their admin portal.',
+          };
+        }
+        throw new Error(`TTI ticketing error: ${errMsg}`);
       }
-      throw new Error(`TTI ticketing error: ${errMsg}`);
-    }
 
-    // Extract ticket numbers from response
-    const ticketNumbers = [];
-    const tickets = response.Tickets || response.ETickets || response.TicketDetails || 
-                    response.Booking?.Tickets || response.Booking?.ETickets ||
-                    response.TicketInfo || [];
-    if (Array.isArray(tickets)) {
-      tickets.forEach(t => {
-        const num = t.TicketNumber || t.ETicketNumber || t.Number || t.DocumentNumber;
-        if (num) ticketNumbers.push(num);
-      });
-    }
-    if (ticketNumbers.length === 0) {
-      if (response.TicketNumber) ticketNumbers.push(response.TicketNumber);
-      if (response.ETicketNumber) ticketNumbers.push(response.ETicketNumber);
-    }
+      // Extract ticket numbers from response
+      const ticketNumbers = [];
+      const tickets = response.Tickets || response.ETickets || response.TicketDetails || 
+                      response.Booking?.Tickets || response.Booking?.ETickets ||
+                      response.TicketInfo || [];
+      if (Array.isArray(tickets)) {
+        tickets.forEach(t => {
+          const num = t.TicketNumber || t.ETicketNumber || t.Number || t.DocumentNumber;
+          if (num) ticketNumbers.push(num);
+        });
+      }
+      if (ticketNumbers.length === 0) {
+        if (response.TicketNumber) ticketNumbers.push(response.TicketNumber);
+        if (response.ETicketNumber) ticketNumbers.push(response.ETicketNumber);
+      }
+      if (ticketNumbers.length === 0 && response.Booking?.ETTicketFare) {
+        const etf = Array.isArray(response.Booking.ETTicketFare) ? response.Booking.ETTicketFare : [response.Booking.ETTicketFare];
+        etf.forEach(t => {
+          if (t.TicketNumber) ticketNumbers.push(t.TicketNumber);
+          if (t.ETicketNumber) ticketNumbers.push(t.ETicketNumber);
+        });
+      }
 
-    // Also check inside Booking.ETTicketFare
-    if (ticketNumbers.length === 0 && response.Booking?.ETTicketFare) {
-      const etf = Array.isArray(response.Booking.ETTicketFare) ? response.Booking.ETTicketFare : [response.Booking.ETTicketFare];
-      etf.forEach(t => {
-        if (t.TicketNumber) ticketNumbers.push(t.TicketNumber);
-        if (t.ETicketNumber) ticketNumbers.push(t.ETicketNumber);
-      });
+      console.log(`[TTI TICKET] ✅ Result via "${variant.label}":`, ticketNumbers.length > 0 ? `Tickets: ${ticketNumbers.join(', ')}` : 'No ticket numbers found');
+      return { success: true, ticketNumbers, rawResponse: response, methodUsed: `Cancel (${variant.label})` };
+    } catch (err) {
+      if (err.message.startsWith('TTI ticketing error:')) throw err;
+      console.error(`[TTI TICKET] Variant "${variant.label}" failed:`, err.message);
+      continue;
     }
-
-    console.log('[TTI TICKET] ✅ Result:', ticketNumbers.length > 0 ? `Tickets: ${ticketNumbers.join(', ')}` : 'No ticket numbers found in response');
-    
-    return { success: true, ticketNumbers, rawResponse: response, methodUsed: 'Cancel (Ticket action)' };
-  } catch (err) {
-    console.error('[TTI TICKET] ❌ Failed:', err.message);
-    return { success: false, error: err.message, ticketNumbers: [] };
   }
+
+  // All variants failed — TTI likely doesn't support ticketing via API
+  return {
+    success: false,
+    error: 'TTI Cancel API: all ticketing request formats failed. Ticket must be issued via Air Astra back-office.',
+    ticketNumbers: [],
+    hint: 'Use Air Astra admin portal for ticketing.',
+  };
 }
 
 /**
