@@ -203,7 +203,7 @@ router.get('/search', async (req, res) => {
       cabinClass: cabClass || undefined,
     };
 
-    const [dbFlights, ttiFlights, bdfFlights, flyhubFlights, sabreFlights] = await Promise.allSettled([
+    const [dbFlights, ttiFlights, bdfFlights, flyhubFlights, sabreFlights, galileoFlights, ndcFlights, lccFlights] = await Promise.allSettled([
       searchDB({ originCode, destCode, dDate, cabClass, page, limit }),
       ttiSearch(searchParams).catch(err => {
         console.error('TTI search failed (continuing with other providers):', err.message);
@@ -221,36 +221,36 @@ router.get('/search', async (req, res) => {
         console.error('Sabre search failed (continuing with other providers):', err.message);
         return [];
       }),
+      galileoSearch(searchParams).catch(err => {
+        console.error('Galileo search failed (continuing with other providers):', err.message);
+        return [];
+      }),
+      ndcSearch(searchParams).catch(err => {
+        console.error('NDC search failed (continuing with other providers):', err.message);
+        return [];
+      }),
+      searchAllLCCs(searchParams).catch(err => {
+        console.error('LCC search failed (continuing with other providers):', err.message);
+        return [];
+      }),
     ]);
 
     // Collect results
     let flights = [];
 
-    if (dbFlights.status === 'fulfilled') {
-      flights.push(...(dbFlights.value.rows || []));
-    }
-
-    if (ttiFlights.status === 'fulfilled') {
-      flights.push(...(ttiFlights.value || []));
-    }
-
-    if (bdfFlights.status === 'fulfilled') {
-      flights.push(...(bdfFlights.value || []));
-    }
-
-    if (flyhubFlights.status === 'fulfilled') {
-      flights.push(...(flyhubFlights.value || []));
-    }
-
-    if (sabreFlights.status === 'fulfilled') {
-      flights.push(...(sabreFlights.value || []));
+    const providerResults = [dbFlights, ttiFlights, bdfFlights, flyhubFlights, sabreFlights, galileoFlights, ndcFlights, lccFlights];
+    for (const result of providerResults) {
+      if (result.status === 'fulfilled') {
+        const val = result.value;
+        flights.push(...(val?.rows || val || []));
+      }
     }
 
     // Deduplicate flights from multiple providers (same flight number + same departure)
     const seen = new Set();
     flights = flights.filter(f => {
       const key = `${f.flightNumber}-${f.departureTime}`;
-      if (key === '-null' || key === '-') return true; // no dedup key
+      if (key === '-null' || key === '-') return true;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -274,7 +274,6 @@ router.get('/search', async (req, res) => {
         break;
       case 'best':
       default:
-        // Best = weighted score of price + duration
         flights.sort((a, b) => {
           const scoreA = (a.price || 0) + (a.durationMinutes || 0) * 50;
           const scoreB = (b.price || 0) + (b.durationMinutes || 0) * 50;
@@ -296,11 +295,14 @@ router.get('/search', async (req, res) => {
       limit: parseInt(limit),
       totalPages: Math.ceil(flights.length / parseInt(limit)),
       sources: {
-        db: dbFlights.status === 'fulfilled' ? (dbFlights.value.rows || []).length : 0,
+        db: dbFlights.status === 'fulfilled' ? (dbFlights.value?.rows || []).length : 0,
         tti: ttiFlights.status === 'fulfilled' ? (ttiFlights.value || []).length : 0,
         bdfare: bdfFlights.status === 'fulfilled' ? (bdfFlights.value || []).length : 0,
         flyhub: flyhubFlights.status === 'fulfilled' ? (flyhubFlights.value || []).length : 0,
         sabre: sabreFlights.status === 'fulfilled' ? (sabreFlights.value || []).length : 0,
+        galileo: galileoFlights.status === 'fulfilled' ? (galileoFlights.value || []).length : 0,
+        ndc: ndcFlights.status === 'fulfilled' ? (ndcFlights.value || []).length : 0,
+        lcc: lccFlights.status === 'fulfilled' ? (lccFlights.value || []).length : 0,
       },
     });
   } catch (err) {
