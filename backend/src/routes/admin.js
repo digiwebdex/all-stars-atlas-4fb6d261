@@ -168,10 +168,117 @@ router.get('/bookings', async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
 });
 
-// PUT /admin/bookings/:id
+// PUT /admin/bookings/:id — with real GDS API calls for flight bookings
 router.put('/bookings/:id', async (req, res) => {
   try {
-    const { status, notes, paymentStatus, paymentMethod, totalAmount, passengerInfo, contactInfo, details } = req.body;
+    const { status, notes, paymentStatus, paymentMethod, totalAmount, passengerInfo, contactInfo, details, gdsAction } = req.body;
+    const bookingId = req.params.id;
+
+    // Fetch current booking first
+    const [currentRows] = await db.query('SELECT * FROM bookings WHERE id = ?', [bookingId]);
+    if (currentRows.length === 0) return res.status(404).json({ message: 'Booking not found', status: 404 });
+
+    const booking = currentRows[0];
+    const bookingDetails = safeJsonParse(booking.details, {});
+    const isFlightBooking = booking.booking_type === 'flight';
+    const flightSource = bookingDetails.outbound?.source || '';
+    const gdsPnr = bookingDetails.gdsPnr || bookingDetails.outbound?.pnr || null;
+    const gdsBookingId = bookingDetails.gdsBookingResult?.ttiBookingId || bookingDetails.gdsBookingResult?.bookingId || null;
+    const bdfOrderId = bookingDetails.gdsBookingResult?.orderId || bookingDetails.outbound?._bdfOfferId || null;
+
+    let gdsResult = null;
+    let gdsError = null;
+
+    // ── Real GDS actions for flight bookings ──
+    if (isFlightBooking && status) {
+      const oldStatus = booking.status;
+
+      // CONFIRM / TICKETED → Issue ticket via GDS
+      if ((status === 'confirmed' || status === 'ticketed') && oldStatus !== 'confirmed' && oldStatus !== 'ticketed') {
+        if (gdsPnr || gdsBookingId) {
+          console.log(`[Admin] Issuing ticket via ${flightSource} — PNR: ${gdsPnr}`);
+          try {
+            if (flightSource === 'tti' || bookingDetails.outbound?.airlineCode === '2A' || bookingDetails.outbound?.airlineCode === 'S2') {
+              gdsResult = await ttiFlights.issueTicket({ pnr: gdsPnr, bookingId: gdsBookingId });
+            } else if (flightSource === 'bdfare') {
+              gdsResult = await bdfFlights.issueTicket({ orderId: bdfOrderId, pnr: gdsPnr });
+            } else if (flightSource === 'flyhub') {
+              gdsResult = await flyhubFlights.issueTicket({ bookingId: gdsBookingId || gdsPnr, pnr: gdsPnr });
+            } else if (flightSource === 'sabre') {
+              gdsResult = await sabreFlights.issueTicket({ pnr: gdsPnr });
+            }
+
+            if (gdsResult && !gdsResult.success) {
+              gdsError = gdsResult.error || 'GDS ticketing failed';
+              console.error(`[Admin] GDS ticket issue failed:`, gdsError);
+            } else if (gdsResult?.ticketNumbers?.length > 0) {
+              // Create ticket records in DB
+              for (const ticketNo of gdsResult.ticketNumbers) {
+                await db.query(
+                  `INSERT INTO tickets (id, booking_id, user_id, ticket_no, pnr, status, details) VALUES (?, ?, ?, ?, ?, 'active', ?)`,
+                  [uuidv4(), bookingId, booking.user_id, ticketNo, gdsPnr || booking.booking_ref.slice(-6),
+                   JSON.stringify({ source: flightSource, issuedBy: req.user.email, issuedAt: new Date().toISOString() })]
+                );
+              }
+              console.log(`[Admin] ${gdsResult.ticketNumbers.length} ticket(s) recorded in DB`);
+            }
+          } catch (err) {
+            gdsError = err.message;
+            console.error('[Admin] GDS issueTicket exception:', err.message);
+          }
+        }
+      }
+
+      // CANCELLED → Cancel in GDS
+      if (status === 'cancelled' && oldStatus !== 'cancelled') {
+        if (gdsPnr || gdsBookingId) {
+          console.log(`[Admin] Cancelling via ${flightSource} — PNR: ${gdsPnr}`);
+          try {
+            if (flightSource === 'tti' || bookingDetails.outbound?.airlineCode === '2A' || bookingDetails.outbound?.airlineCode === 'S2') {
+              gdsResult = await ttiFlights.cancelBooking({ pnr: gdsPnr, bookingId: gdsBookingId });
+            } else if (flightSource === 'bdfare') {
+              gdsResult = await bdfFlights.cancelBooking({ orderId: bdfOrderId, pnr: gdsPnr });
+            } else if (flightSource === 'flyhub') {
+              gdsResult = await flyhubFlights.cancelBooking({ bookingId: gdsBookingId || gdsPnr, pnr: gdsPnr });
+            } else if (flightSource === 'sabre') {
+              gdsResult = await sabreFlights.cancelBooking({ pnr: gdsPnr });
+            }
+
+            if (gdsResult && !gdsResult.success) {
+              gdsError = gdsResult.error || 'GDS cancellation failed';
+            }
+
+            // Update tickets to cancelled
+            await db.query('UPDATE tickets SET status = ? WHERE booking_id = ?', ['cancelled', bookingId]);
+          } catch (err) {
+            gdsError = err.message;
+            console.error('[Admin] GDS cancelBooking exception:', err.message);
+          }
+        }
+      }
+
+      // VOID → Void ticket in GDS (TTI supports this)
+      if (status === 'void' && oldStatus !== 'void') {
+        if (gdsPnr && (flightSource === 'tti' || bookingDetails.outbound?.airlineCode === '2A' || bookingDetails.outbound?.airlineCode === 'S2')) {
+          console.log(`[Admin] Voiding via TTI — PNR: ${gdsPnr}`);
+          try {
+            // Get ticket numbers from DB
+            const [tickets] = await db.query('SELECT ticket_no FROM tickets WHERE booking_id = ?', [bookingId]);
+            for (const t of tickets) {
+              const voidResult = await ttiFlights.voidTicket({ pnr: gdsPnr, ticketNumber: t.ticket_no });
+              if (!voidResult.success) {
+                gdsError = (gdsError ? gdsError + '; ' : '') + `Void ${t.ticket_no}: ${voidResult.error}`;
+              }
+            }
+            await db.query('UPDATE tickets SET status = ? WHERE booking_id = ?', ['voided', bookingId]);
+          } catch (err) {
+            gdsError = err.message;
+          }
+        }
+      }
+    }
+
+    // ── Perform DB update ──
     const sets = []; const params = [];
     if (status) { sets.push('status = ?'); params.push(status); }
     if (notes !== undefined) { sets.push('notes = ?'); params.push(notes); }
@@ -180,14 +287,55 @@ router.put('/bookings/:id', async (req, res) => {
     if (totalAmount !== undefined) { sets.push('total_amount = ?'); params.push(totalAmount); }
     if (passengerInfo !== undefined) { sets.push('passenger_info = ?'); params.push(JSON.stringify(passengerInfo)); }
     if (contactInfo !== undefined) { sets.push('contact_info = ?'); params.push(JSON.stringify(contactInfo)); }
-    if (details !== undefined) { sets.push('details = ?'); params.push(JSON.stringify(details)); }
-    if (sets.length > 0) { params.push(req.params.id); await db.query(`UPDATE bookings SET ${sets.join(', ')} WHERE id = ?`, params); }
-    const [rows] = await db.query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+
+    // Merge GDS result into details
+    if (details !== undefined || gdsResult) {
+      const mergedDetails = { ...bookingDetails, ...(details || {}) };
+      if (gdsResult) {
+        mergedDetails.lastGdsAction = {
+          action: status,
+          source: flightSource,
+          result: gdsResult,
+          error: gdsError,
+          timestamp: new Date().toISOString(),
+          performedBy: req.user.email,
+        };
+      }
+      sets.push('details = ?');
+      params.push(JSON.stringify(mergedDetails));
+    }
+
+    if (sets.length > 0) {
+      params.push(bookingId);
+      await db.query(`UPDATE bookings SET ${sets.join(', ')} WHERE id = ?`, params);
+    }
+
+    const [rows] = await db.query('SELECT * FROM bookings WHERE id = ?', [bookingId]);
     if (status && rows[0]) {
       notifyBookingStatus(rows[0].user_id, rows[0].booking_ref, status).catch(console.error);
     }
-    res.json(rows[0] ? { id: rows[0].id, bookingRef: rows[0].booking_ref, status: rows[0].status, message: 'Booking updated' } : {});
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
+
+    const response = {
+      id: rows[0]?.id,
+      bookingRef: rows[0]?.booking_ref,
+      status: rows[0]?.status,
+      message: 'Booking updated',
+      gdsAction: gdsResult ? {
+        success: gdsResult.success,
+        ticketNumbers: gdsResult.ticketNumbers || [],
+        error: gdsError,
+      } : null,
+    };
+
+    if (gdsError && !gdsResult?.success) {
+      response.warning = `Booking DB updated but GDS action failed: ${gdsError}. Manual intervention may be required.`;
+    }
+
+    res.json(response);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Something went wrong', status: 500 });
+  }
 });
 
 // GET /admin/payments
