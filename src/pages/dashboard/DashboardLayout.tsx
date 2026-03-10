@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 import { Suspense, useState } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { motion, AnimatePresence } from "framer-motion";
@@ -96,6 +97,7 @@ const SidebarNav = ({ location, onNav }: { location: ReturnType<typeof useLocati
 const DashboardLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -126,18 +128,14 @@ const DashboardLayout = () => {
           <ThemeToggle />
           <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/10">
             <div className="w-2 h-2 rounded-full bg-success animate-pulse shadow-[0_0_8px_hsl(152,69%,41%)]" />
-            <span className="text-xs text-muted-foreground font-medium">{(() => { try { const u = JSON.parse(localStorage.getItem('seven_trip_user') || '{}'); return u?.email || 'My Account'; } catch { return 'My Account'; } })()}</span>
+            <span className="text-xs text-muted-foreground font-medium">{user?.email || 'My Account'}</span>
           </div>
           <Button
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
             onClick={() => {
-              localStorage.removeItem('seven_trip_user');
-              localStorage.removeItem('auth_token');
-              localStorage.removeItem('refresh_token');
-              localStorage.removeItem('user');
-              window.dispatchEvent(new Event('auth:logout'));
+              logout();
               navigate("/");
             }}
           >
