@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../config/db');
 const { authenticate, requireAdmin, formatUser } = require('../middleware/auth');
 const { notifyBookingStatus, notifyPayment } = require('../services/notify');
+const { safeJsonParse } = require('../utils/json');
 
 const router = express.Router();
 router.use(authenticate, requireAdmin);
