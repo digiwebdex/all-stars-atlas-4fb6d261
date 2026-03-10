@@ -145,7 +145,7 @@ router.get('/bookings', async (req, res) => {
     const params = [];
     if (status) { sql += ' AND b.status = ?'; params.push(status); }
     if (type) { sql += ' AND b.booking_type = ?'; params.push(type); }
-    if (search) { sql += ' AND (b.booking_ref LIKE ? OR u.first_name LIKE ? OR u.email LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    if (search) { sql += ' AND (b.booking_ref LIKE ? OR u.first_name LIKE ? OR u.email LIKE ? OR b.details LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`); }
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const [countResult] = await db.query(sql.replace('SELECT b.*, u.first_name, u.last_name, u.email as user_email', 'SELECT COUNT(*) as total'), params);
