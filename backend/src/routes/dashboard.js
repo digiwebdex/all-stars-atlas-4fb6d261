@@ -93,7 +93,7 @@ router.get('/stats', async (req, res) => {
 router.get('/bookings', async (req, res) => {
   try {
     const { status, type, search, page = 1, limit = 20 } = req.query;
-    let sql = 'SELECT * FROM bookings WHERE user_id = ?';
+    let sql = 'SELECT * FROM bookings WHERE user_id = ? AND (archived IS NULL OR archived = 0)';
     const params = [req.user.sub];
     if (status) { sql += ' AND status = ?'; params.push(status); }
     if (type) { sql += ' AND booking_type = ?'; params.push(type); }
