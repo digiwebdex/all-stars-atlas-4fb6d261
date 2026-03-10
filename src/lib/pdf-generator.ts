@@ -1223,22 +1223,6 @@ export async function printTicketPDF(ticket: TicketData) {
     printWindow.onload = () => { printWindow.print(); };
   }
 }
-  time?: string;
-  passenger?: string;
-  pnr?: string;
-  seat?: string;
-  class?: string;
-  bookingRef?: string;
-  airlineReservationCode?: string;
-  isRoundTrip?: boolean;
-  outbound?: FlightSegment[];
-  returnSegments?: FlightSegment[];
-  passengers?: PassengerInfo[];
-  meal?: string;
-  extraBaggage?: string[];
-  totalFare?: number;
-  currency?: string;
-}
 
 function drawBox(doc: jsPDF, x: number, y: number, w: number, h: number) {
   doc.setDrawColor(180);
