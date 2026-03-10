@@ -561,7 +561,7 @@ const FlightResults = () => {
                 {isRoundTrip && <Badge className="bg-accent-foreground/20 text-accent-foreground border-0 text-[10px] ml-2">Round Trip</Badge>}
               </h1>
               <p className="text-sm text-accent-foreground/80 mt-1">
-                {departDate}{returnDate ? ` – ${returnDate}` : ""} · {adults} Passenger(s) · <strong className="text-accent-foreground">{flights.length} flights found</strong>
+                {departDate}{returnDate ? ` – ${returnDate}` : ""} · {totalPax} Passenger(s){cabinClass ? ` · ${cabinClass.charAt(0).toUpperCase() + cabinClass.slice(1)}` : ""} · <strong className="text-accent-foreground">{flights.length} flights found</strong>
                 {sources.tti > 0 && <span className="text-accent-foreground/90 ml-1">({sources.tti} Air Astra)</span>}
                 {sources.sabre > 0 && <span className="text-accent-foreground/90 ml-1">({sources.sabre} Sabre)</span>}
                 {sources.flyhub > 0 && <span className="text-accent-foreground/90 ml-1">({sources.flyhub} FlyHub)</span>}
