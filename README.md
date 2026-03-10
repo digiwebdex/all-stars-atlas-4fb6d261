@@ -296,6 +296,6 @@ Proprietary — Evan International (Seven Trip). All rights reserved.
 
 **Seven Trip** — A concern of Evan International  
 📞 +880 1749-373748  
-📧 support@seventrip.com.bd  
+📧 support@seven-trip.com  
 📍 Beena Kanon, Flat-4A, House-03, Road-17, Block-E, Banani, Dhaka-1213  
-🌐 www.seventrip.com.bd
+🌐 www.seven-trip.com
