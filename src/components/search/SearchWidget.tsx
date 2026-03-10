@@ -1129,14 +1129,14 @@ const SearchWidget = () => {
             </SelectContent>
           </Select>
         </div>
-        <div className="md:col-span-3 search-field border-b md:border-b-0 flex-col items-start">
+        <div className={`md:col-span-3 search-field border-b md:border-b-0 flex-col items-start ${dateErrorClass("esimDate")}`}>
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Activation Date</div>
           <Popover>
             <PopoverTrigger className="w-full text-left">
               <DateDisplay date={esimDate} fallbackDay="—" fallbackMonth="Select" fallbackWeekday="Date" />
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={esimDate} onSelect={setEsimDate} initialFocus disabled={(date) => date < new Date()} />
+              <Calendar mode="single" selected={esimDate} onSelect={(d) => { setEsimDate(d); clearDateError("esimDate"); }} initialFocus disabled={(date) => date < new Date()} />
             </PopoverContent>
           </Popover>
         </div>
