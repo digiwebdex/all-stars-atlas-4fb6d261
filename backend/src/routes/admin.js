@@ -34,7 +34,7 @@ router.get('/dashboard', async (req, res) => {
     );
 
     const [recentBookings] = await db.query(
-      `SELECT b.*, u.first_name, u.last_name, u.email as user_email FROM bookings b JOIN users u ON b.user_id = u.id ORDER BY b.booked_at DESC LIMIT 5`
+      `SELECT b.*, u.first_name, u.last_name, u.email as user_email FROM bookings b JOIN users u ON b.user_id = u.id WHERE (b.archived IS NULL OR b.archived = 0) ORDER BY b.booked_at DESC LIMIT 5`
     );
     const [recentUsers] = await db.query('SELECT * FROM users ORDER BY created_at DESC LIMIT 5');
 
