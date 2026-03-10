@@ -466,7 +466,7 @@ async function buildInvoiceDoc(inv: InvoiceData): Promise<jsPDF> {
     doc.line(15, y - 2, w - 15, y - 2);
   });
 
-  // Totals
+  // Totals section
   y += 4;
   doc.setDrawColor(180);
   doc.line(w - 90, y, w - 20, y);
@@ -477,22 +477,20 @@ async function buildInvoiceDoc(inv: InvoiceData): Promise<jsPDF> {
   doc.setFont("helvetica", "normal");
   doc.setTextColor(0);
 
-  if (inv.lineItems && inv.lineItems.length > 0) {
-    doc.text("Subtotal:", totalsX, y);
-    doc.text(`${inv.subtotal.toLocaleString()}৳`, w - 22, y, { align: "right" });
+  doc.text("Subtotal:", totalsX, y);
+  doc.text(`${(inv.subtotal || inv.amount || 0).toLocaleString()}৳`, w - 22, y, { align: "right" });
+  y += 6;
+  if (inv.tax > 0) {
+    doc.text("Tax:", totalsX, y);
+    doc.text(`${inv.tax.toLocaleString()}৳`, w - 22, y, { align: "right" });
     y += 6;
-    if (inv.tax > 0) {
-      doc.text("Tax:", totalsX, y);
-      doc.text(`${inv.tax.toLocaleString()}৳`, w - 22, y, { align: "right" });
-      y += 6;
-    }
-    if (inv.discount > 0) {
-      doc.setTextColor(0, 130, 0);
-      doc.text("Discount:", totalsX, y);
-      doc.text(`-${inv.discount.toLocaleString()}৳`, w - 22, y, { align: "right" });
-      doc.setTextColor(0);
-      y += 6;
-    }
+  }
+  if (inv.discount > 0) {
+    doc.setTextColor(0, 130, 0);
+    doc.text("Discount:", totalsX, y);
+    doc.text(`-${inv.discount.toLocaleString()}৳`, w - 22, y, { align: "right" });
+    doc.setTextColor(0);
+    y += 6;
   }
 
   doc.setFontSize(12);
