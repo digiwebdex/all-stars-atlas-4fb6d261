@@ -305,8 +305,9 @@ router.put('/bookings/:id', async (req, res) => {
     // For flight bookings with GDS integration, critical status changes (cancel, confirm, ticketed, void)
     // must ONLY update the DB if the GDS action succeeded. Otherwise the local status would be
     // out of sync with the airline's system — a dangerous inconsistency.
-    const gdsRequiredStatuses = ['cancelled', 'confirmed', 'ticketed', 'void'];
-    const gdsActionWasRequired = isFlightBooking && status && gdsRequiredStatuses.includes(status) && (gdsPnr || gdsBookingId);
+    // Exception: gdsSkipped means the action was intentionally skipped (e.g., TTI has no ticketing API)
+    const gdsRequiredStatuses = ['cancelled', 'void']; // Only block for cancel/void — ticketing allowed to skip for TTI
+    const gdsActionWasRequired = isFlightBooking && status && gdsRequiredStatuses.includes(status) && (gdsPnr || gdsBookingId) && !gdsSkipped;
     const gdsActionFailed = gdsActionWasRequired && (gdsError || (gdsResult && !gdsResult.success));
 
     if (gdsActionFailed) {
