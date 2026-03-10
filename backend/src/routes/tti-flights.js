@@ -161,6 +161,37 @@ function normalizeTTIResponse(response, originCode, destinationCode, isRoundTrip
   const segmentMap = {};
   for (const seg of segments) segmentMap[seg.Ref] = seg;
 
+  // ── DEEP DEBUG: Log actual TTI structure to find seats & baggage ──
+  if (segments.length > 0) {
+    const sampleSeg = segments[0];
+    console.log('[TTI DEBUG] Segment keys:', Object.keys(sampleSeg));
+    console.log('[TTI DEBUG] Segment sample:', JSON.stringify(sampleSeg).substring(0, 500));
+  }
+  if (etTicketFares.length > 0) {
+    const sampleFare = etTicketFares[0];
+    const odFares = sampleFare.OriginDestinationFares || [];
+    if (odFares.length > 0) {
+      console.log('[TTI DEBUG] OriginDestinationFare keys:', Object.keys(odFares[0]));
+      console.log('[TTI DEBUG] OriginDestinationFare sample:', JSON.stringify(odFares[0]).substring(0, 800));
+      const couponFares = odFares[0].ETCouponFares || odFares[0].CouponFares || [];
+      if (couponFares.length > 0) {
+        console.log('[TTI DEBUG] ETCouponFare keys:', Object.keys(couponFares[0]));
+        console.log('[TTI DEBUG] ETCouponFare sample:', JSON.stringify(couponFares[0]).substring(0, 800));
+      }
+    }
+  }
+  // Also check top-level response keys
+  console.log('[TTI DEBUG] Top-level response keys:', Object.keys(response));
+  if (fareInfo) console.log('[TTI DEBUG] FareInfo keys:', Object.keys(fareInfo));
+  // Check itinerary keys
+  if (itineraries.length > 0) {
+    console.log('[TTI DEBUG] Itinerary keys:', Object.keys(itineraries[0]));
+    const airODs = itineraries[0].AirOriginDestinations || [];
+    if (airODs.length > 0) {
+      console.log('[TTI DEBUG] AirOriginDestination keys:', Object.keys(airODs[0]));
+    }
+  }
+
   const itinFareMap = {};
   for (const fare of etTicketFares) {
     if (fare.RefItinerary) {
