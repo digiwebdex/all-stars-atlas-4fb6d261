@@ -769,7 +769,7 @@ async function drawFlightSegment(
 
   doc.setTextColor(0);
   doc.setFontSize(10);
-  doc.text("▶", col2X + 35, y + 12);
+  doc.text(">", col2X + 35, y + 12);
 
   doc.setFontSize(8);
   doc.setTextColor(80);
