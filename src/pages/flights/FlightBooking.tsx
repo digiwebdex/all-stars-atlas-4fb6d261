@@ -853,7 +853,7 @@ const FlightBooking = () => {
                 </Button>
               ) : (
                 <Button className="font-bold bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg" onClick={handleConfirmBooking} disabled={bookingLoading}>
-                  {bookingLoading ? "Processing..." : <><CheckCircle2 className="w-4 h-4 mr-1" /> INSTANT PURCHASE ৳{grandTotal.toLocaleString()}</>}
+                  {bookingLoading ? "Processing..." : <><CheckCircle2 className="w-4 h-4 mr-1" /> Book Now ৳{grandTotal.toLocaleString()}</>}
                 </Button>
               )}
             </div>
