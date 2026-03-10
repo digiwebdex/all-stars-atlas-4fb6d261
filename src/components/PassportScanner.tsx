@@ -204,8 +204,8 @@ const PassportScanner = ({ open, onOpenChange, onConfirm }: PassportScannerProps
                 onDrop={handleDrop}
               >
                 <Upload className="w-10 h-10 text-muted-foreground mb-3" />
-                <p className="text-sm font-medium text-muted-foreground">Upload or drop your image right here</p>
-                <p className="text-xs text-muted-foreground mt-1.5">JPG, PNG, PDF — Max 10MB</p>
+                <p className="text-sm font-medium text-muted-foreground">Upload or drop your document here</p>
+                <p className="text-xs text-muted-foreground mt-1.5">Passport, NID, Driving License — JPG, PNG, PDF — Max 10MB</p>
                 <input ref={fileInputRef} type="file" className="hidden" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
               </label>
             )}
