@@ -491,10 +491,13 @@ function normalizeTTIResponse(response, originCode, destinationCode, isRoundTrip
         cancellationPolicy: cancellationPolicy,
         dateChangePolicy: dateChangePolicy,
         _ttiItineraryRef: itin.Ref,
-        // ── Raw TTI data for CreateBooking: only segments referenced by THIS itinerary ──
+        // ── Raw TTI data for CreateBooking: store COMPLETE search response objects ──
+        // TTI requires the full FareInfo (including FareRules, WebClasses, etc.) and ALL segments
         _ttiRawItinerary: itin,
         _ttiRawFares: fares,
         _ttiRawSegments: itinSegments,
+        _ttiFullFareInfo: fareInfo,   // Complete FareInfo from search response
+        _ttiAllSegments: segments,     // ALL segments from search response
       });
     }
   }
