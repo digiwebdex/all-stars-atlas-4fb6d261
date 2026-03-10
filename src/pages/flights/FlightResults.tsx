@@ -249,7 +249,7 @@ const FlightCard = ({
         {/* ── Info bar with prominent badges ── */}
         <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1.5 px-3 sm:px-5 py-2 bg-muted/30 border-t border-border/50 text-[10px] sm:text-[11px] text-muted-foreground">
           <span className={`font-bold ${refundable ? "text-accent" : "text-warning"}`}>{refundLabel}</span>
-          {!isBimanCode(flight.airlineCode) && <span className="text-accent font-bold">Book & Hold</span>}
+          {flight.airlineCode?.toUpperCase() !== "BG" && <span className="text-accent font-bold">Book & Hold</span>}
           <span className="flex items-center gap-1 font-medium"><Luggage className="w-3 h-3" /> {baggage}</span>
           <span className="font-medium">{cabinDisplay}</span>
           {availableSeats !== null && availableSeats <= 9 && (
