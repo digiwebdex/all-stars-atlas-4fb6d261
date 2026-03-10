@@ -55,6 +55,44 @@ function getAirlineLogo(code?: string): string | null {
   return AIRLINE_LOGOS[code] || `https://images.kiwi.com/airlines/64/${code}.png`;
 }
 
+/* ─── Airport names ─── */
+const AIRPORT_NAMES: Record<string, string> = {
+  DAC: "Hazrat Shahjalal International Airport",
+  CXB: "Cox's Bazar Airport",
+  CGP: "Shah Amanat International Airport",
+  ZYL: "Osmani International Airport",
+  RJH: "Shah Makhdum Airport",
+  JSR: "Jessore Airport",
+  SPD: "Saidpur Airport",
+  BZL: "Barisal Airport",
+  DXB: "Dubai International Airport",
+  DOH: "Hamad International Airport",
+  SIN: "Changi Airport",
+  BKK: "Suvarnabhumi Airport",
+  KUL: "Kuala Lumpur International Airport",
+  DEL: "Indira Gandhi International Airport",
+  BOM: "Chhatrapati Shivaji International Airport",
+  CCU: "Netaji Subhas Chandra Bose International Airport",
+  LHR: "Heathrow Airport",
+  JFK: "John F. Kennedy International Airport",
+  IST: "Istanbul Airport",
+  JED: "King Abdulaziz International Airport",
+  RUH: "King Khalid International Airport",
+  MCT: "Muscat International Airport",
+  BAH: "Bahrain International Airport",
+  CMB: "Bandaranaike International Airport",
+  HKG: "Hong Kong International Airport",
+  NRT: "Narita International Airport",
+  ICN: "Incheon International Airport",
+  PEK: "Beijing Capital International Airport",
+  SYD: "Sydney Kingsford Smith Airport",
+  AUH: "Abu Dhabi International Airport",
+  KTM: "Tribhuvan International Airport",
+};
+function getAirportName(code: string): string {
+  return AIRPORT_NAMES[code] || `${code} Airport`;
+}
+
 function formatTime(datetime?: string): string {
   if (!datetime) return "--:--";
   try { const d = new Date(datetime); return isNaN(d.getTime()) ? datetime : d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }); } catch { return datetime; }
@@ -62,12 +100,12 @@ function formatTime(datetime?: string): string {
 
 function formatDate(datetime?: string): string {
   if (!datetime) return "";
-  try { const d = new Date(datetime); return isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }); } catch { return ""; }
+  try { const d = new Date(datetime); return isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "2-digit" }); } catch { return ""; }
 }
 
 function formatShortDate(datetime?: string): string {
   if (!datetime) return "";
-  try { const d = new Date(datetime); return isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }); } catch { return ""; }
+  try { const d = new Date(datetime); return isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", weekday: "short" }); } catch { return ""; }
 }
 
 function isNextDay(depart?: string, arrive?: string): boolean {
@@ -103,38 +141,37 @@ const FilterPanel = ({
     </div>
     <div>
       <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Price Range</h4>
-      <Slider value={priceRange} onValueChange={setPriceRange} min={0} max={maxPrice} step={100} className="mb-2" />
+      <Slider min={0} max={maxPrice} step={100} value={priceRange} onValueChange={setPriceRange} className="mb-2" />
       <div className="flex justify-between text-xs text-muted-foreground"><span>৳{priceRange[0].toLocaleString()}</span><span>৳{priceRange[1].toLocaleString()}</span></div>
     </div>
     <div>
       <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Departure Time</h4>
-      <Slider value={departTimeRange} onValueChange={setDepartTimeRange} min={0} max={24} step={1} className="mb-2" />
+      <Slider min={0} max={24} step={1} value={departTimeRange} onValueChange={setDepartTimeRange} className="mb-2" />
       <div className="flex justify-between text-xs text-muted-foreground"><span>{departTimeRange[0]}:00</span><span>{departTimeRange[1]}:00</span></div>
     </div>
-    <div>
-      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Airlines</h4>
-      <div className="space-y-2 max-h-[280px] overflow-y-auto">
-        {airlines.map((a: string) => {
-          const logo = getAirlineLogo(a);
-          return (
-            <label key={a} className="flex items-center gap-2.5 cursor-pointer py-1 hover:bg-muted/50 rounded px-1 -mx-1">
+    {airlines.length > 0 && (
+      <div>
+        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Airlines</h4>
+        <div className="space-y-2 max-h-48 overflow-y-auto">
+          {airlines.map((a: string) => (
+            <label key={a} className="flex items-center gap-2 cursor-pointer group">
               <Checkbox checked={selectedAirlines.includes(a)} onCheckedChange={() => toggleAirline(a)} />
-              {logo && <img src={logo} alt={a} className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
-              <span className="text-sm">{a}</span>
+              <span className="text-xs font-medium group-hover:text-foreground text-muted-foreground transition-colors">{a}</span>
             </label>
-          );
-        })}
+          ))}
+        </div>
       </div>
-    </div>
+    )}
   </div>
 );
 
-/* ─── Flight Result Card (Inno Travel Tech Design) ─── */
+/* ─── Flight Card — exact reference design ─── */
 const FlightCard = ({
-  flight, cheapest, isExpanded, onToggleExpand, isSelected, onSelect, selectionMode,
+  flight, cheapest, isExpanded, onToggleExpand,
+  selectionMode = false, isSelected = false, onSelect,
 }: {
   flight: any; cheapest: number; isExpanded: boolean; onToggleExpand: () => void;
-  isSelected?: boolean; onSelect?: () => void; selectionMode?: boolean;
+  selectionMode?: boolean; isSelected?: boolean; onSelect?: () => void;
 }) => {
   const cardNavigate = useNavigate();
   const logo = getAirlineLogo(flight.airlineCode);
@@ -160,8 +197,7 @@ const FlightCard = ({
   const baggage = flight.baggage || "20 kg";
   const [activeDetailTab, setActiveDetailTab] = useState("itinerary");
 
-  const stopsLabel = stops === 0 ? "Non-Stop" : `${stops} Stop${stops > 1 ? "s" : ""} Flight`;
-  const refundLabel = refundable ? "Refundable" : "Partially-Refundable";
+  const stopsLabel = stops === 0 ? "Non-Stop" : `${stops} Stop${stops > 1 ? "s" : ""}`;
   const cabinDisplay = bookingClass ? `${cabin} - ${bookingClass}` : cabin;
 
   return (
@@ -193,23 +229,26 @@ const FlightCard = ({
               {/* Departure */}
               <div className="text-center shrink-0">
                 <p className="text-lg sm:text-2xl font-black tracking-tight">{departTime}</p>
-                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{departDateStr}</p>
+                <p className="text-[10px] sm:text-[11px] text-muted-foreground font-medium mt-0.5">{departDateStr}</p>
               </div>
 
-              {/* Duration bar */}
+              {/* Duration bar with plane icon */}
               <div className="flex-1 flex flex-col items-center gap-0.5 sm:gap-1 min-w-[60px] sm:min-w-[100px]">
-                <p className="text-xs text-muted-foreground font-medium">{duration}</p>
-                <div className="w-full flex items-center gap-0">
-                  <div className="w-2 h-2 rounded-full bg-accent" />
-                  <div className="flex-1 h-[2px] bg-accent/30 relative">
-                    {stops > 0 && Array.from({ length: Math.min(stops, 3) }).map((_, i) => (
-                      <div key={i} className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-accent/50 border-2 border-card"
-                        style={{ left: `${((i + 1) / (stops + 1)) * 100}%`, transform: "translate(-50%, -50%)" }} />
-                    ))}
+                <div className="w-full relative">
+                  <div className="w-full flex items-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
+                    <div className="flex-1 h-[1.5px] bg-border relative">
+                      <Plane className="w-4 h-4 text-muted-foreground absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                      {stops > 0 && Array.from({ length: Math.min(stops, 3) }).map((_, i) => (
+                        <div key={i} className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-muted-foreground/50"
+                          style={{ left: `${((i + 1) / (stops + 1)) * 100}%`, transform: "translate(-50%, -50%)" }} />
+                      ))}
+                    </div>
+                    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
                   </div>
-                  <div className="w-2 h-2 rounded-full bg-accent" />
                 </div>
-                <p className={`text-[11px] font-semibold ${stops === 0 ? "text-accent" : "text-warning"}`}>{stopsLabel}</p>
+                <p className="text-xs text-muted-foreground font-medium">{duration}</p>
+                <p className={`text-[11px] font-semibold ${stops === 0 ? "text-foreground" : "text-warning"}`}>{stopsLabel}</p>
               </div>
 
               {/* Arrival */}
@@ -223,130 +262,153 @@ const FlightCard = ({
             </div>
           </div>
 
-          {/* Price + action section */}
-          <div className="flex items-center justify-between sm:justify-end gap-3 p-4 sm:p-5 sm:w-56 shrink-0 border-t sm:border-t-0 sm:border-l border-border/50 bg-muted/20">
+          {/* Price section */}
+          <div className="flex items-center justify-between sm:justify-end gap-3 p-4 sm:p-5 sm:w-52 shrink-0 border-t sm:border-t-0 sm:border-l border-border/50 bg-muted/20">
             <div className="text-right min-w-0">
-              <p className="text-xl sm:text-2xl font-black text-accent leading-none whitespace-nowrap">৳{price.toLocaleString()}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">per person</p>
+              <p className="text-xl sm:text-2xl font-black leading-none whitespace-nowrap">BDT {price.toLocaleString()} <ChevronDown className="w-3.5 h-3.5 inline text-muted-foreground" /></p>
               {price === cheapest && price > 0 && (
                 <Badge className="bg-accent/10 text-accent border-0 text-[9px] font-bold mt-1">Cheapest</Badge>
-              )}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {selectionMode ? (
-                <Button size="sm" className={`font-bold h-9 px-5 ${isSelected ? "bg-accent hover:bg-accent/90 text-accent-foreground" : "bg-accent hover:bg-accent/90 text-accent-foreground"}`} onClick={onSelect}>
-                  {isSelected ? <><Check className="w-3.5 h-3.5 mr-1" /> Selected</> : "Select Flight"}
-                </Button>
-              ) : (
-                <Button size="sm" className="font-bold h-9 px-5 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => cardNavigate(`/flights/book`, { state: { outboundFlight: flight } })}>
-                  Select Flight
-                </Button>
               )}
             </div>
           </div>
         </div>
 
-        {/* ── Info bar with prominent badges ── */}
-        <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1.5 px-3 sm:px-5 py-2 bg-muted/30 border-t border-border/50 text-[10px] sm:text-[11px] text-muted-foreground">
-          <span className={`font-bold ${refundable ? "text-accent" : "text-warning"}`}>{refundLabel}</span>
-          {flight.airlineCode?.toUpperCase() !== "BG" && <span className="text-accent font-bold">Book & Hold</span>}
-          <span className="flex items-center gap-1 font-medium"><Luggage className="w-3 h-3" /> {baggage}</span>
-          <span className="font-medium">{cabinDisplay}</span>
-          {availableSeats !== null && availableSeats <= 9 && (
-            <span className="text-destructive font-bold">{availableSeats} Seat{availableSeats !== 1 ? "s" : ""} Left</span>
-          )}
-          {aircraft && <span className="hidden sm:inline">Aircraft: {aircraft}</span>}
-          {source === "tti" && <span className="text-accent font-semibold">Air Astra</span>}
-          <button className="flex items-center gap-1 text-accent font-semibold ml-auto hover:underline" onClick={onToggleExpand}>
-            {isExpanded ? "Hide" : "Details"} {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        {/* ── Info bar: Flight Details ▲ | Refundable  Book & Hold | View Prices ▼ ── */}
+        <div className="flex items-center px-3 sm:px-5 py-2.5 bg-muted/30 border-t border-border/50">
+          {/* Left: Flight Details toggle */}
+          <button className="flex items-center gap-1 text-accent font-bold text-xs sm:text-sm hover:underline shrink-0" onClick={onToggleExpand}>
+            Flight Details {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
+
+          {/* Center: Refundable + Book & Hold badges */}
+          <div className="flex-1 flex items-center justify-center gap-3 sm:gap-5">
+            <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs sm:text-sm">{refundable ? "Refundable" : "Partially Refundable"}</span>
+            {flight.airlineCode?.toUpperCase() !== "BG" && (
+              <span className="text-emerald-800 dark:text-emerald-300 font-bold text-xs sm:text-sm">Book &amp; Hold</span>
+            )}
+          </div>
+
+          {/* Right: View Prices / Select button */}
+          <div className="shrink-0">
+            {selectionMode ? (
+              <Button size="sm" className="font-bold h-9 px-5 rounded-full bg-accent hover:bg-accent/90 text-accent-foreground" onClick={onSelect}>
+                {isSelected ? <><Check className="w-3.5 h-3.5 mr-1" /> Selected</> : "Select Flight"}
+              </Button>
+            ) : (
+              <Button size="sm" className="font-bold h-9 px-5 rounded-full bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => cardNavigate(`/flights/book`, { state: { outboundFlight: flight } })}>
+                View Prices <ChevronDown className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            )}
+          </div>
         </div>
 
-        {/* ── Expanded detail tabs (Inno Travel Tech style) ── */}
+        {/* ── Expanded detail panel ── */}
         <AnimatePresence>
           {isExpanded && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
               <div className="border-t border-border">
-                {/* Tab headers */}
-                <div className="flex overflow-x-auto border-b border-border bg-muted/20 scrollbar-none">
-                  {[
-                    { key: "itinerary", label: "Flight Details", icon: Plane },
-                    { key: "fare", label: "Fare Summary", icon: FileText },
-                    { key: "baggage", label: "Baggage", icon: Luggage },
-                    { key: "cancellation", label: "Cancellation", icon: Shield },
-                    { key: "datechange", label: "Date Change", icon: Clock },
-                  ].map(tab => (
-                    <button key={tab.key} onClick={() => setActiveDetailTab(tab.key)}
-                      className={`flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-xs font-semibold border-b-2 -mb-px transition-colors whitespace-nowrap shrink-0 ${
-                        activeDetailTab === tab.key
-                          ? "border-accent text-accent"
-                          : "border-transparent text-muted-foreground hover:text-foreground"
-                      }`}>
-                      <tab.icon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                      <span className="hidden sm:inline">{tab.label}</span>
-                      <span className="sm:hidden">{tab.label.split(" ")[0]}</span>
-                    </button>
-                  ))}
+                {/* Tab headers + Fare terms & policy link */}
+                <div className="flex items-center border-b border-border bg-muted/20">
+                  <div className="flex overflow-x-auto scrollbar-none">
+                    {[
+                      { key: "itinerary", label: "Flight Details" },
+                      { key: "fare", label: "Fare Summary" },
+                      { key: "baggage", label: "Baggage" },
+                      { key: "cancellation", label: "Cancellation" },
+                      { key: "datechange", label: "Date Change" },
+                    ].map(tab => (
+                      <button key={tab.key} onClick={() => setActiveDetailTab(tab.key)}
+                        className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap shrink-0 ${
+                          activeDetailTab === tab.key ? "border-accent text-accent" : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}>
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="ml-auto pr-4 text-xs sm:text-sm text-accent font-medium flex items-center gap-1 shrink-0 cursor-pointer hover:underline">
+                    <Info className="w-3.5 h-3.5" /> Fare terms &amp; policy
+                  </span>
                 </div>
 
-                <div className="p-5">
-                  {/* Flight Itinerary Tab */}
+                <div className="p-4 sm:p-5">
+                  {/* ── Flight Details Tab — exact reference design ── */}
                   {activeDetailTab === "itinerary" && (
-                    <div className="space-y-4">
-                      {legs.length > 0 ? legs.map((leg: any, i: number) => {
-                        const legLogo = getAirlineLogo(leg.airlineCode);
+                    <div className="space-y-6">
+                      {(legs.length > 0 ? legs : [{ origin: fromCode, destination: toCode, departureTime: flight.departureTime, arrivalTime: flight.arrivalTime, duration, durationMinutes: flight.durationMinutes, flightNumber: flightNo, airlineCode: flight.airlineCode, aircraft, originTerminal: "", destinationTerminal: "" }]).map((leg: any, i: number) => {
+                        const legLogo = getAirlineLogo(leg.airlineCode || flight.airlineCode);
+                        const legDepartDate = formatDate(leg.departureTime);
+                        const legStopsLabel = stops === 0 ? "Non-Stop" : `${stops} Stop${stops > 1 ? "s" : ""}`;
+                        const legOrigin = leg.origin || fromCode;
+                        const legDest = leg.destination || toCode;
+
                         return (
-                          <div key={i}>
-                            {/* Segment card */}
-                            <div className="border border-border rounded-xl overflow-hidden">
-                              {/* Segment header */}
-                              <div className="bg-accent/5 px-4 py-2.5 flex flex-wrap items-center gap-2 sm:gap-3 border-b border-border/50">
-                                {legLogo && <img src={legLogo} alt="" className="w-6 h-6 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
-                                <span className="text-sm font-bold">{leg.airlineCode || flight.airline}</span>
-                                <span className="text-xs text-muted-foreground">{leg.flightNumber}</span>
-                                {leg.aircraft && <span className="text-xs text-muted-foreground">· {leg.aircraft}</span>}
-                                <span className="text-xs font-medium">{cabinDisplay}</span>
-                                {availableSeats !== null && availableSeats <= 9 && (
-                                  <span className="text-xs text-destructive font-bold">{availableSeats} Seats Left</span>
-                                )}
+                          <div key={i} className="space-y-4">
+                            {/* Route header: DAC ✈ CXB | 14 Apr, Tue | Non-Stop */}
+                            <div className="flex items-center gap-2 sm:gap-3 text-sm sm:text-base font-semibold text-foreground border-b border-border/50 pb-3">
+                              <span className="font-bold">{legOrigin}</span>
+                              <Plane className="w-4 h-4 text-muted-foreground" />
+                              <span className="font-bold">{legDest}</span>
+                              <span className="text-muted-foreground font-normal">|</span>
+                              <span className="text-muted-foreground font-normal text-sm">{legDepartDate}</span>
+                              <span className="text-muted-foreground font-normal">|</span>
+                              <span className="font-semibold text-sm">{legStopsLabel}</span>
+                            </div>
+
+                            {/* Airline detail line: logo | AirAstra | 2A 445 | AT7 | Economy - S | 5 Seats Left */}
+                            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                              {legLogo && <img src={legLogo} alt="" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                              <span className="text-sm font-semibold">{flight.airline}</span>
+                              <span className="text-sm text-muted-foreground">{leg.flightNumber || flightNo}</span>
+                              <span className="text-muted-foreground text-sm">|</span>
+                              {(leg.aircraft || aircraft) && (
+                                <>
+                                  <span className="text-sm text-muted-foreground">{leg.aircraft || aircraft}</span>
+                                  <span className="text-muted-foreground text-sm">|</span>
+                                </>
+                              )}
+                              <span className="text-sm font-medium">{cabinDisplay}</span>
+                              {availableSeats !== null && availableSeats <= 9 && (
+                                <span className="text-sm text-orange-500 font-bold">{availableSeats} Seat{availableSeats !== 1 ? "s" : ""} Left</span>
+                              )}
+                            </div>
+
+                            {/* Timeline arc visual — matching reference exactly */}
+                            <div className="flex items-start justify-between pt-3 pb-2">
+                              {/* Departure info */}
+                              <div className="text-left shrink-0 max-w-[38%]">
+                                <p className="text-xl sm:text-2xl font-black">{formatTime(leg.departureTime)}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">{legDepartDate}</p>
+                                <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                                  Terminal: {leg.originTerminal || "D"}, {getAirportName(legOrigin)} ({legOrigin})
+                                </p>
                               </div>
-                              {/* Segment body - responsive grid */}
-                              <div className="grid grid-cols-3 sm:grid-cols-5 gap-0 text-center divide-x divide-border/50">
-                                <div className="p-2 sm:p-3">
-                                  <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-medium mb-0.5 sm:mb-1">Flight</p>
-                                  <p className="text-xs sm:text-sm font-bold">{leg.flightNumber}</p>
+
+                              {/* Arc */}
+                              <div className="flex-1 flex flex-col items-center justify-center pt-1 px-3 sm:px-8">
+                                <div className="w-full relative h-12">
+                                  <svg className="w-full h-full" viewBox="0 0 200 45" preserveAspectRatio="none">
+                                    <path d="M 8 38 Q 100 2 192 38" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-muted-foreground/40" strokeDasharray="5 4" />
+                                    <circle cx="8" cy="38" r="3" className="fill-muted-foreground/60" />
+                                    <circle cx="192" cy="38" r="3" className="fill-muted-foreground/60" />
+                                  </svg>
+                                  <Plane className="w-4 h-4 text-muted-foreground absolute top-1 left-1/2 -translate-x-1/2 rotate-90" />
                                 </div>
-                                <div className="p-2 sm:p-3">
-                                  <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-medium mb-0.5 sm:mb-1">Departure</p>
-                                  <p className="text-xs sm:text-sm font-bold">{formatTime(leg.departureTime)}</p>
-                                  <p className="text-[9px] sm:text-[10px] text-muted-foreground">{formatShortDate(leg.departureTime)}</p>
-                                </div>
-                                <div className="p-2 sm:p-3">
-                                  <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-medium mb-0.5 sm:mb-1">Arrival</p>
-                                  <p className="text-xs sm:text-sm font-bold">{formatTime(leg.arrivalTime)}</p>
-                                  <p className="text-[9px] sm:text-[10px] text-muted-foreground">{formatShortDate(leg.arrivalTime)}</p>
-                                </div>
-                                <div className="p-2 sm:p-3 hidden sm:block">
-                                  <p className="text-[10px] text-muted-foreground uppercase font-medium mb-1">Duration</p>
-                                  <p className="text-sm font-bold">{leg.duration || `${leg.durationMinutes}m`}</p>
-                                </div>
-                                <div className="p-2 sm:p-3 hidden sm:block">
-                                  <p className="text-[10px] text-muted-foreground uppercase font-medium mb-1">Baggage</p>
-                                  <p className="text-sm font-bold">{baggage}</p>
-                                  <p className="text-[10px] text-muted-foreground">per pax</p>
-                                </div>
+                                <p className="text-xs text-muted-foreground font-medium -mt-1">{leg.duration || duration}</p>
                               </div>
-                              {/* Airport names */}
-                              <div className="flex items-center justify-between px-4 py-2 bg-muted/20 border-t border-border/50 text-[11px] text-muted-foreground">
-                                <span>{leg.origin}{leg.originTerminal ? ` · Terminal ${leg.originTerminal}` : ""}</span>
-                                <ArrowRight className="w-3 h-3" />
-                                <span>{leg.destination}{leg.destinationTerminal ? ` · Terminal ${leg.destinationTerminal}` : ""}</span>
+
+                              {/* Arrival info */}
+                              <div className="text-right shrink-0 max-w-[38%]">
+                                <p className="text-xl sm:text-2xl font-black">{formatTime(leg.arrivalTime)}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">{formatDate(leg.arrivalTime)}</p>
+                                <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                                  Terminal: {leg.destinationTerminal || "D"}, {getAirportName(legDest)} ({legDest})
+                                </p>
                               </div>
                             </div>
 
-                            {/* Transit/layover between legs */}
-                            {i < legs.length - 1 && (
-                              <div className="flex items-center gap-2 py-2 px-4 my-2">
+                            {/* Transit between legs */}
+                            {i < (legs.length > 0 ? legs.length : 1) - 1 && legs.length > 1 && (
+                              <div className="flex items-center gap-2 py-2 px-4 my-1">
                                 <div className="flex-1 h-px bg-warning/30" />
                                 <div className="flex items-center gap-1.5 text-xs text-warning font-semibold bg-warning/10 px-3 py-1 rounded-full">
                                   <Clock className="w-3 h-3" />
@@ -365,27 +427,7 @@ const FlightCard = ({
                             )}
                           </div>
                         );
-                      }) : (
-                        /* Single segment without legs */
-                        <div className="border border-border rounded-xl overflow-hidden">
-                          <div className="bg-accent/5 px-3 sm:px-4 py-2.5 flex items-center gap-2 sm:gap-3 border-b border-border/50">
-                            {logo && <img src={logo} alt="" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
-                            <span className="text-xs sm:text-sm font-bold">{flight.airline}</span>
-                            <span className="text-[10px] sm:text-xs text-muted-foreground">{flightNo}</span>
-                            {aircraft && <span className="text-[10px] sm:text-xs text-muted-foreground hidden sm:inline">· Aircraft: {aircraft}</span>}
-                          </div>
-                          <div className="grid grid-cols-3 sm:grid-cols-5 gap-0 text-center divide-x divide-border/50">
-                            <div className="p-2 sm:p-3"><p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-medium mb-0.5">Flight</p><p className="text-xs sm:text-sm font-bold">{flightNo}</p></div>
-                            <div className="p-2 sm:p-3"><p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-medium mb-0.5">Departure</p><p className="text-xs sm:text-sm font-bold">{departTime}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">{departDateStr}</p></div>
-                            <div className="p-2 sm:p-3"><p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-medium mb-0.5">Arrival</p><p className="text-xs sm:text-sm font-bold">{arriveTime}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">{arriveDateStr}</p></div>
-                            <div className="p-2 sm:p-3 hidden sm:block"><p className="text-[10px] text-muted-foreground uppercase font-medium mb-0.5">Duration</p><p className="text-sm font-bold">{duration}</p></div>
-                            <div className="p-2 sm:p-3 hidden sm:block"><p className="text-[10px] text-muted-foreground uppercase font-medium mb-0.5">Baggage</p><p className="text-sm font-bold">{baggage}</p></div>
-                          </div>
-                          <div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-muted/20 border-t border-border/50 text-[10px] sm:text-[11px] text-muted-foreground">
-                            <span>{fromCode}</span><ArrowRight className="w-3 h-3" /><span>{toCode}</span>
-                          </div>
-                        </div>
-                      )}
+                      })}
                     </div>
                   )}
 
@@ -396,34 +438,16 @@ const FlightCard = ({
                       <div className="flex justify-between py-1.5"><span className="text-muted-foreground">Taxes & Fees</span><span className="font-semibold">Included</span></div>
                       <Separator />
                       <div className="flex justify-between py-1.5 text-base"><span className="font-bold">Total Fare</span><span className="font-black text-accent">৳{price.toLocaleString()}</span></div>
-                      <p className="text-[11px] text-muted-foreground mt-2">
-                        <Info className="w-3 h-3 inline mr-1" />
-                        {refundable ? "This fare is refundable. Cancellation charges may apply." : "This fare is partially refundable. Change and cancellation fees apply."}
-                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-2"><Info className="w-3 h-3 inline mr-1" />{refundable ? "This fare is refundable. Cancellation charges may apply." : "This fare is partially refundable. Change and cancellation fees apply."}</p>
                     </div>
                   )}
 
                   {/* Baggage Tab */}
                   {activeDetailTab === "baggage" && (
                     <div className="max-w-md space-y-3">
-                      <div className="flex items-center gap-3 p-3 bg-accent/5 rounded-xl border border-accent/10">
-                        <Luggage className="w-5 h-5 text-accent" />
-                        <div>
-                          <p className="text-sm font-semibold">Checked Baggage</p>
-                          <p className="text-xs text-muted-foreground">{baggage} per passenger</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl">
-                        <Luggage className="w-4 h-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-sm font-semibold">Hand Baggage</p>
-                          <p className="text-xs text-muted-foreground">7 kg · 1 piece</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl">
-                        <span className="text-sm font-medium">Cabin Class</span>
-                        <span className="text-sm text-muted-foreground ml-auto">{cabin}</span>
-                      </div>
+                      <div className="flex items-center gap-3 p-3 bg-accent/5 rounded-xl border border-accent/10"><Luggage className="w-5 h-5 text-accent" /><div><p className="text-sm font-semibold">Checked Baggage</p><p className="text-xs text-muted-foreground">{baggage} per passenger</p></div></div>
+                      <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl"><Luggage className="w-4 h-4 text-muted-foreground" /><div><p className="text-sm font-semibold">Hand Baggage</p><p className="text-xs text-muted-foreground">7 kg · 1 piece</p></div></div>
+                      <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl"><span className="text-sm font-medium">Cabin Class</span><span className="text-sm text-muted-foreground ml-auto">{cabin}</span></div>
                     </div>
                   )}
 
@@ -432,36 +456,27 @@ const FlightCard = ({
                     <div className="max-w-md space-y-3">
                       <div className={`flex items-center gap-3 p-3 rounded-xl border ${refundable ? "bg-accent/5 border-accent/20" : "bg-warning/5 border-warning/20"}`}>
                         <Shield className={`w-5 h-5 ${refundable ? "text-accent" : "text-warning"}`} />
-                        <div>
-                          <p className="text-sm font-semibold">{refundable ? "Refundable Fare" : "Partially Refundable"}</p>
-                          <p className="text-xs text-muted-foreground">{refundable ? "Full refund available (cancellation fees may apply)" : "Cancellation charges apply as per airline policy"}</p>
-                        </div>
+                        <div><p className="text-sm font-semibold">{refundable ? "Refundable Fare" : "Partially Refundable"}</p><p className="text-xs text-muted-foreground">{refundable ? "Full refund available (cancellation fees may apply)" : "Cancellation charges apply as per airline policy"}</p></div>
                       </div>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between py-1.5 border-b border-border/50"><span className="text-muted-foreground">Before Departure</span><span className="font-semibold">{refundable ? "Refundable (fees apply)" : "Partially refundable"}</span></div>
                         <div className="flex justify-between py-1.5 border-b border-border/50"><span className="text-muted-foreground">After Departure</span><span className="font-semibold text-destructive">Non-refundable</span></div>
                         <div className="flex justify-between py-1.5"><span className="text-muted-foreground">No Show</span><span className="font-semibold text-destructive">Non-refundable</span></div>
                       </div>
-                      <p className="text-[11px] text-muted-foreground"><Info className="w-3 h-3 inline mr-1" />Cancellation charges are determined by the airline and may vary. Contact support for exact amounts.</p>
+                      <p className="text-[11px] text-muted-foreground"><Info className="w-3 h-3 inline mr-1" />Cancellation charges are determined by the airline and may vary.</p>
                     </div>
                   )}
 
                   {/* Date Change Tab */}
                   {activeDetailTab === "datechange" && (
                     <div className="max-w-md space-y-3">
-                      <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl border border-border">
-                        <Clock className="w-5 h-5 text-muted-foreground" />
-                        <div>
-                          <p className="text-sm font-semibold">Date Change Policy</p>
-                          <p className="text-xs text-muted-foreground">Subject to airline fare rules and availability</p>
-                        </div>
-                      </div>
+                      <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl border border-border"><Clock className="w-5 h-5 text-muted-foreground" /><div><p className="text-sm font-semibold">Date Change Policy</p><p className="text-xs text-muted-foreground">Subject to airline fare rules and availability</p></div></div>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between py-1.5 border-b border-border/50"><span className="text-muted-foreground">Date Change</span><span className="font-semibold">Allowed (fees apply)</span></div>
                         <div className="flex justify-between py-1.5 border-b border-border/50"><span className="text-muted-foreground">Route Change</span><span className="font-semibold text-destructive">Not allowed</span></div>
                         <div className="flex justify-between py-1.5"><span className="text-muted-foreground">Fare Difference</span><span className="font-semibold">Applicable</span></div>
                       </div>
-                      <p className="text-[11px] text-muted-foreground"><Info className="w-3 h-3 inline mr-1" />Date changes are subject to seat availability and fare difference. Airline change fees apply.</p>
+                      <p className="text-[11px] text-muted-foreground"><Info className="w-3 h-3 inline mr-1" />Date changes are subject to seat availability and fare difference.</p>
                     </div>
                   )}
                 </div>
