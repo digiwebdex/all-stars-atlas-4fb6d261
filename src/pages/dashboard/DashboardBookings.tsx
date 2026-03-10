@@ -21,7 +21,16 @@ import DataLoader from "@/components/DataLoader";
 import { useToast } from "@/hooks/use-toast";
 import PaymentReminderBanner from "@/components/PaymentReminder";
 
-const statusTabs = ["All", "On Hold", "Pending", "In Progress", "Confirmed", "Completed", "Void", "Refund", "Exchange", "Expired", "Cancelled", "Un-Confirmed"];
+const statusTabs = ["All", "Reserved", "Pending", "In Progress", "Confirmed", "Completed", "Void", "Refund", "Exchange", "Expired", "Cancelled", "Un-Confirmed"];
+
+const statusLabelMap: Record<string, string> = {
+  on_hold: "Reserved", "On Hold": "Reserved",
+  confirmed: "Confirmed", pending: "Pending", in_progress: "In Progress",
+  completed: "Completed", cancelled: "Cancelled", void: "Void",
+  refund: "Refund", exchange: "Exchange", expired: "Expired",
+  un_confirmed: "Un-Confirmed",
+};
+function displayStatus(status: string) { return statusLabelMap[status] || status; }
 
 const statusColors: Record<string, string> = {
   "Confirmed": "bg-accent/10 text-accent border-accent/20", "confirmed": "bg-accent/10 text-accent border-accent/20",
@@ -33,7 +42,7 @@ const statusColors: Record<string, string> = {
   "Refund": "bg-accent/10 text-accent border-accent/20", "refund": "bg-accent/10 text-accent border-accent/20",
   "Exchange": "bg-primary/10 text-primary border-primary/20", "exchange": "bg-primary/10 text-primary border-primary/20",
   "Expired": "bg-muted text-muted-foreground border-border", "expired": "bg-muted text-muted-foreground border-border",
-  "On Hold": "bg-warning/10 text-warning border-warning/20", "on_hold": "bg-warning/10 text-warning border-warning/20",
+  "Reserved": "bg-warning/10 text-warning border-warning/20", "On Hold": "bg-warning/10 text-warning border-warning/20", "on_hold": "bg-warning/10 text-warning border-warning/20",
   "Un-Confirmed": "bg-destructive/10 text-destructive border-destructive/20", "un_confirmed": "bg-destructive/10 text-destructive border-destructive/20",
 };
 
