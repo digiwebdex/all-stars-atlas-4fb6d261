@@ -150,7 +150,7 @@ router.get('/bookings', async (req, res) => {
     const data = rows.map(b => ({
       id: b.id, bookingRef: b.booking_ref, bookingType: b.booking_type, status: b.status,
       totalAmount: parseFloat(b.total_amount), currency: b.currency, paymentMethod: b.payment_method,
-      paymentStatus: b.payment_status, details: JSON.parse(b.details || '{}'),
+      paymentStatus: b.payment_status, details: safeJsonParse(b.details, {}),
       user: { name: `${b.first_name} ${b.last_name}`, email: b.user_email },
       bookedAt: b.booked_at,
     }));
