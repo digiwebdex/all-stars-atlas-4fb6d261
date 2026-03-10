@@ -205,6 +205,8 @@ const App = () => (
                 <Route path="invoices" element={<AdminInvoices />} />
                 <Route path="payment-approvals" element={<AdminPaymentApprovals />} />
                 <Route path="discounts" element={<AdminDiscounts />} />
+                <Route path="markup" element={<AdminMarkup />} />
+                <Route path="currency" element={<AdminCurrency />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

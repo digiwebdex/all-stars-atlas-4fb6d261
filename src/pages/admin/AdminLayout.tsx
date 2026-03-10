@@ -50,6 +50,8 @@ const sidebarGroups = [
     label: "Services",
     items: [
       { label: "Visa", href: "/admin/visa", icon: Globe, gradient: "linear-gradient(135deg, #14b8a6, #06b6d4)" },
+      { label: "Markup & Revenue", href: "/admin/markup", icon: DollarSign, gradient: "linear-gradient(135deg, #f59e0b, #f97316)" },
+      { label: "Currency", href: "/admin/currency", icon: Coins, gradient: "linear-gradient(135deg, #8b5cf6, #6366f1)" },
       { label: "Settings", href: "/admin/settings", icon: Settings, gradient: "linear-gradient(135deg, #6b7280, #4b5563)" },
     ],
   },
