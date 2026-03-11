@@ -52,27 +52,21 @@ const VisaServices = () => {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Hero */}
-      <section className={`relative bg-gradient-to-br ${page?.hero.gradient || "from-[hsl(217,91%,50%)] to-[hsl(224,70%,28%)]"} pt-24 lg:pt-32 pb-16 sm:pb-20 overflow-hidden`}>
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PHBhdGggZD0iTTM2IDE0VjBoLTJWMTRIMjBWMGgtMnYxNEgwdjJoMTR2MTRIMHYyaDE0djE0aDJ2LTE0aDE0djE0aDJ2LTE0aDE0di0ySDM2VjE2aDEydi0ySDM2eiIvPjwvZz48L2c+PC9zdmc+')] opacity-40" />
+      <section className="bg-card border-b border-border pt-24 lg:pt-32 pb-8">
         <div className="container mx-auto px-4 relative">
           <div className="max-w-2xl mx-auto text-center">
-            {listing?.heroBadge && (
-              <Badge className="bg-white/15 text-white border-white/20 mb-4 text-xs font-semibold">
-                <Users className="w-3.5 h-3.5 mr-1" /> {listing.heroBadge}
-              </Badge>
-            )}
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-foreground mb-4 tracking-tight">
               {page?.hero.title}
             </h1>
-            <p className="text-white/65 text-sm sm:text-base mb-2 max-w-lg mx-auto">
+            <p className="text-muted-foreground text-sm sm:text-base mb-2 max-w-lg mx-auto">
               {page?.hero.subtitle}
             </p>
-            {travelDate && <p className="text-white/50 text-xs mb-6">Travel: {travelDate}{returnDate ? ` → ${returnDate}` : ""} • {travellers} traveller(s)</p>}
+            {travelDate && <p className="text-muted-foreground/70 text-xs mb-6">Travel: {travelDate}{returnDate ? ` → ${returnDate}` : ""} • {travellers} traveller(s)</p>}
             <div className="relative max-w-md mx-auto">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
                 placeholder={listing?.heroSearchPlaceholder || "Search country..."}
-                className="h-12 pl-12 pr-4 rounded-xl text-base bg-white shadow-xl"
+                className="h-12 pl-12 pr-4 rounded-xl text-base bg-muted/30 border-border"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />

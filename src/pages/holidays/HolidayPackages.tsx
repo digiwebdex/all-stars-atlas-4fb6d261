@@ -47,11 +47,10 @@ const HolidayPackages = () => {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <section className={`relative bg-gradient-to-br ${page?.hero.gradient || "from-[hsl(167,72%,41%)] to-[hsl(217,91%,50%)]"} pt-24 lg:pt-32 pb-16 sm:pb-20 overflow-hidden`}>
+      <section className="bg-card border-b border-border pt-24 lg:pt-32 pb-8">
         <div className="container mx-auto px-4 relative text-center">
-          <Badge className="bg-white/15 text-white border-white/20 mb-4 text-xs font-semibold"><Star className="w-3.5 h-3.5 mr-1 fill-warning text-warning" /> {listing?.heroBadge || "Holiday Packages"}</Badge>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">{page?.hero.title || "Holiday Packages"}{destination ? ` — ${destination}` : ""}</h1>
-          <p className="text-white/65 text-sm sm:text-base max-w-lg mx-auto">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-foreground mb-4 tracking-tight">{page?.hero.title || "Holiday Packages"}{destination ? ` — ${destination}` : ""}</h1>
+          <p className="text-muted-foreground text-sm sm:text-base max-w-lg mx-auto">
             {travelDate ? `Travel date: ${travelDate}` : page?.hero.subtitle}
           </p>
         </div>

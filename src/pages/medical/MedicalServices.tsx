@@ -48,20 +48,20 @@ const MedicalServices = () => {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <div className={`bg-gradient-to-r ${page?.hero.gradient || "from-primary to-primary/80"} text-primary-foreground pt-20 lg:pt-28 pb-10`}>
+      <div className="bg-card border-b border-border pt-20 lg:pt-28 pb-6">
         <div className="container mx-auto px-4">
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3"><Stethoscope className="w-8 h-8" /> {page?.hero.title || "Medical Tourism"}</h1>
-          <p className="text-primary-foreground/80 mt-2 max-w-2xl">{page?.hero.subtitle}{medicalDate ? ` • Appointment: ${medicalDate}` : ""}</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-3"><Stethoscope className="w-8 h-8 text-accent" /> {page?.hero.title || "Medical Tourism"}</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">{page?.hero.subtitle}{medicalDate ? ` • Appointment: ${medicalDate}` : ""}</p>
           <div className="flex flex-wrap gap-3 mt-6">
             <Select value={country} onValueChange={setCountry}>
-              <SelectTrigger className="w-40 bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground"><SelectValue placeholder="Country" /></SelectTrigger>
+              <SelectTrigger className="w-40"><SelectValue placeholder="Country" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Countries</SelectItem>
                 {countries.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={treatment} onValueChange={setTreatment}>
-              <SelectTrigger className="w-44 bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground"><SelectValue placeholder="Treatment" /></SelectTrigger>
+              <SelectTrigger className="w-44"><SelectValue placeholder="Treatment" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Treatments</SelectItem>
                 {treatments.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
