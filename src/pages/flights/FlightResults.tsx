@@ -775,9 +775,6 @@ const FlightResults = () => {
                       const segFlights = sortFlights(applyFilters(multiCityResults[segIdx] || []), sortBy);
                       const segColors = ["bg-accent/10 text-accent", "bg-blue-500/10 text-blue-600", "bg-purple-500/10 text-purple-600", "bg-amber-500/10 text-amber-600", "bg-rose-500/10 text-rose-600"];
                       const selectedFlight = selectedMultiCityFlights[segIdx];
-                      const segFlights = sortFlights(applyFilters(multiCityResults[segIdx] || []), sortBy);
-                      const segColors = ["bg-accent/10 text-accent", "bg-blue-500/10 text-blue-600", "bg-purple-500/10 text-purple-600", "bg-amber-500/10 text-amber-600", "bg-rose-500/10 text-rose-600"];
-                      const selectedFlight = selectedMultiCityFlights[segIdx];
 
                       return (
                         <div key={segIdx}>
