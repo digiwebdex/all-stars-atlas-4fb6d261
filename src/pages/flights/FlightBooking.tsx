@@ -454,7 +454,7 @@ const FlightBooking = () => {
     setTravelDocsUploaded(prev => { const n = { ...prev }; delete n[key]; return n; });
   };
 
-
+  const createBooking = async (payLater: boolean) => {
     setBookingLoading(true);
     try {
       const bookingData = {
