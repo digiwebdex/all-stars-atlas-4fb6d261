@@ -133,6 +133,7 @@ const FlightCard = ({
   const baseFare = flight.baseFare ?? price;
   const taxes = flight.taxes ?? 0;
   const refundable = flight.refundable ?? false;
+  const fareType = flight.fareType || (refundable ? "Refundable" : "Non-Refundable");
   const nextDay = isNextDay(flight.departureTime, flight.arrivalTime);
   const legs = flight.legs || [];
   const stopCodes = flight.stopCodes || [];
