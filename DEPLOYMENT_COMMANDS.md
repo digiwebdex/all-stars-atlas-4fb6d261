@@ -97,3 +97,4 @@ cd ~/projects/all-stars-atlas && rm -rf node_modules && npm install && npm run b
 | 2026-03-11 | Flight results: "Select" button, Non-Refundable label fix | Standard Deployment |
 | 2026-03-11 | Header/logo size reduction, page padding fixes | Standard Deployment |
 | 2026-03-11 | Nginx optimized config (HTTP/2, caching, rate limiting) | Nginx Config Update |
+| 2026-03-11 | Fix cabin class (Business/First) not being sent to TTI GDS + case-insensitive cabin mapping for all providers | Standard Deployment |
