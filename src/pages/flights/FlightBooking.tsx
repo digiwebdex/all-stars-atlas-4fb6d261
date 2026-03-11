@@ -197,7 +197,7 @@ const FlightBooking = () => {
   for (let i = 0; i < childCount; i++) paxTypes.push({ type: "child", label: `Child ${childCount > 1 ? i + 1 : ""}`.trim() });
   for (let i = 0; i < infantCount; i++) paxTypes.push({ type: "infant", label: `Infant ${infantCount > 1 ? i + 1 : ""}`.trim() });
 
-  const emptyPax = () => ({ title: "", firstName: "", lastName: "", dob: "", nationality: "", passport: "", passportExpiry: "", email: "", phone: "", gender: "", documentCountry: "BD" });
+  const emptyPax = () => ({ title: "", firstName: "", lastName: "", dob: "", nationality: "Bangladeshi", passport: "", passportExpiry: "", email: "", phone: "", gender: "", documentCountry: "BD" });
 
   const [passengers, setPassengers] = useState(() => paxTypes.map(() => emptyPax()));
   const [passportScanOpen, setPassportScanOpen] = useState(false);
