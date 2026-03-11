@@ -453,8 +453,9 @@ function parseNID(lines, fullText) {
     }
   }
 
-  // ── Gender ──
+  // ── Gender (from explicit labels OR inferred from father/mother context) ──
   for (const line of lines) {
+    // Explicit gender labels
     if (/(?:লিঙ্গ|SEX|GENDER)\s*[:：.]\s*(পুরুষ|মহিলা|MALE|FEMALE|M\b|F\b)/i.test(line)) {
       const m = line.match(/(?:লিঙ্গ|SEX|GENDER)\s*[:：.]\s*(পুরুষ|মহিলা|MALE|FEMALE|M\b|F\b)/i);
       if (m) {
@@ -462,6 +463,15 @@ function parseNID(lines, fullText) {
         if (/^(M|MALE|পুরুষ)$/i.test(val)) { r.gender = 'Male'; r.title = 'MR'; }
         else if (/^(F|FEMALE|মহিলা)$/i.test(val)) { r.gender = 'Female'; r.title = 'MS'; }
       }
+    }
+  }
+
+  // If no explicit gender found, infer from the extracted name
+  if (!r.gender && (r.firstName || r.lastName)) {
+    const inferred = inferGenderFromName(r.firstName, r.lastName);
+    if (inferred) {
+      r.gender = inferred;
+      r.title = inferred === 'Male' ? 'MR' : 'MS';
     }
   }
 
