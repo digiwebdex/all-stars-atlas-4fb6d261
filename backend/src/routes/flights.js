@@ -13,25 +13,6 @@ const { searchAllLCCs } = require('./lcc-flights');
 
 const router = express.Router();
 
-// ── In-memory flight search cache (5 min TTL) ──
-const searchCache = new Map();
-const SEARCH_CACHE_TTL = 5 * 60 * 1000;
-
-function getSearchCacheKey(params) {
-  return `${params.origin}-${params.destination}-${params.departDate}-${params.returnDate || ''}-${params.adults}-${params.children}-${params.infants}-${params.cabinClass || ''}`.toLowerCase();
-}
-
-function getCachedSearch(key) {
-  const entry = searchCache.get(key);
-  if (!entry) return null;
-  if (Date.now() - entry.time > SEARCH_CACHE_TTL) { searchCache.delete(key); return null; }
-  return entry.data;
-}
-
-function setCachedSearch(key, data) {
-  if (searchCache.size > 100) { const oldest = searchCache.keys().next().value; searchCache.delete(oldest); }
-  searchCache.set(key, { data, time: Date.now() });
-}
 
 // GET /flights/tti-diagnostic — test TTI API connectivity
 router.get('/tti-diagnostic', async (req, res) => {
