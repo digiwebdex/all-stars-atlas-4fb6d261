@@ -387,7 +387,9 @@ const FlightBooking = () => {
     setBookingLoading(true);
     try {
       const bookingData = {
-        flightData: outboundFlight, returnFlightData: returnFlight, passengers, isRoundTrip, isDomestic: domestic, payLater,
+        flightData: outboundFlight, returnFlightData: returnFlight,
+        multiCityFlights: isMultiCity ? multiCityFlights : undefined,
+        passengers, isRoundTrip, isMultiCity, isDomestic: domestic, payLater,
         paymentMethod: payLater ? "pay_later" : (selectedPaymentMethod || "card"), totalAmount: grandTotal, baseFare, taxes, serviceCharge,
         addOns: {
           meal: mealOptions.find(m => m.id === selectedMeal)?.name || undefined,
