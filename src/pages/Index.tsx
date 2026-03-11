@@ -133,9 +133,12 @@ const Index = () => {
   const routesFade = useFadeIn();
   const testimonialsFade = useFadeIn();
 
+  // Load video immediately — no delay
   useEffect(() => {
-    const timer = setTimeout(() => setVideoReady(true), 1500);
-    return () => clearTimeout(timer);
+    const video = videoRef.current;
+    if (video) {
+      video.play().then(() => setVideoReady(true)).catch(() => setVideoReady(true));
+    }
   }, []);
 
   const isSectionVisible = (key: string) => {

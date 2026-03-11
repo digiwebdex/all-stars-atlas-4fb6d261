@@ -307,8 +307,6 @@ router.get('/search', async (req, res) => {
       },
     };
 
-    // ── Cache the result ──
-    setCachedSearch(cacheKey, responseData);
 
     res.json(responseData);
   } catch (err) {
