@@ -18,7 +18,7 @@ const BlogPost = () => {
   const { slug } = useParams();
   const { data: content, isLoading } = useCmsPageContent(`/blog/${slug}`);
 
-  const post = content?.blogPost;
+  const post = (content as any)?.blogPost;
 
   const handleShare = () => {
     if (navigator.share) {
