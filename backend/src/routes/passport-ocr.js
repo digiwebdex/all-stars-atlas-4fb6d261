@@ -302,6 +302,7 @@ function inferGenderFromName(firstName, lastName) {
 function parseDocument(text) {
   const empty = () => ({
     title: '', firstName: '', lastName: '', country: '', countryCode: '',
+    nationality: '', phone: '',
     passportNumber: '', birthDate: '', birthPlace: '',
     gender: '', issuanceDate: '', expiryDate: '',
   });
@@ -347,10 +348,73 @@ function parseDocument(text) {
   result.lastName = cleanName(result.lastName);
   result.birthPlace = cleanPlace(result.birthPlace);
 
+  // ─── ADVANCED NAME INTELLIGENCE ───
+  // MRZ swap fix: In Bangladesh passports, MRZ line 1 has SURNAME<<GIVEN_NAMES
+  // Surname = family name (e.g., UDDIN, ISLAM, HOSSAIN, MEEM)
+  // Given names = first/middle names (e.g., MOHAMMED NAZIM, MOHAMMAD SAZZADUL KABIR)
+  // MRZ is authoritative — if MRZ extracted names, reject label/heuristic noise
+  if (mrz.firstName && mrz.lastName && !isNID) {
+    // MRZ is authoritative for passport — override any noisy label extraction
+    result.firstName = cleanName(mrz.firstName);
+    result.lastName = cleanName(mrz.lastName);
+    console.log('[OCR] MRZ names enforced (passport priority):', result.firstName, '/', result.lastName);
+  }
+
+  // Name noise rejection: reject names containing address/NID noise words
+  const NAME_NOISE = ['ADDRESS', 'HAJEE', 'PARA', 'WARD', 'ROAD', 'FLAT', 'HOUSE', 'BLOCK',
+    'NENT', 'PERMANENT', 'EMERGENCY', 'FATHER', 'MOTHER', 'SPOUSE', 'TELEPHONE',
+    'RELATIONSHIP', 'CONTACT', 'SHUKCHAR', 'DARBAR', 'SHARIF', 'LOHAGARA', 'DAKSHI',
+    'ENTERPRISE', 'SIRAJ', 'SHOPPING', 'PANCHLAISH', 'MURADPUR', 'BOBY'];
+  if (result.lastName && NAME_NOISE.some(n => result.lastName.toUpperCase().includes(n))) {
+    console.log('[OCR] Rejected noisy lastName:', result.lastName);
+    result.lastName = mrz.lastName ? cleanName(mrz.lastName) : '';
+  }
+  if (result.firstName && NAME_NOISE.some(n => result.firstName.toUpperCase().includes(n))) {
+    console.log('[OCR] Rejected noisy firstName:', result.firstName);
+    result.firstName = mrz.firstName ? cleanName(mrz.firstName) : '';
+  }
+
   // Normalize country: resolve to full name + 3-letter ISO code
   const countryResolved = resolveCountryFull(result.country);
   result.country = countryResolved.name;       // "Bangladesh"
   result.countryCode = countryResolved.code3;   // "BGD"
+
+  // ─── NATIONALITY from country ───
+  if (!result.nationality && countryResolved.code3) {
+    const CODE3_TO_NATIONALITY = {
+      BGD:'Bangladeshi',IND:'Indian',USA:'American',GBR:'British',PAK:'Pakistani',
+      NPL:'Nepalese',LKA:'Sri Lankan',MMR:'Myanmar',MYS:'Malaysian',SGP:'Singaporean',
+      ARE:'Emirati',SAU:'Saudi',KWT:'Kuwaiti',QAT:'Qatari',BHR:'Bahraini',OMN:'Omani',
+      CAN:'Canadian',AUS:'Australian',JPN:'Japanese',KOR:'Korean',CHN:'Chinese',
+      THA:'Thai',IDN:'Indonesian',PHL:'Filipino',TUR:'Turkish',EGY:'Egyptian',
+      DEU:'German',FRA:'French',ITA:'Italian',ESP:'Spanish',NLD:'Dutch',CHE:'Swiss',
+      SWE:'Swedish',NOR:'Norwegian',DNK:'Danish',FIN:'Finnish',IRL:'Irish',
+      PRT:'Portuguese',GRC:'Greek',POL:'Polish',ROU:'Romanian',RUS:'Russian',
+      BRA:'Brazilian',MEX:'Mexican',ARG:'Argentine',COL:'Colombian',
+      ZAF:'South African',NGA:'Nigerian',KEN:'Kenyan',ETH:'Ethiopian',GHA:'Ghanaian',
+      AFG:'Afghan',IRQ:'Iraqi',IRN:'Iranian',JOR:'Jordanian',LBN:'Lebanese',
+      VNM:'Vietnamese',KHM:'Cambodian',BTN:'Bhutanese',MDV:'Maldivian',
+    };
+    result.nationality = CODE3_TO_NATIONALITY[countryResolved.code3] || '';
+  }
+
+  // ─── PHONE extraction from NID or text ───
+  if (!result.phone) {
+    // Look for Bangladesh phone numbers in text
+    const phoneRegex = /(?:\+?880|0)?\s*1[3-9]\d[\s\-]?\d{2}[\s\-]?\d{2}[\s\-]?\d{2,3}/g;
+    const phones = normalizedText.match(phoneRegex);
+    if (phones && phones.length > 0) {
+      // Clean up the phone number
+      let phone = phones[0].replace(/[\s\-]/g, '');
+      if (phone.startsWith('+880')) phone = '0' + phone.substring(4);
+      else if (phone.startsWith('880')) phone = '0' + phone.substring(3);
+      else if (!phone.startsWith('0')) phone = '0' + phone;
+      if (/^01[3-9]\d{8}$/.test(phone)) {
+        result.phone = phone;
+        console.log('[OCR] Phone extracted:', phone);
+      }
+    }
+  }
 
   // Infer gender from name if not detected (critical for NID cards without gender field)
   if (!result.gender) {
