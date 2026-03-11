@@ -468,6 +468,7 @@ const FlightBooking = () => {
           total: addOnTotal,
         },
         contactInfo: { email: passengers[0]?.email, phone: passengers[0]?.phone },
+        travelDocuments: Object.entries(travelDocsUploaded).map(([key, doc]) => ({ ...doc, passengerIndex: parseInt(key.split('_')[1] || '0'), docType: key.split('_')[0] })),
       };
       const result = await api.post<any>("/flights/book", bookingData);
       setBookingResult(result);
