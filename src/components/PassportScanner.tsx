@@ -153,12 +153,14 @@ const PassportScanner = ({ open, onOpenChange, onConfirm }: PassportScannerProps
     setOcrError(null);
     setConfidence({});
     setMrzVerified({});
+    setQrDetected(false);
     try {
       const result = await api.post<{
         success: boolean;
         extracted: ExtractedData;
         confidence?: Record<string, string>;
         crossValidation?: { conflicts?: any[]; mrzVerified?: Record<string, boolean> };
+        qrDetected?: boolean;
         rawText?: string;
       }>("/passport/ocr", { image: base64Data });
 
