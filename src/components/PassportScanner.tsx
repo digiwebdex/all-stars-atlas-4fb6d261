@@ -251,6 +251,7 @@ const PassportScanner = ({ open, onOpenChange, onConfirm }: PassportScannerProps
     setQualityWarning(null);
     setConfidence({});
     setMrzVerified({});
+    setQrDetected(false);
   };
 
   const updateField = (field: keyof ExtractedData, value: string) => {
