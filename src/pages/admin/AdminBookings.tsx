@@ -13,11 +13,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Search, MoreHorizontal, Eye, Edit2, Download, CheckCircle2, Clock, XCircle, Ticket, Loader2,
   Plane, User, Phone, Mail, CreditCard, FileText, AlertTriangle, Save, CalendarDays, MapPin, Shield,
-  Send, Ban, Link2, Archive, Trash2, RotateCcw,
+  Send, Ban, Link2, Archive, Trash2, RotateCcw, Upload, ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminBookings } from "@/hooks/useApiData";
 import { api } from "@/lib/api";
+import { config } from "@/lib/config";
 import { useQueryClient } from "@tanstack/react-query";
 import DataLoader from "@/components/DataLoader";
 import { downloadCSV } from "@/lib/csv-export";
@@ -364,10 +365,11 @@ const AdminBookings = () => {
 
           {viewBooking && (
             <Tabs defaultValue="overview" className="mt-2">
-              <TabsList className="grid grid-cols-4 w-full">
+              <TabsList className="grid grid-cols-5 w-full">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="passengers">Passengers</TabsTrigger>
                 <TabsTrigger value="flight">Flight Info</TabsTrigger>
+                <TabsTrigger value="documents">Documents</TabsTrigger>
                 <TabsTrigger value="actions">Actions</TabsTrigger>
               </TabsList>
 
@@ -549,8 +551,64 @@ const AdminBookings = () => {
                   </div>
                 )}
               </TabsContent>
+              {/* ── Documents Tab (Passport/Visa copies) ── */}
+              <TabsContent value="documents" className="space-y-4 mt-4">
+                {(() => {
+                  const travelDocs = viewBooking?.details?.travelDocuments || [];
+                  if (travelDocs.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Upload className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                        <p>No travel documents uploaded</p>
+                        <p className="text-xs mt-1">Documents are required for international bookings only</p>
+                      </div>
+                    );
+                  }
+                  // Group by passenger index
+                  const grouped: Record<number, any[]> = {};
+                  travelDocs.forEach((doc: any) => {
+                    const pi = doc.passengerIndex ?? 0;
+                    if (!grouped[pi]) grouped[pi] = [];
+                    grouped[pi].push(doc);
+                  });
+                  const paxList = getPassengers(viewBooking);
+                  return Object.entries(grouped).map(([piStr, docs]) => {
+                    const pi = parseInt(piStr);
+                    const pax = paxList[pi];
+                    const paxName = pax ? `${pax.title || ''} ${pax.firstName || pax.first_name || ''} ${pax.lastName || pax.last_name || ''}`.trim() : `Passenger ${pi + 1}`;
+                    return (
+                      <Card key={pi}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <User className="w-4 h-4 text-primary" />
+                            <p className="text-sm font-bold">{paxName}</p>
+                          </div>
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            {docs.map((doc: any, idx: number) => (
+                              <div key={idx} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border">
+                                <FileText className="w-5 h-5 text-accent shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium capitalize">{(doc.docType || doc.fieldname || 'document').replace(/_\d+$/, '').replace(/_/g, ' ')}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{doc.originalName || doc.filename || 'Document'}</p>
+                                </div>
+                                {doc.url && (
+                                  <a href={`${config.apiBaseUrl.replace('/api', '')}${doc.url}`} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                                    <Button variant="outline" size="sm" className="h-7 text-xs">
+                                      <ExternalLink className="w-3 h-3 mr-1" /> View
+                                    </Button>
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  });
+                })()}
+              </TabsContent>
 
-              {/* ── Actions Tab ── */}
+
               <TabsContent value="actions" className="space-y-4 mt-4">
                 <div>
                   <h4 className="text-sm font-bold mb-3 flex items-center gap-1.5"><Shield className="w-4 h-4" /> Change Booking Status</h4>

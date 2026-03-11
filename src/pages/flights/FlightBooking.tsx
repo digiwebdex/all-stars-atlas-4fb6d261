@@ -14,7 +14,7 @@ import {
   Plane, ArrowRight, User, Clock, Luggage, Shield, CreditCard,
   UtensilsCrossed, Plus, Briefcase, Users, FileText,
   AlertCircle, CheckCircle2, Timer, AlertTriangle, Package,
-  ScanLine, Search, Share2, Save,
+  ScanLine, Search, Share2, Save, Upload, X, Eye,
 } from "lucide-react";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useCmsPageContent } from "@/hooks/useCmsContent";
@@ -206,6 +206,10 @@ const FlightBooking = () => {
   const [shareOpen, setShareOpen] = useState(false);
   const [activePaxIndex, setActivePaxIndex] = useState(0);
 
+  // Travel document uploads (passport copy + visa copy) for international flights
+  const [travelDocs, setTravelDocs] = useState<Record<string, { file: File; url?: string; uploading?: boolean }>>({});
+  const [travelDocsUploaded, setTravelDocsUploaded] = useState<Record<string, { url: string; originalName: string; fieldname: string }>>({});
+
   const isRoundTrip = searchParams.get("roundTrip") === "true" || !!locationState?.returnFlight;
 
   const outboundFlight = locationState?.outboundFlight || null;
@@ -350,6 +354,18 @@ const FlightBooking = () => {
           }
         }
       }
+      // ─── Travel document uploads validation (international only) ───
+      if (!domestic) {
+        for (let pi = 0; pi < passengers.length; pi++) {
+          const paxLabel = paxTypes[pi]?.label || `Passenger ${pi + 1}`;
+          if (!travelDocsUploaded[`passport_${pi}`]) {
+            errors[`passportDoc_${pi}`] = `${paxLabel}: Passport copy is required for international flights`;
+          }
+          if (!travelDocsUploaded[`visa_${pi}`]) {
+            errors[`visaDoc_${pi}`] = `${paxLabel}: Visa copy is required for international flights`;
+          }
+        }
+      }
       if (Object.keys(errors).length > 0) { setFieldErrors(errors); toast({ title: "Missing Passenger Info", description: Object.values(errors)[0], variant: "destructive" }); return false; }
     }
     setFieldErrors({}); return true;
@@ -423,6 +439,33 @@ const FlightBooking = () => {
     setFieldErrors({});
   };
 
+  // Handle travel document file selection
+  const handleTravelDocSelect = async (key: string, file: File) => {
+    const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
+    const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    if (!allowed.includes(ext)) { toast({ title: "Invalid File", description: "Only JPG, PNG, WebP, and PDF files are accepted.", variant: "destructive" }); return; }
+    if (file.size > 10 * 1024 * 1024) { toast({ title: "File Too Large", description: "Maximum file size is 10MB.", variant: "destructive" }); return; }
+    setTravelDocs(prev => ({ ...prev, [key]: { file, uploading: true } }));
+    try {
+      const formData = new FormData();
+      formData.append(key, file);
+      const result = await api.upload<any>("/flights/upload-travel-docs", formData);
+      if (result.documents?.length > 0) {
+        const doc = result.documents[0];
+        setTravelDocsUploaded(prev => ({ ...prev, [key]: { url: doc.url, originalName: doc.originalName, fieldname: doc.fieldname } }));
+        setTravelDocs(prev => ({ ...prev, [key]: { file, url: doc.url, uploading: false } }));
+      }
+    } catch (err: any) {
+      toast({ title: "Upload Failed", description: err.message || "Could not upload document.", variant: "destructive" });
+      setTravelDocs(prev => { const n = { ...prev }; delete n[key]; return n; });
+    }
+  };
+
+  const removeTravelDoc = (key: string) => {
+    setTravelDocs(prev => { const n = { ...prev }; delete n[key]; return n; });
+    setTravelDocsUploaded(prev => { const n = { ...prev }; delete n[key]; return n; });
+  };
+
   const createBooking = async (payLater: boolean) => {
     setBookingLoading(true);
     try {
@@ -437,6 +480,7 @@ const FlightBooking = () => {
           total: addOnTotal,
         },
         contactInfo: { email: passengers[0]?.email, phone: passengers[0]?.phone },
+        travelDocuments: Object.entries(travelDocsUploaded).map(([key, doc]) => ({ ...doc, passengerIndex: parseInt(key.split('_')[1] || '0'), docType: key.split('_')[0] })),
       };
       const result = await api.post<any>("/flights/book", bookingData);
       setBookingResult(result);
@@ -761,7 +805,69 @@ const FlightBooking = () => {
                         </div>
                       </div>
 
-                      {/* Row 4: Contact */}
+                      {/* Row 4: Travel Document Uploads — International only */}
+                      {!domestic && (
+                        <>
+                          <Separator />
+                          <p className="text-sm font-semibold flex items-center gap-2"><Upload className="w-4 h-4 text-accent" /> Upload Travel Documents *</p>
+                          <p className="text-xs text-muted-foreground -mt-2">Upload clear copies of your passport and visa for verification (JPG, PNG, PDF — max 10MB each)</p>
+                          <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+                            {/* Passport Copy */}
+                            <div className="space-y-1.5">
+                              <Label className={`text-xs sm:text-sm ${fieldErrors[`passportDoc_${pi}`] ? "text-destructive" : ""}`}>Passport Copy *</Label>
+                              {travelDocs[`passport_${pi}`] ? (
+                                <div className={`flex items-center gap-2 p-2.5 rounded-lg border ${travelDocs[`passport_${pi}`]?.uploading ? "border-warning/30 bg-warning/5" : "border-accent/30 bg-accent/5"}`}>
+                                  <FileText className="w-4 h-4 text-accent shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium truncate">{travelDocs[`passport_${pi}`]?.file.name}</p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {travelDocs[`passport_${pi}`]?.uploading ? "Uploading..." : "✓ Uploaded"}
+                                    </p>
+                                  </div>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => removeTravelDoc(`passport_${pi}`)}>
+                                    <X className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <label className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-dashed cursor-pointer transition-colors hover:border-accent/40 hover:bg-accent/5 ${fieldErrors[`passportDoc_${pi}`] ? "border-destructive/50 bg-destructive/5" : "border-border"}`}>
+                                  <Upload className="w-4 h-4 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground">Choose passport file</span>
+                                  <input type="file" className="hidden" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(e) => { if (e.target.files?.[0]) handleTravelDocSelect(`passport_${pi}`, e.target.files[0]); e.target.value = ""; }} />
+                                </label>
+                              )}
+                              {fieldErrors[`passportDoc_${pi}`] && <p className="text-[11px] text-destructive">{fieldErrors[`passportDoc_${pi}`]}</p>}
+                            </div>
+
+                            {/* Visa Copy */}
+                            <div className="space-y-1.5">
+                              <Label className={`text-xs sm:text-sm ${fieldErrors[`visaDoc_${pi}`] ? "text-destructive" : ""}`}>Visa Copy *</Label>
+                              {travelDocs[`visa_${pi}`] ? (
+                                <div className={`flex items-center gap-2 p-2.5 rounded-lg border ${travelDocs[`visa_${pi}`]?.uploading ? "border-warning/30 bg-warning/5" : "border-accent/30 bg-accent/5"}`}>
+                                  <FileText className="w-4 h-4 text-accent shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium truncate">{travelDocs[`visa_${pi}`]?.file.name}</p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {travelDocs[`visa_${pi}`]?.uploading ? "Uploading..." : "✓ Uploaded"}
+                                    </p>
+                                  </div>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => removeTravelDoc(`visa_${pi}`)}>
+                                    <X className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <label className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-dashed cursor-pointer transition-colors hover:border-accent/40 hover:bg-accent/5 ${fieldErrors[`visaDoc_${pi}`] ? "border-destructive/50 bg-destructive/5" : "border-border"}`}>
+                                  <Upload className="w-4 h-4 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground">Choose visa file</span>
+                                  <input type="file" className="hidden" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(e) => { if (e.target.files?.[0]) handleTravelDocSelect(`visa_${pi}`, e.target.files[0]); e.target.value = ""; }} />
+                                </label>
+                              )}
+                              {fieldErrors[`visaDoc_${pi}`] && <p className="text-[11px] text-destructive">{fieldErrors[`visaDoc_${pi}`]}</p>}
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Row 5: Contact */}
                       {pi === 0 && (
                         <>
                           <Separator />
