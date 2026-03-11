@@ -64,7 +64,7 @@ async function searchFlights({ origin, destination, departDate, returnDate, adul
   const token = await getToken(config);
   if (!token) { console.warn('[FlyHub] No auth token'); return []; }
 
-  const cabinMap = { Economy: '1', 'Premium Economy': '2', Business: '3', First: '4' };
+  const cabinMap = { Economy: '1', 'Premium Economy': '2', Business: '3', First: '4', economy: '1', premiumeconomy: '2', business: '3', first: '4' };
   const segments = [{ Origin: origin, Destination: destination, CabinClass: cabinMap[cabinClass] || '1', DepartureDateTime: departDate }];
   if (returnDate) segments.push({ Origin: destination, Destination: origin, CabinClass: cabinMap[cabinClass] || '1', DepartureDateTime: returnDate });
 
