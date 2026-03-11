@@ -233,7 +233,7 @@ const FlightCard = ({
 
           {/* Center: Refundable + Book & Hold badges */}
           <div className="flex-1 flex items-center justify-center gap-3 sm:gap-5">
-            <span className={`font-bold text-xs sm:text-sm ${refundable ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>{refundable ? "Refundable" : "Non-Refundable"}</span>
+            <span className={`font-bold text-xs sm:text-sm ${refundable ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>{fareType}</span>
             {flight.airlineCode?.toUpperCase() !== "BG" && (
               <span className="text-emerald-800 dark:text-emerald-300 font-bold text-xs sm:text-sm">Book &amp; Hold</span>
             )}
