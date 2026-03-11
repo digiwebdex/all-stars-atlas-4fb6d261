@@ -631,7 +631,19 @@ const SearchWidget = () => {
                       <DateDisplay date={segment.date} fallbackDay="—" fallbackMonth="Select" fallbackWeekday="Date" />
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={segment.date} onSelect={(d) => updateSegment(index, 'date', d)} initialFocus disabled={(date) => date < new Date()} />
+                      <Calendar mode="single" selected={segment.date} onSelect={(d) => updateSegment(index, 'date', d)} initialFocus disabled={(date) => {
+                        const today = new Date(); today.setHours(0,0,0,0);
+                        if (date < today) return true;
+                        // Enforce: segment date must be >= previous segment's date
+                        if (index > 0) {
+                          const prevDate = multiCitySegments[index - 1]?.date;
+                          if (prevDate) {
+                            const minDate = new Date(prevDate); minDate.setHours(0,0,0,0);
+                            if (date < minDate) return true;
+                          }
+                        }
+                        return false;
+                      }} />
                     </PopoverContent>
                   </Popover>
                 </div>
