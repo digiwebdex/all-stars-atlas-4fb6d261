@@ -227,7 +227,7 @@ const FlightCard = ({
 
           {/* Center: Refundable + Book & Hold badges */}
           <div className="flex-1 flex items-center justify-center gap-3 sm:gap-5">
-            <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs sm:text-sm">{refundable ? "Refundable" : "Partially Refundable"}</span>
+            <span className={`font-bold text-xs sm:text-sm ${refundable ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>{refundable ? "Refundable" : "Non-Refundable"}</span>
             {flight.airlineCode?.toUpperCase() !== "BG" && (
               <span className="text-emerald-800 dark:text-emerald-300 font-bold text-xs sm:text-sm">Book &amp; Hold</span>
             )}
@@ -241,7 +241,7 @@ const FlightCard = ({
               </Button>
             ) : (
               <Button size="sm" className="font-bold h-9 px-5 rounded-full bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => cardNavigate(`/flights/book?adults=${cardSearchParams.get("adults") || "1"}&children=${cardSearchParams.get("children") || "0"}&infants=${cardSearchParams.get("infants") || "0"}&cabin=${cardSearchParams.get("cabin") || "economy"}`, { state: { outboundFlight: flight } })}>
-                View Prices <ChevronDown className="w-3.5 h-3.5 ml-1" />
+                Select <ArrowRight className="w-3.5 h-3.5 ml-1" />
               </Button>
             )}
           </div>
