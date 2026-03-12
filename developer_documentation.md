@@ -717,6 +717,14 @@ GET    /admin/cms/email-templates
 PATCH  /admin/cms/email-templates/:id
 
 POST   /contact/submit
+
+GET    /rewards/balance
+GET    /rewards/history?page=1&limit=20
+GET    /rewards/coupons
+POST   /rewards/redeem              { points }
+POST   /rewards/validate-coupon     { code }
+POST   /rewards/apply-coupon        { code, bookingId }
+GET    /rewards/earn-rate
 ```
 
 ### Standard API Response Format
