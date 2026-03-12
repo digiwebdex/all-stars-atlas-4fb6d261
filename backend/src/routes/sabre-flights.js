@@ -470,19 +470,18 @@ function normalizeGroupedResponse(response, params) {
     const legDescs = response.legDescs || [];
     const scheduleDescs = response.scheduleDescs || [];
     const fareComponentDescs = response.fareComponentDescs || [];
+    const baggageAllowanceDescs = response.baggageAllowanceDescs || [];
     const itinGroups = response.itineraryGroups || [];
+
+    // Build baggage lookup: id → {weight, unit, pieceCount}
+    const baggageLookup = {};
+    for (const bd of baggageAllowanceDescs) {
+      if (bd.id !== undefined) baggageLookup[bd.id] = bd;
+    }
 
     for (const group of itinGroups) {
       const groupDesc = group.groupDescription || {};
       const itineraries = group.itineraries || [];
-
-      // Extract departure dates from leg descriptions for datetime reconstruction
-      const legDates = {};
-      for (const ld of (groupDesc.legDescriptions || [])) {
-        if (ld.departureDate && ld.departureLocation) {
-          legDates[ld.id || Object.keys(legDates).length] = ld.departureDate;
-        }
-      }
 
       for (let idx = 0; idx < itineraries.length; idx++) {
         const itin = itineraries[idx];
@@ -497,6 +496,24 @@ function normalizeGroupedResponse(response, params) {
         const taxesAmt = parseFloat(totalFare.totalTaxAmount || 0);
         const currency = totalFare.currency || 'BDT';
 
+        // Extract baggage: dereference allowance.ref → baggageAllowanceDescs
+        let checkedBaggageGlobal = null;
+        const passengerInfoList = fare.passengerInfoList || [];
+        const baggageInfos = passengerInfoList[0]?.passengerInfo?.baggageInformation || [];
+        for (const bi of baggageInfos) {
+          const allowance = bi.allowance || {};
+          const ref = allowance.ref;
+          const resolved = (ref !== undefined && baggageLookup[ref]) ? baggageLookup[ref] : allowance;
+          if (resolved.weight) {
+            checkedBaggageGlobal = `${resolved.weight}${(resolved.unit || 'kg').toUpperCase()}`;
+          } else if (resolved.pieceCount !== undefined) {
+            checkedBaggageGlobal = `${resolved.pieceCount} piece${resolved.pieceCount > 1 ? 's' : ''}`;
+          } else if (resolved.pieces !== undefined) {
+            checkedBaggageGlobal = `${resolved.pieces} piece${resolved.pieces > 1 ? 's' : ''}`;
+          }
+          if (checkedBaggageGlobal) break;
+        }
+
         const itinLegs = itin.legs || [];
         for (let legIdx = 0; legIdx < itinLegs.length; legIdx++) {
           const leg = itinLegs[legIdx];
@@ -504,29 +521,24 @@ function normalizeGroupedResponse(response, params) {
           const legDesc = legDescs.find(ld => ld.id === legRef) || {};
           const schedules = legDesc.schedules || [];
 
-          // Get the departure date for this leg from group description
           const legDepartDate = groupDesc.legDescriptions?.[legIdx]?.departureDate || params.departDate || '';
 
-          const legs = schedules.map((sched, schedIdx) => {
+          const legs = schedules.map((sched) => {
             const schedRef = sched.ref;
             const schedDesc = scheduleDescs.find(sd => sd.id === schedRef) || {};
             const dep = schedDesc.departure || sched.departure || {};
             const arr = schedDesc.arrival || sched.arrival || {};
             const carrier = schedDesc.carrier || {};
 
-            // Reconstruct full datetime from date + time
-            // scheduleDescs have time like "21:20:00+06:00", need to prepend date
             let depDateTime = dep.dateTime || null;
             let arrDateTime = arr.dateTime || null;
             if (!depDateTime && dep.time && legDepartDate) {
-              // For connecting flights, use departureDateAdjustment from sched
               const depAdj = sched.departureDateAdjustment || 0;
               const depDate = adjustDate(legDepartDate, depAdj);
               depDateTime = `${depDate}T${dep.time}`;
             }
             if (!arrDateTime && arr.time && legDepartDate) {
               const arrAdj = sched.departureDateAdjustment || 0;
-              // arrival might be next day
               const arrDateAdj = (schedDesc.elapsedTime && dep.time && arr.time) ? 
                 (arr.time < dep.time ? arrAdj + 1 : arrAdj) : arrAdj;
               const arrDate = adjustDate(legDepartDate, arrDateAdj);
@@ -558,11 +570,8 @@ function normalizeGroupedResponse(response, params) {
           const direction = legIdx === 0 ? 'outbound' : 'return';
           const pricePerDirection = itinLegs.length > 1 ? Math.round(totalAmount / itinLegs.length) : totalAmount;
 
-          // Seat availability + baggage from fare components
           let minSeats = Infinity;
           let bookingClass = '';
-          let checkedBaggage = null;
-          const passengerInfoList = fare.passengerInfoList || [];
           const fareComponents = passengerInfoList[0]?.passengerInfo?.fareComponents || [];
           for (const fc of fareComponents) {
             const segments = fc.segments || [];
@@ -571,18 +580,6 @@ function normalizeGroupedResponse(response, params) {
                 minSeats = seg.seatsAvailable;
               }
               if (seg.bookingCode) bookingClass = seg.bookingCode;
-            }
-          }
-          // Extract baggage from baggageInformation
-          const baggageInfos = passengerInfoList[0]?.passengerInfo?.baggageInformation || [];
-          for (const bi of baggageInfos) {
-            const allowance = bi.allowance || {};
-            if (allowance.weight) {
-              checkedBaggage = `${allowance.weight}${(allowance.unit || 'kg').toUpperCase()}`;
-            } else if (allowance.pieceCount !== undefined) {
-              checkedBaggage = `${allowance.pieceCount} piece${allowance.pieceCount > 1 ? 's' : ''}`;
-            } else if (allowance.pieces !== undefined) {
-              checkedBaggage = `${allowance.pieces} piece${allowance.pieces > 1 ? 's' : ''}`;
             }
           }
 
@@ -612,7 +609,7 @@ function normalizeGroupedResponse(response, params) {
             totalRoundTripPrice: itinLegs.length > 1 ? totalAmount : undefined,
             currency,
             refundable: fare.passengerInfoList?.[0]?.passengerInfo?.nonRefundable === false,
-            baggage: checkedBaggage,
+            baggage: checkedBaggageGlobal,
             handBaggage: null,
             aircraft: firstLeg.aircraft,
             legs,
