@@ -435,10 +435,23 @@ const SearchWidget = () => {
   const totalHotelGuests = hotelGuests.adults + hotelGuests.children;
 
   const swapAirports = useCallback(() => {
-    const oldFrom = fromAirport;
-    setFromAirport(toAirport);
-    setToAirport(oldFrom);
-  }, [toAirport, fromAirport]);
+    if (!fromAirport || !toAirport) return;
+
+    const nextFrom = toAirport;
+    const nextTo = fromAirport;
+
+    if (isScopeInvalidRoute(nextFrom, nextTo)) {
+      toast.error(
+        flightScope === "domestic"
+          ? "Domestic flights must be within Bangladesh"
+          : "International flights need at least one airport outside Bangladesh"
+      );
+      return;
+    }
+
+    setFromAirport(nextFrom);
+    setToAirport(nextTo);
+  }, [fromAirport, toAirport, isScopeInvalidRoute, flightScope]);
 
   // ====== SEARCH HANDLERS ======
   const handleFlightSearch = () => {
