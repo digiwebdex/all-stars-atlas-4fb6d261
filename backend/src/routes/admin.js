@@ -544,8 +544,10 @@ router.get('/settings', async (req, res) => {
         try { settings.bankAccounts = JSON.parse(r.setting_value); } catch {}
       } else if (r.setting_key === 'notifications') {
         try { settings.notifications = JSON.parse(r.setting_value); } catch {}
-      } else if (r.setting_key === 'markup_config') {
+    } else if (r.setting_key === 'markup_config') {
         try { settings.markup_config = JSON.parse(r.setting_value); } catch {}
+      } else if (r.setting_key === 'airline_markup_config') {
+        try { settings.airline_markup_config = JSON.parse(r.setting_value); } catch {}
       } else if (r.setting_key === 'currency_rates') {
         try { settings.currency_rates = JSON.parse(r.setting_value); } catch {}
       } else {
