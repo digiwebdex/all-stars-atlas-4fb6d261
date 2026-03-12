@@ -360,6 +360,66 @@ const FilterPanel = ({
   );
 };
 
+/* ─── Transit Info Tooltip — BDFare-style layover popup ─── */
+const TransitTooltipContent = ({ flight, stopIndex }: { flight: any; stopIndex: number }) => {
+  const legs = flight.legs || [];
+  const stopCodes = flight.stopCodes || [];
+  
+  // Get transit airport from legs or stopCodes
+  let transitCode = "";
+  let transitName = "";
+  let layoverMins = 0;
+  
+  if (legs.length > stopIndex + 1) {
+    const arrLeg = legs[stopIndex];
+    const depLeg = legs[stopIndex + 1];
+    transitCode = arrLeg?.destination || stopCodes[stopIndex] || "";
+    if (arrLeg?.arrivalTime && depLeg?.departureTime) {
+      layoverMins = Math.round((new Date(depLeg.departureTime).getTime() - new Date(arrLeg.arrivalTime).getTime()) / 60000);
+    }
+  } else if (stopCodes[stopIndex]) {
+    transitCode = stopCodes[stopIndex];
+  }
+  
+  transitName = transitCode ? getAirportName(transitCode) : "Transit Airport";
+  const h = Math.floor(Math.abs(layoverMins) / 60);
+  const m = Math.abs(layoverMins) % 60;
+  
+  return (
+    <div className="text-sm">
+      <p className="font-bold text-background mb-2">Transit (Plane Change)</p>
+      <p className="text-background/70 text-xs mb-1">{stopIndex + 1}{stopIndex === 0 ? "st" : stopIndex === 1 ? "nd" : "rd"} Transit</p>
+      <p className="text-background font-medium text-xs">{transitCode ? `${transitName} (${transitCode})` : "Transit Airport"}</p>
+      {layoverMins > 0 && (
+        <p className="text-accent font-bold text-xs mt-2">Layover Time: {h > 0 ? `${h}h` : ""}{m > 0 ? `${m}m` : ""}</p>
+      )}
+    </div>
+  );
+};
+
+/* ─── Stop Dots with Transit Tooltips ─── */
+const StopDotsWithTooltip = ({ flight, stops }: { flight: any; stops: number }) => {
+  if (stops === 0) return null;
+  
+  return (
+    <TooltipProvider delayDuration={200}>
+      {Array.from({ length: Math.min(stops, 3) }).map((_, i) => (
+        <Tooltip key={i}>
+          <TooltipTrigger asChild>
+            <div
+              className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-warning/80 border-2 border-card cursor-pointer hover:scale-150 transition-transform z-10"
+              style={{ left: `${((i + 1) / (stops + 1)) * 100}%`, transform: "translate(-50%, -50%)" }}
+            />
+          </TooltipTrigger>
+          <TooltipContent side="top" className="bg-foreground border-foreground/80 text-background p-3 rounded-xl shadow-2xl max-w-[260px]">
+            <TransitTooltipContent flight={flight} stopIndex={i} />
+          </TooltipContent>
+        </Tooltip>
+      ))}
+    </TooltipProvider>
+  );
+};
+
 /* ─── Leg Mini — compact leg display for grouped cards ─── */
 const LegMini = ({ flight, label, labelColor }: { flight: any; label: string; labelColor: string }) => {
   const logo = getAirlineLogo(flight.airlineCode);
@@ -391,6 +451,7 @@ const LegMini = ({ flight, label, labelColor }: { flight: any; label: string; la
             <div className="w-1 h-1 rounded-full bg-muted-foreground" />
             <div className="flex-1 h-[1px] bg-border relative">
               <Plane className="w-3.5 h-3.5 text-muted-foreground absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+              <StopDotsWithTooltip flight={flight} stops={stops} />
             </div>
             <div className="w-1 h-1 rounded-full bg-muted-foreground" />
           </div>
