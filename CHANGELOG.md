@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [3.5.2] — 2026-03-12 — Travel Document Upload Moved to Review Step
+
+### Changed — International Flight Document Upload Flow
+- **Before**: Passport and visa copies were required during Step 2 (Passenger Info), blocking progression even for unauthenticated users
+- **After**: Upload UI moved to Step 4 (Review & Pay). Users can fill all passenger details and proceed through all steps without uploading documents
+- Documents are now validated at final booking confirmation — users cannot confirm/pay without uploading passport + visa copies for all passengers on international flights
+- Upload requires authentication (handled by AuthGateModal at confirm step)
+- Clear warning banner with "Required for Confirmation" badge guides users in the review step
+
+
+
 ## [3.5.1] — 2026-03-12 — Flight Search Route Validation Hardening
 
 ### Fixed — International Scope Allowing Domestic Routes After Swap
