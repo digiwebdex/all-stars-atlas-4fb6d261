@@ -1883,8 +1883,20 @@ const FlightResults = () => {
 
   const airlines = useMemo(() => apiData.airlines || [...new Set(allFlightsForFilters.map((f: any) => f.airline).filter(Boolean))], [apiData.airlines, allFlightsForFilters]);
   const cheapest = useMemo(() => apiData.cheapest || (allFlightsForFilters.length > 0 ? Math.min(...allFlightsForFilters.map((f: any) => f.price || Infinity)) : 0), [apiData.cheapest, allFlightsForFilters]);
-  const maxPrice = useMemo(() => allFlightsForFilters.length > 0 ? Math.max(...allFlightsForFilters.map((f: any) => f.price || 0)) : 200000, [allFlightsForFilters]);
-  const minPrice = useMemo(() => allFlightsForFilters.length > 0 ? Math.min(...allFlightsForFilters.map((f: any) => f.price || 0)) : 0, [allFlightsForFilters]);
+
+  // For round-trip mode, compute price bounds from pair totalPrices; for one-way from individual prices
+  const maxPrice = useMemo(() => {
+    if (isRoundTrip && hasDirections && roundTripPairs.length > 0) {
+      return Math.max(...roundTripPairs.map(p => p.totalPrice || 0));
+    }
+    return allFlightsForFilters.length > 0 ? Math.max(...allFlightsForFilters.map((f: any) => f.price || 0)) : 200000;
+  }, [allFlightsForFilters, isRoundTrip, hasDirections, roundTripPairs]);
+  const minPrice = useMemo(() => {
+    if (isRoundTrip && hasDirections && roundTripPairs.length > 0) {
+      return Math.min(...roundTripPairs.map(p => p.totalPrice || 0));
+    }
+    return allFlightsForFilters.length > 0 ? Math.min(...allFlightsForFilters.map((f: any) => f.price || 0)) : 0;
+  }, [allFlightsForFilters, isRoundTrip, hasDirections, roundTripPairs]);
 
   // Duration bounds for slider init
   const maxDuration = useMemo(() => {
@@ -1912,12 +1924,12 @@ const FlightResults = () => {
   }, [allFlightsForFilters]);
 
   useEffect(() => {
-    if (allFlightsForFilters.length > 0) {
+    if (allFlightsForFilters.length > 0 || (isRoundTrip && roundTripPairs.length > 0)) {
       setPriceRange([Math.max(0, minPrice - 100), maxPrice]);
       setDurationRange([minDuration, maxDuration]);
       if (maxLayoverDuration > 0) setLayoverDurationRange([0, maxLayoverDuration]);
     }
-  }, [minPrice, maxPrice, allFlightsForFilters.length, minDuration, maxDuration, maxLayoverDuration]);
+  }, [minPrice, maxPrice, allFlightsForFilters.length, minDuration, maxDuration, maxLayoverDuration, isRoundTrip, roundTripPairs.length]);
 
   const toggleAirline = useCallback((a: string) => setSelectedAirlines(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]), []);
   const toggleAlliance = useCallback((a: string) => setSelectedAlliances(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]), []);
