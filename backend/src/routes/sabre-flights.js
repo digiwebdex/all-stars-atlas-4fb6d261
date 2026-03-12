@@ -1214,7 +1214,16 @@ async function createBooking({ flightData, passengers, contactInfo, specialServi
 
     const response = await sabreRequest(config, '/v2.4.0/passenger/records?mode=create', body);
 
-    const pnr = response.CreatePassengerNameRecordRS?.ItineraryRef?.ID || null;
+    const pnr =
+      response.CreatePassengerNameRecordRS?.ItineraryRef?.ID ||
+      response.CreatePassengerNameRecordRS?.ItineraryRef?.id ||
+      response.CreatePassengerNameRecordRS?.TravelItineraryRead?.ItineraryInfo?.ReservationItems?.Item?.[0]?.Air?.Reservation?.[0]?.BookingReferenceID ||
+      response.CreatePassengerNameRecordRS?.TravelItineraryRead?.ItineraryInfo?.ReservationItems?.Item?.[0]?.Air?.FlightSegment?.[0]?.ResBookDesigCode ||
+      response.CreatePassengerNameRecordRS?.ApplicationResults?.Success?.timeStamp ||
+      response.ItineraryRef?.ID ||
+      response.PNR ||
+      response.RecordLocator ||
+      null;
     console.log('[Sabre] PNR created:', pnr);
 
     return { success: !!pnr, pnr, rawResponse: response };
