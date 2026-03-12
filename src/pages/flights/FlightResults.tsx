@@ -2257,13 +2257,13 @@ const FlightResults = () => {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* ─── BDFare-style Interactive Search Modification Bar ─── */}
-      <div className="bg-foreground pt-20 sm:pt-28 lg:pt-36 pb-0">
+      <div className="bg-card border-b border-border pt-20 sm:pt-28 lg:pt-36 pb-0">
         <div className="container mx-auto px-3 sm:px-4">
-          <div className="flex flex-wrap items-center gap-2 py-3">
+          <div className="flex flex-wrap items-center gap-2.5 py-4">
             {/* Trip Type */}
-            <div className="bg-foreground/80 border border-muted-foreground/30 rounded-lg px-3 py-2 flex items-center gap-1.5 shrink-0">
-              <Plane className="w-3.5 h-3.5 text-background/70" />
-              <span className="text-xs sm:text-sm font-medium text-background">
+            <div className="bg-muted border border-border rounded-lg px-4 py-2.5 flex items-center gap-2 shrink-0">
+              <Plane className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">
                 {isMultiCity ? "Multi-City" : isRoundTrip ? "Return" : "One Way"}
               </span>
             </div>
