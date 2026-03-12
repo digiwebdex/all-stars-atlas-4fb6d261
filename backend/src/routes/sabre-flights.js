@@ -439,7 +439,7 @@ function normalizeSabreResponse(raw, params) {
           currency,
           refundable: isRefundable,
           baggage: checkedBaggage || null,
-          handBaggage: 'handBaggage' in {handBaggage: null} ? '7KG' : null,
+          handBaggage: '7KG',
           aircraft: firstLeg.aircraft,
           legs,
           fareDetails: fareInfos.map(fi => ({
