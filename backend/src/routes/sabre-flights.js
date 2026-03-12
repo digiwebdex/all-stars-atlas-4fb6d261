@@ -1558,22 +1558,68 @@ async function cancelBooking({ pnr }) {
 
   console.log('[Sabre] Cancelling PNR:', pnr);
 
-  try {
-    const body = {
-      OTA_CancelRQ: {
-        Version: '2.0.2',
-        UniqueID: { ID: pnr },
-        Segment: [{ Type: 'entire' }],
+  // Try multiple cancel API versions — some PCCs only have access to specific versions
+  const cancelVariants = [
+    {
+      label: 'v2.0.2',
+      endpoint: '/v2.0.2/booking/cancel',
+      body: {
+        OTA_CancelRQ: {
+          Version: '2.0.2',
+          UniqueID: { ID: pnr },
+          Segment: [{ Type: 'entire' }],
+        },
       },
-    };
+    },
+    {
+      label: 'v2.0.0',
+      endpoint: '/v2.0.0/booking/cancel',
+      body: {
+        OTA_CancelRQ: {
+          Version: '2.0.0',
+          UniqueID: { ID: pnr },
+          Segment: [{ Type: 'entire' }],
+        },
+      },
+    },
+    {
+      // Alternative: use CreatePassengerNameRecord to cancel by adding XI status
+      label: 'cancel-via-modify',
+      endpoint: `/v2.4.0/passenger/records?mode=update`,
+      body: {
+        UpdatePassengerNameRecordRQ: {
+          version: '2.4.0',
+          Itinerary: { ID: pnr },
+          Cancel: {
+            Segment: [{ Type: 'entire' }],
+          },
+          PostProcessing: {
+            EndTransaction: {
+              Source: { ReceivedFrom: 'SEVEN TRIP API CANCEL' },
+            },
+          },
+        },
+      },
+    },
+  ];
 
-    const response = await sabreRequest(config, '/v2.0.2/booking/cancel', body);
-    console.log('[Sabre] PNR cancelled:', pnr);
-    return { success: true, rawResponse: response };
-  } catch (err) {
-    console.error('[Sabre] CancelBooking failed:', err.message);
-    return { success: false, error: err.message };
+  for (const variant of cancelVariants) {
+    try {
+      console.log(`[Sabre] Cancel attempt: ${variant.label} for PNR ${pnr}`);
+      const response = await sabreRequest(config, variant.endpoint, variant.body);
+      console.log(`[Sabre] PNR ${pnr} cancelled via ${variant.label}`);
+      return { success: true, method: variant.label, rawResponse: response };
+    } catch (err) {
+      console.warn(`[Sabre] Cancel via ${variant.label} failed:`, err.message);
+      // If NOT_AUTHORIZED, try next variant
+      if (/NOT_AUTHORIZED|403|not found/i.test(err.message)) continue;
+      // Other errors — still fail
+      return { success: false, error: err.message, method: variant.label };
+    }
   }
+
+  console.error(`[Sabre] All cancel variants failed for PNR ${pnr}`);
+  return { success: false, error: 'All Sabre cancel methods failed — PCC may not have cancel permission' };
 }
 
 module.exports = { searchFlights, createBooking, issueTicket, cancelBooking, getSabreConfig, clearSabreConfigCache };
