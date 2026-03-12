@@ -250,7 +250,7 @@ const FlightBooking = () => {
   const [baggageOptions, setBaggageOptions] = useState<{ id: string; name: string; price: number; desc: string; icon?: string }[]>([]);
   const [ancillarySource, setAncillarySource] = useState("none");
   const [ancillaryLoading, setAncillaryLoading] = useState(false);
-  const hasRealExtras = ancillarySource !== "none" && ancillarySource !== "standard";
+  const hasRealExtras = ancillarySource !== "none" && (mealOptions.length > 0 || baggageOptions.length > 0);
 
   // Read passenger counts from URL
   const [searchParams] = useSearchParams();
@@ -305,8 +305,7 @@ const FlightBooking = () => {
         if (outboundFlight.handBaggage) params.handBaggage = outboundFlight.handBaggage;
 
         const data = await api.get<any>("/flights/ancillaries", params);
-        if (data?.source && data.source !== "standard") {
-          // Only use data from real airline APIs (TTI, BDFare etc.), NOT standard fallbacks
+        if (data?.source) {
           setAncillarySource(data.source);
           if (data.meals?.length > 0) {
             setMealOptions(data.meals.map((m: any) => ({
@@ -319,7 +318,6 @@ const FlightBooking = () => {
             })));
           }
         }
-        // If source is "standard", we don't set anything — no fake data
       } catch {
         // No API available — no extras shown
       }
