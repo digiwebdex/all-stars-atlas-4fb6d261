@@ -177,6 +177,23 @@ const FlightBooking = () => {
   const [selectedMeal, setSelectedMeal] = useState("");
   const [selectedBaggage, setSelectedBaggage] = useState<string[]>([]);
 
+  // ── Seat Selection State ──
+  const [selectedSeats, setSelectedSeats] = useState<Record<number, string>>({});
+  const [seatPrices, setSeatPrices] = useState<Record<number, number>>({});
+  const [seatMapData, setSeatMapData] = useState<any>(null);
+  const [seatMapLoading, setSeatMapLoading] = useState(false);
+  const [seatMapSource, setSeatMapSource] = useState("none");
+
+  const handleSeatSelect = (paxIndex: number, seatId: string, price: number) => {
+    setSelectedSeats(prev => ({ ...prev, [paxIndex]: seatId }));
+    setSeatPrices(prev => ({ ...prev, [paxIndex]: price }));
+  };
+  const handleSeatDeselect = (paxIndex: number) => {
+    setSelectedSeats(prev => { const n = { ...prev }; delete n[paxIndex]; return n; });
+    setSeatPrices(prev => { const n = { ...prev }; delete n[paxIndex]; return n; });
+  };
+  const totalSeatCost = Object.values(seatPrices).reduce((sum, p) => sum + p, 0);
+
   // ── Special Services (SSR) — sent to GDS for all airlines ──
   const MEAL_CODES = [
     { code: "none", label: "No Preference", icon: "🍽️" },
