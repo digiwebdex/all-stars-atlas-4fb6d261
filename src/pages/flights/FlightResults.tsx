@@ -910,6 +910,31 @@ const RoundTripFlightCard = ({
                                       <p className="text-[11px] text-muted-foreground mt-1">{getAirportName(segment.destination || leg.destination)} ({segment.destination || leg.destination})</p>
                                     </div>
                                   </div>
+                                  {/* Layover between segments */}
+                                  {i < (legs.length > 0 ? legs.length : 1) - 1 && legs.length > 1 && (() => {
+                                    const nextSeg = legs[i + 1];
+                                    const transitCode = segment.destination || "";
+                                    const transitCity = transitCode ? getAirportCity(transitCode) : "";
+                                    let layoverStr = "";
+                                    if (nextSeg?.departureTime && segment.arrivalTime) {
+                                      const layoverMin = Math.round((new Date(nextSeg.departureTime).getTime() - new Date(segment.arrivalTime).getTime()) / 60000);
+                                      const h = Math.floor(layoverMin / 60);
+                                      const m = layoverMin % 60;
+                                      layoverStr = `${h > 0 ? `${h}h ` : ""}${m > 0 ? `${m}m` : ""}`;
+                                    }
+                                    return (
+                                      <div className="flex items-center gap-2 py-3 px-4 my-2">
+                                        <div className="flex-1 h-px bg-warning/30" />
+                                        <div className="flex items-center gap-2 text-xs bg-warning/10 px-4 py-2 rounded-full border border-warning/20">
+                                          <span className="text-destructive font-semibold">Change of planes</span>
+                                          <span className="text-foreground font-medium">
+                                            {layoverStr && <>{layoverStr} </>}Layover{transitCity ? ` in ${transitCity}` : ""}
+                                          </span>
+                                        </div>
+                                        <div className="flex-1 h-px bg-warning/30" />
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               ))}
                             </div>
