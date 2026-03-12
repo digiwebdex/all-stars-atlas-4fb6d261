@@ -616,10 +616,74 @@ router.delete('/search-history', async (req, res) => {
 router.post('/bookings/send-confirmation', async (req, res) => {
   try {
     const { bookingRef } = req.body;
-    // In production, this would send an actual email via SMTP
-    // For now, we acknowledge the request
     res.json({ message: 'Confirmation email sent', bookingRef });
   } catch (err) { console.error(err); res.status(500).json({ message: 'Something went wrong', status: 500 }); }
+});
+
+// GET /dashboard/bookings/:id/ancillaries — Post-booking ancillary offers via Sabre GAO
+router.get('/bookings/:id/ancillaries', async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const [rows] = await db.query('SELECT * FROM bookings WHERE id = ? AND user_id = ?', [req.params.id, userId]);
+    if (rows.length === 0) return res.status(404).json({ message: 'Booking not found', status: 404 });
+
+    const booking = rows[0];
+    const details = safeJsonParse(booking.details, {});
+    const gdsPnr = details.gdsPnr || null;
+    const outbound = details.outbound || {};
+
+    if (!gdsPnr) {
+      return res.status(400).json({ message: 'No GDS PNR available for this booking — ancillary add-ons require a valid PNR', status: 400 });
+    }
+
+    // Use Sabre SOAP GetAncillaryOffersRQ (requires valid PNR in stateful session)
+    const flightSource = outbound.source || '';
+    let meals = [];
+    let baggage = [];
+    let source = 'none';
+
+    if (flightSource === 'sabre' || outbound._sabreSource) {
+      try {
+        const sabreSoap = require('./sabre-soap');
+        const ancillaryResult = await sabreSoap.getAncillaryOffers({
+          pnr: gdsPnr,
+          airlineCode: outbound.airlineCode || '',
+          origin: outbound.origin || '',
+          destination: outbound.destination || '',
+        });
+
+        if (ancillaryResult && !ancillaryResult._error) {
+          source = 'sabre-gao';
+          if (ancillaryResult.meals) {
+            meals = ancillaryResult.meals.map(m => ({
+              id: m.id || m.code, code: m.code, name: m.name, price: m.price || 0,
+              description: m.description || '', category: m.category || 'meal', currency: m.currency || 'BDT',
+            }));
+          }
+          if (ancillaryResult.baggage) {
+            baggage = ancillaryResult.baggage.map(b => ({
+              id: b.id || b.code, code: b.code, name: b.name, price: b.price || 0,
+              description: b.description || '', weight: b.weight || '', currency: b.currency || 'BDT',
+            }));
+          }
+        }
+      } catch (err) {
+        console.error(`[PostBooking Ancillaries] Sabre GAO error for PNR ${gdsPnr}:`, err.message);
+      }
+    }
+
+    res.json({
+      pnr: gdsPnr,
+      source,
+      meals,
+      baggage,
+      available: meals.length > 0 || baggage.length > 0,
+      bookingId: req.params.id,
+    });
+  } catch (err) {
+    console.error('Post-booking ancillaries error:', err);
+    res.status(500).json({ message: 'Something went wrong', status: 500 });
+  }
 });
 
 module.exports = router;

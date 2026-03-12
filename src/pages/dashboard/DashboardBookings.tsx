@@ -577,9 +577,15 @@ const DashboardBookings = () => {
                               });
                               toast({ title: "Downloaded", description: `E-Ticket PDF saved` });
                             }}><FileText className="w-4 h-4 mr-2" /> Download E-Ticket</DropdownMenuItem>
-                            {(booking.status === "Confirmed" || booking.status === "confirmed") && (<>
+                            {(booking.status === "Confirmed" || booking.status === "confirmed" || booking.status === "Ticketed" || booking.status === "ticketed") && (<>
                               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); toast({ title: "Request Submitted", description: "Reissue request submitted." }); }}><RotateCcw className="w-4 h-4 mr-2" /> Request Reissue</DropdownMenuItem>
                               <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); toast({ title: "Request Submitted", description: "Refund request submitted." }); }}><XCircle className="w-4 h-4 mr-2" /> Request Refund</DropdownMenuItem>
+                              {booking.pnr && booking.pnr !== "—" && booking.type === "flight" && (
+                                <DropdownMenuItem onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  navigate(`/dashboard/bookings/${booking.rawId}/extras`);
+                                }}><Package className="w-4 h-4 mr-2" /> Buy Extras (Meals/Baggage)</DropdownMenuItem>
+                              )}
                             </>)}
                             {(booking.status === "On Hold" || booking.status === "on_hold") && (
                               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePayNow(booking); }}>
