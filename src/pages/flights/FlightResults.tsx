@@ -510,8 +510,10 @@ const FlightCard = ({
   const duration = flight.duration || "";
   const stops = flight.stops ?? 0;
   const price = flight.price ?? 0;
-  const baseFare = flight.baseFare ?? price;
   const taxes = flight.taxes ?? 0;
+  // CRITICAL: baseFare from API may be in foreign currency (e.g. USD from Sabre).
+  // Always derive baseFare in BDT as (price - taxes) to ensure the breakdown sums correctly.
+  const baseFare = Math.max(0, Math.round(price - taxes));
   const refundable = flight.refundable ?? false;
   const fareType = flight.fareType || (refundable ? "Refundable" : "Non-Refundable");
   const nextDay = isNextDay(flight.departureTime, flight.arrivalTime);
