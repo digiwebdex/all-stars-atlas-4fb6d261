@@ -1183,9 +1183,9 @@ const FlightCard = ({
     <Card className={`overflow-hidden transition-all border ${isSelected ? "border-accent ring-2 ring-accent/20 shadow-lg" : isExpanded ? "border-accent/30 shadow-md" : "border-border hover:shadow-md"}`}>
       <CardContent className="p-0">
         {/* ── Main card row ── */}
-        <div className="flex flex-col sm:flex-row">
+        <div className="flex flex-col sm:flex-row min-w-0">
           {/* Airline section */}
-          <div className="flex items-center gap-3 p-3 sm:p-5 sm:w-44 shrink-0 border-b sm:border-b-0 sm:border-r border-border/50">
+          <div className="flex items-center gap-3 p-3 sm:p-4 sm:w-36 lg:w-44 shrink-0 border-b sm:border-b-0 sm:border-r border-border/50">
             <div className="flex flex-col items-center gap-1 shrink-0">
               {logo ? (
                 <img src={logo} alt={flight.airline} className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
@@ -1196,9 +1196,9 @@ const FlightCard = ({
                 </div>
               )}
             </div>
-            <div>
-              <p className="text-xs sm:text-sm font-bold leading-tight">{flight.airline}</p>
-              <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5">{flightNo}</p>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm font-bold leading-tight truncate">{flight.airline}</p>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">{flightNo}</p>
               {availableSeats !== null && availableSeats <= 9 && (
                 <p className="text-[10px] sm:text-[11px] font-bold text-orange-500 mt-0.5">{availableSeats} Seat{availableSeats !== 1 ? "s" : ""} Left</p>
               )}
