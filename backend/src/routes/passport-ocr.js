@@ -1259,7 +1259,7 @@ function parseTD2(mrzLines, r, verified) {
     verified.passportNumber = verifyMRZField(ppField, ppCheck);
 
     // Nationality at pos 10-12
-    const nat = line2.substring(10, 13).replace(/</g, '');
+    const nat = correctMRZCountryCode(line2.substring(10, 13).replace(/</g, ''));
     if (nat) r.nationality = nat;
 
     const dobField = line2.substring(13, 19);
