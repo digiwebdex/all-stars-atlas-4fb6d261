@@ -175,6 +175,76 @@ const FlightBooking = () => {
   const [selectedMeal, setSelectedMeal] = useState("");
   const [selectedBaggage, setSelectedBaggage] = useState<string[]>([]);
 
+  // ── Special Services (SSR) — sent to GDS for all airlines ──
+  const MEAL_CODES = [
+    { code: "none", label: "No Preference", icon: "🍽️" },
+    { code: "AVML", label: "Asian Vegetarian", icon: "🥗" },
+    { code: "VGML", label: "Vegetarian (Lacto-Ovo)", icon: "🥬" },
+    { code: "MOML", label: "Muslim / Halal", icon: "🍖" },
+    { code: "KSML", label: "Kosher", icon: "✡️" },
+    { code: "DBML", label: "Diabetic", icon: "💊" },
+    { code: "CHML", label: "Child Meal", icon: "🧒" },
+    { code: "BBML", label: "Baby Meal", icon: "👶" },
+    { code: "GFML", label: "Gluten-Free", icon: "🌾" },
+    { code: "LFML", label: "Low Fat", icon: "🥗" },
+    { code: "LCML", label: "Low Calorie", icon: "🍃" },
+    { code: "NLML", label: "Low Salt", icon: "🧂" },
+    { code: "SFML", label: "Seafood", icon: "🦐" },
+    { code: "FPML", label: "Fruit Platter", icon: "🍎" },
+    { code: "RVML", label: "Raw Vegetarian", icon: "🥒" },
+    { code: "SPML", label: "Special (Notify Airline)", icon: "⭐" },
+  ];
+  const WHEELCHAIR_OPTIONS = [
+    { code: "none", label: "No assistance needed" },
+    { code: "WCHR", label: "Wheelchair to aircraft door (can climb stairs)" },
+    { code: "WCHS", label: "Wheelchair to seat (cannot climb stairs)" },
+    { code: "WCHC", label: "Wheelchair — fully immobile (carried to seat)" },
+  ];
+
+  interface PaxSpecialServices {
+    meal: string;
+    wheelchair: string;
+    medical: boolean;
+    medicalDetails: string;
+    blind: boolean;
+    deaf: boolean;
+    unaccompaniedMinor: boolean;
+    umnrAge: string;
+    pet: string;
+    petDetails: string;
+    frequentFlyer: { airline: string; number: string };
+    specialRequest: string;
+    destinationAddress: string;
+  }
+
+  const emptySSR = (): PaxSpecialServices => ({
+    meal: "none", wheelchair: "none", medical: false, medicalDetails: "",
+    blind: false, deaf: false, unaccompaniedMinor: false, umnrAge: "",
+    pet: "none", petDetails: "", frequentFlyer: { airline: "", number: "" },
+    specialRequest: "", destinationAddress: "",
+  });
+
+  const [paxSpecialServices, setPaxSpecialServices] = useState<PaxSpecialServices[]>(() => paxTypes.map(() => emptySSR()));
+  const [ssrExpanded, setSsrExpanded] = useState<number | null>(null);
+
+  const updatePaxSSR = (pi: number, field: string, value: any) => {
+    setPaxSpecialServices(prev => {
+      const updated = [...prev];
+      if (field.includes('.')) {
+        const [parent, child] = field.split('.');
+        (updated[pi] as any)[parent] = { ...(updated[pi] as any)[parent], [child]: value };
+      } else {
+        (updated[pi] as any)[field] = value;
+      }
+      return updated;
+    });
+  };
+
+  const hasAnySSR = paxSpecialServices.some(s =>
+    s.meal !== "none" || s.wheelchair !== "none" || s.medical || s.blind || s.deaf ||
+    s.unaccompaniedMinor || s.pet !== "none" || s.frequentFlyer.number || s.specialRequest.trim()
+  );
+
   // Ancillary data from real API ONLY — no fake fallbacks
   const [mealOptions, setMealOptions] = useState<{ id: string; name: string; price: number; desc: string; icon?: string }[]>([]);
   const [baggageOptions, setBaggageOptions] = useState<{ id: string; name: string; price: number; desc: string; icon?: string }[]>([]);
