@@ -347,8 +347,8 @@ const BookingDetailDialog = ({ booking, onClose, onPayNow }: { booking: any; onC
           <Separator />
           <div className="flex flex-wrap gap-3">
             {(booking.status === "on_hold" || booking.status === "On Hold") && (
-              <Button className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold" onClick={() => { window.location.href = "/dashboard/payments"; }}>
-                <CreditCard className="w-4 h-4 mr-1.5" /> Pay Now
+              <Button className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold" onClick={() => onPayNow(booking)}>
+                <CreditCard className="w-4 h-4 mr-1.5" /> {!booking.isDomestic ? "Upload Docs & Pay" : "Pay Now"}
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={() => {
