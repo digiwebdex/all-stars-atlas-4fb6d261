@@ -355,6 +355,38 @@ const FlightBooking = () => {
     fetchAncillaries();
   }, [outboundFlight]);
 
+  // ── Fetch seat map from API ──
+  useEffect(() => {
+    if (!outboundFlight) return;
+    const fetchSeatMap = async () => {
+      setSeatMapLoading(true);
+      try {
+        const params: Record<string, string> = {
+          airlineCode: outboundFlight.airlineCode || "",
+          origin: outboundFlight.origin || "",
+          destination: outboundFlight.destination || "",
+          aircraft: outboundFlight.aircraft || "A320",
+          cabinClass: outboundFlight.cabinClass || searchCabin || "Economy",
+        };
+        if (outboundFlight.flightNumber) params.flightNumber = String(outboundFlight.flightNumber).replace(/^[A-Z]{2}/i, '');
+        if (outboundFlight.departureTime) {
+          const dt = new Date(outboundFlight.departureTime);
+          if (!isNaN(dt.getTime())) params.departureDate = dt.toISOString().split('T')[0];
+        }
+        if (outboundFlight._ttiItineraryRef) params.itineraryRef = outboundFlight._ttiItineraryRef;
+        const data = await api.get<any>("/flights/seat-map", params);
+        if (data) {
+          setSeatMapData(data);
+          setSeatMapSource(data.source || "generated");
+        }
+      } catch {
+        setSeatMapSource("generated");
+      } finally {
+        setSeatMapLoading(false);
+      }
+    };
+    fetchSeatMap();
+
   const mealCost = mealOptions.find(m => m.id === selectedMeal)?.price || 0;
   const baggageCost = selectedBaggage.reduce((sum, id) => sum + (baggageOptions.find(b => b.id === id)?.price || 0), 0);
   const addOnTotal = (mealCost + baggageCost) * totalPaxCount;
