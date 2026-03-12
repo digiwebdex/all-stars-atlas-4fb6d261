@@ -531,10 +531,6 @@ const FlightBooking = () => {
   const mealCost = mealOptions.find(m => m.id === selectedMeal)?.price || 0;
   const baggageCost = selectedBaggage.reduce((sum, id) => sum + (baggageOptions.find(b => b.id === id)?.price || 0), 0);
   const addOnTotal = (mealCost + baggageCost) * totalPaxCount + totalSeatCost;
-  // Multi-city flights support
-  const multiCityFlights: any[] = locationState?.multiCityFlights || [];
-  const isMultiCity = multiCityFlights.length >= 2;
-
   const outboundPrice = outboundFlight?.price || 0;
   const returnPrice = returnFlight?.price || 0;
 
