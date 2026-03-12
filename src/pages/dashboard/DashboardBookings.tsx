@@ -103,7 +103,7 @@ function fmtDate(dt?: string) { if (!dt) return "—"; try { const d = new Date(
 function getAirlineLogo(code?: string): string | null { return code ? `https://images.kiwi.com/airlines/64/${code}.png` : null; }
 
 /* ─── Booking Detail Dialog (Inno Travel Tech Design) ─── */
-const BookingDetailDialog = ({ booking, onClose }: { booking: any; onClose: () => void }) => {
+const BookingDetailDialog = ({ booking, onClose, onPayNow }: { booking: any; onClose: () => void; onPayNow: (booking: any) => void }) => {
   const [activeTab, setActiveTab] = useState("itinerary");
   const { toast } = useToast();
   if (!booking) return null;
