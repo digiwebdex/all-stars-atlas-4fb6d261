@@ -514,7 +514,7 @@ function resolvePaymentDeadline(airlineTimeLimit, departureTime, isDomestic) {
 // POST /flights/book
 router.post('/book', authenticate, async (req, res) => {
   try {
-    const { flightData, returnFlightData, passengers, isRoundTrip, isDomestic, payLater, paymentMethod, totalAmount, baseFare, taxes, serviceCharge, addOns, contactInfo, travelDocuments } = req.body;
+    const { flightData, returnFlightData, passengers, isRoundTrip, isDomestic, payLater, paymentMethod, totalAmount, baseFare, taxes, serviceCharge, addOns, contactInfo, travelDocuments, specialServices } = req.body;
     const bookingId = uuidv4();
     const bookingRef = `ST-FL-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${String(Math.floor(Math.random()*999)).padStart(3,'0')}`;
 
