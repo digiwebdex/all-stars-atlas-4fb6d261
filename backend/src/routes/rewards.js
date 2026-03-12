@@ -73,7 +73,7 @@ router.get('/coupons', authenticate, async (req, res) => {
 });
 
 // ── POST /rewards/redeem — Generate a coupon from points ──
-router.post('/redeem', authenticateToken, async (req, res) => {
+router.post('/redeem', authenticate, async (req, res) => {
   const { points } = req.body;
   if (!points || points <= 0) return res.status(400).json({ message: 'Invalid points amount' });
 
