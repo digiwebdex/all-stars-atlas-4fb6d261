@@ -1272,20 +1272,26 @@ async function createBooking({ flightData, passengers, contactInfo, specialServi
         // Sabre ExpirationDate schema requires YYYY-MM-DD format
         let expiryFormatted = '';
         if (passportExpiry) {
-          const raw = String(passportExpiry).trim();
+          const raw = String(passportExpiry).replace(/['"]/g, '').trim();
+          console.log(`[Sabre] DOCS ExpirationDate raw='${raw}' for pax ${i + 1}`);
           // Already YYYY-MM-DD
           if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
             expiryFormatted = raw;
           // YYYYMMDD → YYYY-MM-DD
           } else if (/^\d{8}$/.test(raw)) {
             expiryFormatted = `${raw.slice(0,4)}-${raw.slice(4,6)}-${raw.slice(6,8)}`;
-          // Any other format with dashes/slashes — try to normalize
+          // DD/MM/YYYY or MM/DD/YYYY
+          } else if (/^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/.test(raw)) {
+            const parts = raw.split(/[\/\-]/);
+            expiryFormatted = `${parts[2]}-${parts[1]}-${parts[0]}`;
+          // Any other — try Date parse
           } else {
             const d = new Date(raw);
             if (!isNaN(d.getTime())) {
               expiryFormatted = d.toISOString().slice(0, 10);
             }
           }
+          console.log(`[Sabre] DOCS ExpirationDate formatted='${expiryFormatted}'`);
         }
         const nationality = docCountry;
 
