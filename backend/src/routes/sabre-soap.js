@@ -224,33 +224,73 @@ async function getSeatMap(params) {
  * @returns {Object|null} parsed ancillary offers or null
  */
 async function getAncillaryOffers(params) {
+  // GAO requires PNR context — reject early if no PNR
+  if (!params.pnr) {
+    console.log('[Sabre SOAP] GAO skipped: no PNR provided (use BFM data for pre-booking)');
+    return { _error: true, message: 'GetAncillaryOffersRQ requires PNR (post-booking only)' };
+  }
+
   const config = await getSabreConfig();
   if (!config) return null;
 
   const { token, conversationId } = await createSession(config);
   const soapUrl = getSoapEndpoint(config);
 
-  const cabinCodeMap = { 'Economy': 'Y', 'Premium Economy': 'S', 'Business': 'C', 'First': 'F' };
-  const cabinCode = cabinCodeMap[params.cabinClass] || 'Y';
-  const bookingCode = cabinCode;
+  // With PNR: use stateful mode — Sabre retrieves PNR in session context
+  // First retrieve the PNR into the session, then query ancillaries
+  console.log(`[Sabre SOAP] GAO: Retrieving PNR ${params.pnr} for ancillary query`);
 
-  // Build passenger types (with namespace prefix)
-  const paxTypes = [];
-  const adtCount = params.adults || 1;
-  for (let i = 0; i < adtCount; i++) {
-    paxTypes.push(`<ns13:PassengerInfo><ns13:Type>ADT</ns13:Type><ns13:NameNumber>${i + 1}.1</ns13:NameNumber></ns13:PassengerInfo>`);
-  }
-  if (params.children) {
-    for (let i = 0; i < params.children; i++) {
-      paxTypes.push(`<ns13:PassengerInfo><ns13:Type>CNN</ns13:Type><ns13:NameNumber>${adtCount + i + 1}.1</ns13:NameNumber></ns13:PassengerInfo>`);
+  // Step 1: Retrieve PNR into session (TravelItineraryReadRQ or GetReservationRQ)
+  const retrieveEnvelope = `<?xml version="1.0" encoding="UTF-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
+  xmlns:eb="http://www.ebxml.org/namespaces/messageHeader">
+  <SOAP-ENV:Header>
+    <eb:MessageHeader SOAP-ENV:mustUnderstand="1" eb:version="1.0">
+      <eb:From><eb:PartyId>Agency</eb:PartyId></eb:From>
+      <eb:To><eb:PartyId>Sabre_API</eb:PartyId></eb:To>
+      <eb:CPAId>${config.pcc}</eb:CPAId>
+      <eb:ConversationId>${conversationId}</eb:ConversationId>
+      <eb:Service>TravelItineraryReadRQ</eb:Service>
+      <eb:Action>TravelItineraryReadRQ</eb:Action>
+    </eb:MessageHeader>
+    <wsse:Security xmlns:wsse="http://schemas.xmlsoap.org/ws/2002/12/secext">
+      <wsse:BinarySecurityToken>${token}</wsse:BinarySecurityToken>
+    </wsse:Security>
+  </SOAP-ENV:Header>
+  <SOAP-ENV:Body>
+    <TravelItineraryReadRQ xmlns="http://services.sabre.com/res/tir/v3_10" Version="3.10.0">
+      <MessagingDetails>
+        <SubjectAreas>
+          <SubjectArea>FULL</SubjectArea>
+        </SubjectAreas>
+      </MessagingDetails>
+      <UniqueID ID="${params.pnr}"/>
+    </TravelItineraryReadRQ>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>`;
+
+  try {
+    const retrieveRes = await fetch(soapUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': 'TravelItineraryReadRQ' },
+      body: retrieveEnvelope,
+      signal: AbortSignal.timeout(15000),
+    });
+    const retrieveXml = await retrieveRes.text();
+    if (retrieveXml.includes('faultstring') || retrieveXml.includes('ErrorRS')) {
+      const errMatch = retrieveXml.match(/faultstring>([^<]+)/) || retrieveXml.match(/Message[^>]*>([^<]+)/);
+      console.log(`[Sabre SOAP] PNR retrieval failed: ${errMatch ? errMatch[1] : 'unknown'}`);
+      return { _error: true, message: `PNR retrieval failed: ${errMatch ? errMatch[1] : 'unknown'}`, rawXml: retrieveXml.substring(0, 3000) };
     }
+    console.log(`[Sabre SOAP] PNR ${params.pnr} retrieved into session`);
+  } catch (err) {
+    return { _error: true, message: `PNR retrieval error: ${err.message}` };
   }
 
+  // Step 2: Now call GAO in stateful mode (PNR is in session context)
   const envelope = `<?xml version="1.0" encoding="UTF-8"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
-  xmlns:eb="http://www.ebxml.org/namespaces/messageHeader"
-  xmlns:xlink="http://www.w3.org/1999/xlink"
-  xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  xmlns:eb="http://www.ebxml.org/namespaces/messageHeader">
   <SOAP-ENV:Header>
     <eb:MessageHeader SOAP-ENV:mustUnderstand="1" eb:version="1.0">
       <eb:From><eb:PartyId>Agency</eb:PartyId></eb:From>
@@ -267,26 +307,9 @@ async function getAncillaryOffers(params) {
   <SOAP-ENV:Body>
     <ns9:GetAncillaryOffersRQ
       xmlns:ns9="http://services.sabre.com/merch/ancillary/offer/v03"
-      xmlns:ns10="http://services.sabre.com/merch/ancillary/v03"
-      xmlns:ns11="http://services.sabre.com/merch/common/v03"
-      xmlns:ns13="http://services.sabre.com/merch/passenger/v03"
-      xmlns:ns14="http://services.sabre.com/merch/itinerary/v03"
-      xmlns:ns16="http://services.sabre.com/merch/flight/v03"
       version="3.0.0">
-      <ns9:RequestType>payload</ns9:RequestType>
-      <ns9:RequestMode>booking</ns9:RequestMode>
+      <ns9:RequestType>stateful</ns9:RequestType>
       <ns9:SummaryOnly>false</ns9:SummaryOnly>
-      <ns9:QueryByItinerary>
-        <ns14:Itinerary>
-          <ns14:FlightSegment origin="${params.origin}" destination="${params.destination}" departureDate="${params.departureDate}"${params.departureTime ? ` departureTime="${params.departureTime}"` : ''} sequence="1">
-            <ns16:Marketing carrier="${params.marketingCarrier}">${params.flightNumber}</ns16:Marketing>
-            <ns16:Operating carrier="${params.operatingCarrier || params.marketingCarrier}">${params.flightNumber}</ns16:Operating>
-            <ns14:BookingCode>${bookingCode}</ns14:BookingCode>
-            <ns14:CabinCode>${cabinCode}</ns14:CabinCode>
-          </ns14:FlightSegment>
-        </ns14:Itinerary>
-        ${paxTypes.join('\n        ')}
-      </ns9:QueryByItinerary>
     </ns9:GetAncillaryOffersRQ>
   </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>`;
