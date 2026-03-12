@@ -1290,10 +1290,18 @@ const FlightBooking = () => {
                 {/* ── SEAT SELECTION ── */}
                 <Card>
                   <CardHeader className="bg-accent/5 border-b border-border">
-                    <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-                      <Armchair className="w-5 h-5 text-accent" /> Select Your Seats
-                    </CardTitle>
-                    <p className="text-xs text-muted-foreground mt-1">Choose preferred seats for each passenger. Seat assignments are subject to airline confirmation.</p>
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                        <Armchair className="w-5 h-5 text-accent" /> Select Your Seats
+                      </CardTitle>
+                      <AirlineSupportDialog
+                        airline={outboundFlight?.airline} airlineCode={outboundFlight?.airlineCode}
+                        hasBaggage={!!outboundFlight?.baggage} hasHandBaggage={!!outboundFlight?.handBaggage}
+                        hasSeatMap={seatMapData?.available === true} hasExtras={ancillarySource !== "none"}
+                        seatMapSource={seatMapSource} ancillarySource={ancillarySource}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Choose preferred seats for each passenger. Seat assignments are subject to airline confirmation. Seat prices are per passenger per segment.</p>
                   </CardHeader>
                   <CardContent className="p-3 sm:p-5">
                     <SeatMap
