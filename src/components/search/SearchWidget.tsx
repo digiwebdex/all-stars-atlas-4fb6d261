@@ -290,12 +290,22 @@ const SearchWidget = () => {
   const internationalAirports = useMemo(() => AIRPORTS.filter(a => a.country !== "BD"), []);
 
   // Domestic: both FROM and TO must be BD airports
-  // International: FROM is BD, TO is international (or vice versa)
+  // International: at least one airport must be outside BD — filter dropdown accordingly
   const scopedFromAirports = flightScope === "domestic" ? domesticAirports : AIRPORTS;
-  const scopedToAirports = flightScope === "domestic" ? domesticAirports : AIRPORTS;
+  const scopedToAirports = useMemo(() => {
+    if (flightScope === "domestic") return domesticAirports;
+    // International: if FROM is BD, only show non-BD destinations (and vice versa)
+    if (fromAirport?.country === "BD") return internationalAirports;
+    return AIRPORTS; // FROM is international, so TO can be anything (including BD)
+  }, [flightScope, fromAirport, domesticAirports, internationalAirports]);
 
   // Filter multi-city airports based on scope
-  const scopedMultiCityAirports = flightScope === "domestic" ? domesticAirports : AIRPORTS;
+  const scopedMultiCityFromAirports = flightScope === "domestic" ? domesticAirports : AIRPORTS;
+  const getMultiCityToAirports = useCallback((fromSegment: typeof AIRPORTS[0] | null) => {
+    if (flightScope === "domestic") return domesticAirports;
+    if (fromSegment?.country === "BD") return internationalAirports;
+    return AIRPORTS;
+  }, [flightScope, domesticAirports, internationalAirports]);
 
   // When switching scope, reset airports that don't match
   useEffect(() => {
@@ -629,11 +639,11 @@ const SearchWidget = () => {
             {multiCitySegments.map((segment, index) => (
               <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-0 border border-border rounded-2xl bg-background shadow-sm relative">
                 <div className="md:col-span-4 search-field border-b md:border-b-0 flex-col items-start">
-                  <AirportInput label={`From (Flight ${index + 1})`} value={segment.from} onChange={(a) => updateSegment(index, 'from', a)} placeholder="Type city or airport..." airports={scopedMultiCityAirports} />
+                  <AirportInput label={`From (Flight ${index + 1})`} value={segment.from} onChange={(a) => updateSegment(index, 'from', a)} placeholder="Type city or airport..." airports={scopedMultiCityFromAirports} />
                 </div>
 
                 <div className="md:col-span-4 search-field border-b md:border-b-0 flex-col items-start">
-                  <AirportInput label={`To (Flight ${index + 1})`} value={segment.to} onChange={(a) => updateSegment(index, 'to', a)} placeholder="Where to?" airports={scopedMultiCityAirports} />
+                  <AirportInput label={`To (Flight ${index + 1})`} value={segment.to} onChange={(a) => updateSegment(index, 'to', a)} placeholder="Where to?" airports={getMultiCityToAirports(segment.from)} />
                 </div>
 
                 <div className="md:col-span-3 search-field border-b md:border-b-0 flex-col items-start">
