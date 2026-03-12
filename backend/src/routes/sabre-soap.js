@@ -164,20 +164,19 @@ async function getSeatMap(params) {
     </Security>
   </SOAP-ENV:Header>
   <SOAP-ENV:Body>
-    <EnhancedSeatMapRQ xmlns="http://stl-ip.transportation.sabre.com/ssp/EnhancedSeatMapTransaction" version="6.0.0">
+    <EnhancedSeatMapRQ xmlns="http://stl.sabre.com/Merchandising/v6" version="6">
       <SeatMapQueryEnhanced>
         <RequestType>Payload</RequestType>
-        <Flight>
-          <HaulType>${haulType}</HaulType>
-          <origin>${params.origin}</origin>
-          <destination>${params.destination}</destination>
+        <Flight origin="${params.origin}" destination="${params.destination}">
           <DepartureDate>${params.departureDate}</DepartureDate>
-          <Marketing carrier="${params.marketingCarrier}" FlightNumber="${params.flightNumber}"/>
-          <Operating carrier="${params.operatingCarrier || params.marketingCarrier}" FlightNumber="${params.flightNumber}"/>
+          <Marketing carrier="${params.marketingCarrier}">${params.flightNumber}</Marketing>
         </Flight>
         <CabinDefinition>
           <RBD>${rbd}</RBD>
         </CabinDefinition>
+        <POS>
+          <PCC>${config.pcc}</PCC>
+        </POS>
       </SeatMapQueryEnhanced>
     </EnhancedSeatMapRQ>
   </SOAP-ENV:Body>
