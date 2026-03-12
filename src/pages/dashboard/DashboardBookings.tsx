@@ -585,6 +585,7 @@ const DashboardBookings = () => {
                               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePayNow(booking); }}>
                                 <CreditCard className="w-4 h-4 mr-2" /> {!booking.isDomestic && booking.type === "flight" ? "Upload Docs & Pay" : "Pay Now"}
                               </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
