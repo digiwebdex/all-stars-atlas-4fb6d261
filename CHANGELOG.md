@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [3.8.0] — 2026-03-12 — Animated Flight Timeline
+
+### Enhanced
+- **Flight timeline airplane animation**: Compact card now shows a glowing teal plane gliding along a gradient dashed track with accent-themed origin/destination dots and ring indicators
+- **Expanded detail arc animation**: Plane traces the curved arc path with pulsing origin/destination dots, soft glow trail, and animated dashed stroke using SVG gradients
+- **CSS keyframe `flight-dash`**: Smooth infinite scrolling dash pattern on the compact flight track
+
+---
+
 ## [3.7.9] — 2026-03-12 — Branded Fares & Dedup Fix
 
 ### Added

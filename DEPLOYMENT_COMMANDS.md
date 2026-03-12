@@ -1,7 +1,7 @@
 # Seven Trip — Working Deployment Commands
 
 > **Auto-updated** with every change. Copy-paste ready commands for your VPS.
-> Last updated: 2026-03-12 (v3.7.9 — Branded fares from Sabre, round-trip dedup fix)
+> Last updated: 2026-03-12 (v3.8.0 — Animated flight timeline with themed airplane)
 
 ---
 
@@ -112,6 +112,7 @@ pm2 logs seventrip-api --lines 30
 
 | Date | Change | Deploy Command |
 |------|--------|----------------|
+| 2026-03-12 | Animated flight timeline: glowing teal plane on gradient dashed track, pulsing dots, arc animation with SVG gradients | Frontend Only |
 | 2026-03-12 | Branded fares: Sabre BFM extracts brand names (Economy Light/Smart), per-brand baggage/policies; dedup fix for round-trip combos | Standard Deployment |
 | 2026-03-12 | Round-trip dedup fix: key now includes all leg flight numbers/times/direction — preserves all outbound+return combinations | Backend Only |
 | 2026-03-12 | BDFare normalizer rewrite: match actual API v2 structure, carrier filter fix, cabin class accuracy from all providers | Standard Deployment |
