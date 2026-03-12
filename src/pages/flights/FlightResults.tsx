@@ -744,12 +744,29 @@ const LegMini = ({ flight, label, labelColor }: { flight: any; label: string; la
         {/* Duration bar */}
         <div className="flex-1 flex flex-col items-center gap-0.5 min-w-[40px]">
           <div className="w-full flex items-center">
-            <div className="w-1 h-1 rounded-full bg-muted-foreground" />
-            <div className="flex-1 h-[1px] bg-border relative">
-              <Plane className="w-3 h-3 text-muted-foreground absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+            <div className="w-1.5 h-1.5 rounded-full bg-accent/70 ring-2 ring-accent/20" />
+            <div className="flex-1 h-[1.5px] relative overflow-visible">
+              {/* Gradient track */}
+              <div className="absolute inset-0 bg-gradient-to-r from-accent/40 via-accent/20 to-accent/40 rounded-full" />
+              {/* Animated dashed overlay */}
+              <div className="absolute inset-0 rounded-full" style={{
+                backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 4px, hsl(var(--accent) / 0.3) 4px, hsl(var(--accent) / 0.3) 8px)',
+                animation: 'flight-dash 12s linear infinite',
+              }} />
+              {/* Animated plane */}
+              <motion.div
+                className="absolute top-1/2 -translate-y-1/2 z-10"
+                animate={{ left: ['15%', '85%'] }}
+                transition={{ duration: 4, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
+              >
+                <div className="relative">
+                  <div className="absolute -inset-1.5 bg-accent/15 rounded-full blur-sm" />
+                  <Plane className="w-3.5 h-3.5 text-accent drop-shadow-sm" style={{ filter: 'drop-shadow(0 0 3px hsl(var(--accent) / 0.4))' }} />
+                </div>
+              </motion.div>
               <StopDotsWithTooltip flight={flight} stops={stops} />
             </div>
-            <div className="w-1 h-1 rounded-full bg-muted-foreground" />
+            <div className="w-1.5 h-1.5 rounded-full bg-accent/70 ring-2 ring-accent/20" />
           </div>
           <p className="text-[9px] sm:text-[10px] text-muted-foreground">{duration}</p>
           <p className={`text-[9px] sm:text-[10px] font-semibold ${stops === 0 ? "text-foreground" : "text-warning"}`}>{stopsLabel}</p>
@@ -1005,13 +1022,46 @@ const RoundTripFlightCard = ({
                                       <p className="text-[11px] text-muted-foreground mt-1">{getAirportName(segment.origin || leg.origin)} ({segment.origin || leg.origin})</p>
                                     </div>
                                     <div className="flex-1 flex flex-col items-center justify-center pt-1 px-4">
-                                      <div className="w-full relative h-10">
-                                        <svg className="w-full h-full" viewBox="0 0 200 40" preserveAspectRatio="none">
-                                          <path d="M 8 34 Q 100 2 192 34" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-muted-foreground/40" strokeDasharray="5 4" />
-                                          <circle cx="8" cy="34" r="3" className="fill-muted-foreground/60" />
-                                          <circle cx="192" cy="34" r="3" className="fill-muted-foreground/60" />
+                                      <div className="w-full relative h-12">
+                                        <svg className="w-full h-full" viewBox="0 0 200 44" preserveAspectRatio="none">
+                                          <defs>
+                                            <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                              <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity="0.4" />
+                                              <stop offset="50%" stopColor="hsl(var(--accent))" stopOpacity="1" />
+                                              <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity="0.4" />
+                                            </linearGradient>
+                                          </defs>
+                                          {/* Glow */}
+                                          <path d="M 8 38 Q 100 4 192 38" fill="none" stroke="hsl(var(--accent))" strokeWidth="3" opacity="0.1" />
+                                          {/* Animated dashed arc */}
+                                          <path d="M 8 38 Q 100 4 192 38" fill="none" stroke="url(#arcGrad)" strokeWidth="1.5" strokeDasharray="6 4">
+                                            <animate attributeName="stroke-dashoffset" values="0;-20" dur="3s" repeatCount="indefinite" />
+                                          </path>
+                                          {/* Origin dot with pulse */}
+                                          <circle cx="8" cy="38" r="3" className="fill-accent/70">
+                                            <animate attributeName="r" values="3;4;3" dur="2s" repeatCount="indefinite" />
+                                          </circle>
+                                          <circle cx="8" cy="38" r="6" fill="none" className="stroke-accent/20" strokeWidth="1" />
+                                          {/* Dest dot with pulse */}
+                                          <circle cx="192" cy="38" r="3" className="fill-accent/70">
+                                            <animate attributeName="r" values="3;4;3" dur="2s" repeatCount="indefinite" begin="1s" />
+                                          </circle>
+                                          <circle cx="192" cy="38" r="6" fill="none" className="stroke-accent/20" strokeWidth="1" />
                                         </svg>
-                                        <Plane className="w-3.5 h-3.5 text-muted-foreground absolute top-0.5 left-1/2 -translate-x-1/2 rotate-90" />
+                                        {/* Animated plane along arc */}
+                                        <motion.div
+                                          className="absolute z-10"
+                                          animate={{
+                                            left: ['4%', '48%', '96%'],
+                                            top: ['78%', '6%', '78%'],
+                                          }}
+                                          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse' }}
+                                        >
+                                          <div className="relative -translate-x-1/2 -translate-y-1/2">
+                                            <div className="absolute -inset-2 bg-accent/20 rounded-full blur-md" />
+                                            <Plane className="w-4 h-4 text-accent rotate-[45deg] drop-shadow-md" style={{ filter: 'drop-shadow(0 0 4px hsl(var(--accent) / 0.5))' }} />
+                                          </div>
+                                        </motion.div>
                                       </div>
                                       <p className="text-xs text-muted-foreground font-medium -mt-0.5">{segment.duration || leg.duration}</p>
                                     </div>
