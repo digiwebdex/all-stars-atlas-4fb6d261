@@ -332,7 +332,13 @@ const SearchWidget = () => {
     }
   }, [flightScope]);
 
-  // Hotel state
+  // Clear TO if it matches FROM (prevent same-airport selection)
+  useEffect(() => {
+    if (fromAirport && toAirport && fromAirport.code === toAirport.code) {
+      setToAirport(null);
+    }
+  }, [fromAirport]);
+
   const [hotelCity, setHotelCity] = useState("Cox's Bazar");
   const [checkIn, setCheckIn] = useState<Date>();
   const [checkOut, setCheckOut] = useState<Date>();
