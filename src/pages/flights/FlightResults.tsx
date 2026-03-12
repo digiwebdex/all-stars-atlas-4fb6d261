@@ -1212,7 +1212,7 @@ const FlightResults = () => {
       filtered.sort((a, b) => new Date(a.outbound.departureTime).getTime() - new Date(b.outbound.departureTime).getTime());
     }
     return filtered;
-  }, [roundTripPairs, isRoundTrip, hasDirections, selectedAirlines, priceRange, stopsFilter, departTimeRange, sortBy]);
+  }, [roundTripPairs, isRoundTrip, hasDirections, airlineFilter, selectedAirlines, priceRange, stopsFilter, departTimeRange, sortBy]);
 
   // Cabin class mismatch detection — searched for Business/First but API returned only Economy
   const searchedCabinNorm = (cabinClass || "").toLowerCase();
