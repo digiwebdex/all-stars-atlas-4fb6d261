@@ -9,8 +9,12 @@ VALUES ('api_sabre', JSON_OBJECT(
   'environment', 'cert',
   'pcc', 'J4YL',
   'epr', '631470',
-  'clientId', '5B0K-JvBdOta',
-  'clientSecret', 'Pl67azTy',
+  'cert_client_id', '5B0K-JvBdOta',
+  'cert_client_secret', 'Pl67azTy',
+  'cert_basic_auth', 'NUIwSy1KdkJkT3RhOlBsNjdhelR5',
+  'prod_client_id', '5B0K-JvBdOta',
+  'prod_client_secret', 'M1uty91x',
+  'prod_basic_auth', 'NUIwSy1KdkJkT3RhOk0xdXR5OTF4',
   'agencyPassword', '01uepwzc',
   'prodPassword', 'j3ms2a1p',
   'ptr', 'A9618A',
@@ -23,8 +27,12 @@ ON DUPLICATE KEY UPDATE
     'environment', 'cert',
     'pcc', 'J4YL',
     'epr', '631470',
-    'clientId', '5B0K-JvBdOta',
-    'clientSecret', 'Pl67azTy',
+    'cert_client_id', '5B0K-JvBdOta',
+    'cert_client_secret', 'Pl67azTy',
+    'cert_basic_auth', 'NUIwSy1KdkJkT3RhOlBsNjdhelR5',
+    'prod_client_id', '5B0K-JvBdOta',
+    'prod_client_secret', 'M1uty91x',
+    'prod_basic_auth', 'NUIwSy1KdkJkT3RhOk0xdXR5OTF4',
     'agencyPassword', '01uepwzc',
     'prodPassword', 'j3ms2a1p',
     'ptr', 'A9618A',
@@ -33,4 +41,4 @@ ON DUPLICATE KEY UPDATE
   ),
   updated_at = CURRENT_TIMESTAMP;
 
-SELECT '✅ Sabre GDS config inserted/updated' AS status;
+SELECT '✅ Sabre GDS config inserted/updated (CERT+PROD secrets separated)' AS status;

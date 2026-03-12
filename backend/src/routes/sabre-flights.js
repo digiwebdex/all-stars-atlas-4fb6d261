@@ -32,14 +32,23 @@ async function getSabreConfig() {
 
     const pick = (...vals) => vals.find(v => typeof v === 'string' && v.trim().length > 0)?.trim() || '';
 
-    // Pick env-specific credentials first to avoid cert/prod mismatch
+    // Pick env-specific client credentials (CERT and PROD have different secrets per Sabre JV_BD docs)
     const clientId = isProd
-      ? pick(cfg.clientId, cfg.prod_client_id, cfg.sandbox_client_id)
-      : pick(cfg.clientId, cfg.sandbox_client_id, cfg.prod_client_id);
+      ? pick(cfg.prod_client_id, cfg.clientId, cfg.sandbox_client_id)
+      : pick(cfg.cert_client_id, cfg.clientId, cfg.sandbox_client_id, cfg.prod_client_id);
     const clientSecret = isProd
-      ? pick(cfg.clientSecret, cfg.prod_client_secret, cfg.sandbox_client_secret)
-      : pick(cfg.clientSecret, cfg.sandbox_client_secret, cfg.prod_client_secret);
-    if (!clientId || !clientSecret) return null;
+      ? pick(cfg.prod_client_secret, cfg.clientSecret, cfg.sandbox_client_secret)
+      : pick(cfg.cert_client_secret, cfg.clientSecret, cfg.sandbox_client_secret, cfg.prod_client_secret);
+
+    // Pre-computed Basic auth from Sabre JV_BD official docs (avoids encoding issues)
+    const basicAuth = isProd
+      ? pick(cfg.prod_basic_auth)
+      : pick(cfg.cert_basic_auth);
+
+    if (!clientId || !clientSecret) {
+      console.error('[Sabre] Missing client credentials. Configure cert/prod client_id and client_secret in Admin → Settings → API Integrations → Sabre GDS');
+      return null;
+    }
 
     // EPR + password required for OAuth v3 password grant
     const epr = pick(cfg.epr);
@@ -56,6 +65,7 @@ async function getSabreConfig() {
       baseUrl: baseUrl.replace(/\/$/, ''),
       clientId,
       clientSecret,
+      basicAuth, // pre-computed base64 from Sabre docs
       pcc: cfg.pcc || cfg.scCode || '',
       epr,
       agencyPassword,
@@ -64,6 +74,7 @@ async function getSabreConfig() {
       tamPool: cfg.tamPool || '',
     };
     _configCacheTime = Date.now();
+    console.log(`[Sabre] Config loaded: env=${_configCache.environment}, PCC=${_configCache.pcc}, EPR=${_configCache.epr}, hasBasicAuth=${!!basicAuth}`);
     return _configCache;
   } catch (err) {
     console.error('[Sabre] Config load error:', err.message);
@@ -80,12 +91,18 @@ async function getAccessToken(config) {
   if (tokenCache.token && Date.now() < tokenCache.expiresAt - 60000) return tokenCache.token;
 
   try {
+    // Use pre-computed Basic auth from Sabre JV_BD official docs if available,
+    // otherwise compute from clientId:clientSecret
+    const credentials = config.basicAuth
+      ? config.basicAuth
+      : Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64');
+
     // JV_BD OAuth v3: password grant with EPR-PCC as username
-    const credentials = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64');
     const username = `${config.epr}-${config.pcc}`;
     const body = `grant_type=password&username=${encodeURIComponent(username)}&password=${encodeURIComponent(config.agencyPassword)}`;
 
-    console.log(`[Sabre] Authenticating via OAuth v3 (EPR: ${config.epr}, PCC: ${config.pcc})...`);
+    console.log(`[Sabre] Authenticating via OAuth v3 (EPR: ${config.epr}, PCC: ${config.pcc}, env: ${config.environment})`);
+    console.log(`[Sabre] URL: ${config.baseUrl}/v3/auth/token | username: ${username} | usingPrecomputedAuth: ${!!config.basicAuth}`);
 
     const res = await fetch(`${config.baseUrl}/v3/auth/token`, {
       method: 'POST',
@@ -99,7 +116,8 @@ async function getAccessToken(config) {
 
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
-      console.error('[Sabre] OAuth v3 auth failed:', res.status, errText.slice(0, 300));
+      console.error(`[Sabre] OAuth v3 auth failed: ${res.status} ${errText.slice(0, 300)}`);
+      console.error(`[Sabre] Debug: clientId=${config.clientId}, basicAuthLen=${credentials.length}, username=${username}`);
       return null;
     }
 
