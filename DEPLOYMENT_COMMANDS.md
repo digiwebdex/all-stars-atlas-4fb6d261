@@ -96,6 +96,16 @@ git pull origin main
 mysql seventrip < backend/database/reward-points-migration.sql
 ```
 
+### Express error: Route.get() requires a callback function
+Cause: rewards route imported `authenticateToken` but auth middleware exports `authenticate`.
+
+```bash
+cd ~/projects/all-stars-atlas
+git pull origin main
+cd backend && pm2 restart seventrip-api
+pm2 logs seventrip-api --lines 30
+```
+
 ---
 
 ## 📝 Change Log
