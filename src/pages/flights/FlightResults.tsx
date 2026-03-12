@@ -1545,7 +1545,12 @@ const MultiCityFlightCard = ({
             )}
           </div>
           <Button size="sm" className="font-bold h-9 px-5 rounded-full bg-accent hover:bg-accent/90 text-accent-foreground"
-            onClick={() => cardNavigate(`/flights/book?multiCity=true&adults=${cardSearchParams.get("adults") || "1"}&children=${cardSearchParams.get("children") || "0"}&infants=${cardSearchParams.get("infants") || "0"}&cabin=${cardSearchParams.get("cabin") || "economy"}`, { state: { outboundFlight: flight, multiCityFlights: [flight] } })}>
+            onClick={() => {
+              const bookingSegments = flight?.segments?.length > 0 ? flight.segments : [flight];
+              cardNavigate(`/flights/book?multiCity=true&adults=${cardSearchParams.get("adults") || "1"}&children=${cardSearchParams.get("children") || "0"}&infants=${cardSearchParams.get("infants") || "0"}&cabin=${cardSearchParams.get("cabin") || "economy"}`, {
+                state: { outboundFlight: bookingSegments[0], multiCityFlights: bookingSegments },
+              });
+            }}>
             Book Now <ArrowRight className="w-3.5 h-3.5 ml-1" />
           </Button>
         </div>
