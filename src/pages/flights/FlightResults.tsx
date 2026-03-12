@@ -1716,6 +1716,29 @@ const FlightResults = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [sortBy, setSortBy] = useState("best");
+
+  // Fetch admin markup settings for fare calculation
+  const [markupSettings, setMarkupSettings] = useState<{ discount: number; aitVat: number; airlineMarkups?: Record<string, any> }>({ discount: 6.30, aitVat: 0.3 });
+  useEffect(() => {
+    api.get<any>("/admin/settings").then(res => {
+      const settings = res?.settings || res?.data || res || {};
+      let markupConfig: any = {};
+      let airlineMarkupConfig: any = {};
+      for (const s of (Array.isArray(settings) ? settings : [])) {
+        if (s.setting_key === 'markup_config') try { markupConfig = JSON.parse(s.setting_value); } catch {}
+        if (s.setting_key === 'airline_markup_config') try { airlineMarkupConfig = JSON.parse(s.setting_value); } catch {}
+      }
+      // If settings is object with keys
+      if (settings.markup_config) try { markupConfig = typeof settings.markup_config === 'string' ? JSON.parse(settings.markup_config) : settings.markup_config; } catch {}
+      if (settings.airline_markup_config) try { airlineMarkupConfig = typeof settings.airline_markup_config === 'string' ? JSON.parse(settings.airline_markup_config) : settings.airline_markup_config; } catch {}
+      const flightConfig = markupConfig?.flight || markupConfig || {};
+      setMarkupSettings({
+        discount: flightConfig.fareSummaryDiscount ?? 6.30,
+        aitVat: flightConfig.fareSummaryAitVat ?? 0.3,
+        airlineMarkups: airlineMarkupConfig || {},
+      });
+    }).catch(() => {});
+  }, []);
   const [airlineFilter, setAirlineFilter] = useState<string | null>(null);
   const [priceRange, setPriceRange] = useState([0, 200000]);
   const [selectedAirlines, setSelectedAirlines] = useState<string[]>([]);
