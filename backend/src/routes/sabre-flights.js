@@ -389,9 +389,11 @@ function normalizeSabreResponse(raw, params) {
             for (const bi of (Array.isArray(bagInfos) ? bagInfos : [bagInfos])) {
               const allowance = bi.Allowance || {};
               if (allowance.Weight) {
-                checkedBaggage = `${allowance.Weight}${allowance.Unit || 'kg'}`;
+                checkedBaggage = `${allowance.Weight}${(allowance.Unit || 'KG').toUpperCase()}`;
               } else if (allowance.Pieces !== undefined) {
                 checkedBaggage = `${allowance.Pieces} piece${allowance.Pieces > 1 ? 's' : ''}`;
+              } else if (allowance.PieceCount !== undefined) {
+                checkedBaggage = `${allowance.PieceCount} piece${allowance.PieceCount > 1 ? 's' : ''}`;
               }
             }
           }
