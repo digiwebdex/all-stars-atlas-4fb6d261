@@ -1958,6 +1958,7 @@ const FlightResults = () => {
                     selectedLayoverAirports={selectedLayoverAirports} toggleLayoverAirport={toggleLayoverAirport}
                     layoverDurationRange={layoverDurationRange} setLayoverDurationRange={setLayoverDurationRange}
                     isRoundTrip={isRoundTrip} originCode={fromCode} destCode={toCode}
+                    selectedBaggage={selectedBaggage} toggleBaggage={toggleBaggage}
                     onReset={resetFilters}
                   />
                 </CardContent>
