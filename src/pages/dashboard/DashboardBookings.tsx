@@ -422,6 +422,7 @@ const BookingDetailDialog = ({ booking, onClose, onPayNow }: { booking: any; onC
 
 const DashboardBookings = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("All");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
