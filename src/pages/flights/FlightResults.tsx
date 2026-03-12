@@ -1257,63 +1257,67 @@ const FlightResults = () => {
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
-      <div className="bg-card border-b border-border pt-36 lg:pt-48 pb-5">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
-                <Plane className="w-5 h-5 text-accent" />
-                {isMultiCity ? (
-                  <>
-                    {multiCitySegments.map((s, i) => (
-                      <span key={i} className="flex items-center gap-1">
-                        {i > 0 && <ArrowRight className="w-4 h-4 text-muted-foreground" />}
-                        <span>{s.from}</span>
-                      </span>
-                    ))}
-                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                    <span>{multiCitySegments[multiCitySegments.length - 1]?.to || "—"}</span>
-                    <Badge className="bg-blue-500/10 text-blue-600 border-0 text-[10px] ml-2">Multi-City</Badge>
-                  </>
-                ) : (
-                  <>
-                    {fromCode || "—"} <ArrowRight className="w-5 h-5" /> {toCode || "—"}
-                    {isRoundTrip && <Badge className="bg-accent/10 text-accent border-0 text-[10px] ml-2">Round Trip</Badge>}
-                  </>
-                )}
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {isMultiCity ? (
-                  <>
-                    {multiCitySegments.map((s, i) => s.date).join(", ")} · {totalPax} Passenger(s){cabinClass ? ` · ${cabinClass.charAt(0).toUpperCase() + cabinClass.slice(1)}` : ""} · <strong className="text-foreground">{totalMultiCityFlights} flights found</strong>
-                  </>
-                ) : (
-                  <>
-                    {departDate}{returnDate ? ` – ${returnDate}` : ""} · {totalPax} Passenger(s){cabinClass ? ` · ${cabinClass.charAt(0).toUpperCase() + cabinClass.slice(1)}` : ""}
-                    {isRoundTrip && hasDirections ? (
-                      <> · <strong className="text-accent">Showing {filteredPairs.length} flights &amp; {airlines.length} Airlines</strong> <span className="text-accent">(Fares include. AIT VAT)</span></>
+      <div className="bg-card border-b border-border pt-28 sm:pt-36 lg:pt-48 pb-5">
+        <div className="container mx-auto px-3 sm:px-4">
+          <Card className="shadow-[0_4px_20px_-4px_hsl(var(--foreground)/0.08),0_1px_3px_hsl(var(--foreground)/0.06)] border-border/60">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground flex items-center gap-2 flex-wrap">
+                    <Plane className="w-5 h-5 text-accent shrink-0" />
+                    {isMultiCity ? (
+                      <>
+                        {multiCitySegments.map((s, i) => (
+                          <span key={i} className="flex items-center gap-1">
+                            {i > 0 && <ArrowRight className="w-4 h-4 text-muted-foreground" />}
+                            <span>{s.from}</span>
+                          </span>
+                        ))}
+                        <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                        <span>{multiCitySegments[multiCitySegments.length - 1]?.to || "—"}</span>
+                        <Badge className="bg-blue-500/10 text-blue-600 border-0 text-[10px] ml-1">Multi-City</Badge>
+                      </>
                     ) : (
-                      <> · <strong className="text-foreground">{flights.length} flights found</strong>
-                        {sources.tti > 0 && <span className="text-muted-foreground ml-1">({sources.tti} Air Astra)</span>}
-                        {sources.sabre > 0 && <span className="text-muted-foreground ml-1">({sources.sabre} Sabre)</span>}
-                        {sources.flyhub > 0 && <span className="text-muted-foreground ml-1">({sources.flyhub} FlyHub)</span>}
+                      <>
+                        {fromCode || "—"} <ArrowRight className="w-5 h-5" /> {toCode || "—"}
+                        {isRoundTrip && <Badge className="bg-accent/10 text-accent border-0 text-[10px] ml-1">Round Trip</Badge>}
                       </>
                     )}
-                  </>
-                )}
-              </p>
-            </div>
-            <div className="flex gap-2 items-center">
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/">Modify Search</Link>
-              </Button>
-              {cheapest > 0 && (
-                <Badge className="bg-accent/10 text-accent border-0 font-semibold h-9 px-3">
-                  From ৳{cheapest.toLocaleString()}
-                </Badge>
-              )}
-            </div>
-          </div>
+                  </h1>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
+                    {isMultiCity ? (
+                      <>
+                        {multiCitySegments.map((s) => s.date).join(", ")} · {totalPax} Passenger(s){cabinClass ? ` · ${cabinClass.charAt(0).toUpperCase() + cabinClass.slice(1)}` : ""} · <strong className="text-foreground">{totalMultiCityFlights} flights found</strong>
+                      </>
+                    ) : (
+                      <>
+                        {departDate}{returnDate ? ` – ${returnDate}` : ""} · {totalPax} Passenger(s){cabinClass ? ` · ${cabinClass.charAt(0).toUpperCase() + cabinClass.slice(1)}` : ""}
+                        {isRoundTrip && hasDirections ? (
+                          <> · <strong className="text-accent">Showing {filteredPairs.length} flights &amp; {airlines.length} Airlines</strong> <span className="text-accent">(Fares include. AIT VAT)</span></>
+                        ) : (
+                          <> · <strong className="text-foreground">{flights.length} flights found</strong>
+                            {sources.tti > 0 && <span className="text-muted-foreground ml-1">({sources.tti} Air Astra)</span>}
+                            {sources.sabre > 0 && <span className="text-muted-foreground ml-1">({sources.sabre} Sabre)</span>}
+                            {sources.flyhub > 0 && <span className="text-muted-foreground ml-1">({sources.flyhub} FlyHub)</span>}
+                          </>
+                        )}
+                      </>
+                    )}
+                  </p>
+                </div>
+                <div className="flex gap-2 items-center shrink-0">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/">Modify Search</Link>
+                  </Button>
+                  {cheapest > 0 && (
+                    <Badge className="bg-accent/10 text-accent border-0 font-semibold h-8 sm:h-9 px-3 text-xs sm:text-sm">
+                      From ৳{cheapest.toLocaleString()}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
