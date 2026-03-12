@@ -327,6 +327,55 @@ router.get('/search', async (req, res) => {
       return true;
     });
 
+    // ── Apply per-airline fare rules from admin settings ──
+    try {
+      const [settingsRows] = await db.query(
+        "SELECT meta FROM system_settings WHERE setting_key IN ('markup_config', 'airline_markup_config')"
+      );
+      let globalDiscount = 6.30;
+      let globalAitVat = 0.3;
+      let airlineOverrides = {};
+
+      for (const row of settingsRows) {
+        const parsed = typeof row.meta === 'string' ? JSON.parse(row.meta) : (row.meta || {});
+        // markup_config stores per-segment configs; FLIGHT segment has fareSummaryDiscount/fareSummaryAitVat
+        if (parsed.FLIGHT && parsed.FLIGHT.fareSummaryDiscount !== undefined) {
+          globalDiscount = parseFloat(parsed.FLIGHT.fareSummaryDiscount) || 6.30;
+          globalAitVat = parseFloat(parsed.FLIGHT.fareSummaryAitVat) || 0.3;
+        }
+        // airline_markup_config is keyed by airline IATA code
+        if (parsed && !parsed.FLIGHT && typeof parsed === 'object') {
+          airlineOverrides = parsed;
+        }
+      }
+
+      flights = flights.map(f => {
+        const code = f.airlineCode || '';
+        const override = airlineOverrides[code];
+        let discount = globalDiscount;
+        let aitVat = globalAitVat;
+        let markup = 0;
+        let fixedMarkup = 0;
+
+        if (override && !override.useGlobal) {
+          discount = parseFloat(override.discount) || 0;
+          markup = parseFloat(override.markup) || 0;
+          fixedMarkup = parseFloat(override.fixedMarkup) || 0;
+        }
+
+        // Attach fare rule params for frontend fare summary display
+        f.fareRules = { discount, aitVat, markup, fixedMarkup, isGlobal: !override || override.useGlobal };
+        return f;
+      });
+    } catch (fareRuleErr) {
+      console.error('Fare rule loading failed (using defaults):', fareRuleErr.message);
+      // Attach default rules so frontend always has them
+      flights = flights.map(f => {
+        f.fareRules = { discount: 6.30, aitVat: 0.3, markup: 0, fixedMarkup: 0, isGlobal: true };
+        return f;
+      });
+    }
+
     // Apply client-side filters
     if (priceMin) flights = flights.filter(f => f.price >= parseFloat(priceMin));
     if (priceMax) flights = flights.filter(f => f.price <= parseFloat(priceMax));
