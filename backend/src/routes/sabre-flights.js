@@ -1269,17 +1269,33 @@ async function createBooking({ flightData, passengers, contactInfo, specialServi
       const docCountry = pax.documentCountry || pax.passportCountry || 'BD';
 
       if (passportNo) {
-        const expiryFormatted = String(passportExpiry).replace(/-/g, '');
-        const nationality = docCountry; // ISO 2-letter
+        // Sabre ExpirationDate schema requires YYYY-MM-DD format
+        let expiryFormatted = '';
+        if (passportExpiry) {
+          const raw = String(passportExpiry).trim();
+          // Already YYYY-MM-DD
+          if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+            expiryFormatted = raw;
+          // YYYYMMDD → YYYY-MM-DD
+          } else if (/^\d{8}$/.test(raw)) {
+            expiryFormatted = `${raw.slice(0,4)}-${raw.slice(4,6)}-${raw.slice(6,8)}`;
+          // Any other format with dashes/slashes — try to normalize
+          } else {
+            const d = new Date(raw);
+            if (!isNaN(d.getTime())) {
+              expiryFormatted = d.toISOString().slice(0, 10);
+            }
+          }
+        }
+        const nationality = docCountry;
 
         const docPayload = {
-          Type: 'P', // Passport
+          Type: 'P',
           Number: String(passportNo).toUpperCase(),
           IssueCountry: docCountry,
           NationalityCountry: nationality,
         };
 
-        // Keep optional to avoid schema rejection on empty values
         if (expiryFormatted) docPayload.ExpirationDate = expiryFormatted;
 
         advancePassenger.push({
