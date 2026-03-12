@@ -18,6 +18,7 @@ const visaRoutes = require('./src/routes/visa');
 const { publicRouter: cmsPublicRouter, adminRouter: cmsAdminRouter } = require('./src/routes/cms');
 const { router: sslcommerzRoutes } = require('./src/routes/sslcommerz');
 const { router: bkashRoutes } = require('./src/routes/bkash');
+const rewardsRoutes = require('./src/routes/rewards');
 const { router: nagadRoutes } = require('./src/routes/nagad');
 const passportOcrRoutes = require('./src/routes/passport-ocr');
 
