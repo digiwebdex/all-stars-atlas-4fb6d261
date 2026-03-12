@@ -602,6 +602,11 @@ const FlightCard = ({
                       </button>
                     ))}
                   </div>
+                  <div className="ml-auto px-3">
+                    <button className="flex items-center gap-1 text-accent text-xs font-semibold hover:underline">
+                      <Info className="w-3 h-3" /> Fare terms &amp; policy
+                    </button>
+                  </div>
                 </div>
 
                 <div className="p-4 sm:p-5">
