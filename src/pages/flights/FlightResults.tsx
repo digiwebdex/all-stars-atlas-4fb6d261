@@ -1785,6 +1785,7 @@ const FlightResults = () => {
     setDepartTimeRange([0, 24]); setArrivalTimeRange([0, 24]); setDurationRange([minDuration, maxDuration]);
     setSelectedAlliances([]); setRefundableOnly(false); setSelectedLayoverAirports([]);
     setLayoverDurationRange([0, maxLayoverDuration || 5000]); setAirlineFilter(null);
+    setSelectedBaggage([]);
   }, [maxPrice, minDuration, maxDuration, maxLayoverDuration]);
 
   const sources = apiData.sources || {};
