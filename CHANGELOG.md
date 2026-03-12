@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 ---
 
+## [3.7.3] — 2026-03-12 — White Search Bar Redesign
+
+### Changed
+- **Search modification bar**: Redesigned from dark (`bg-foreground`) to white/light (`bg-card`) with muted chip backgrounds, primary-colored icons, and larger text/padding for better readability
+- **Search chips**: Increased padding, font size (`text-xs` → `text-sm`), and icon sizes for improved touch targets and visibility
+
+---
+
 ## [3.7.2] — 2026-03-12 — Reward Points System, Flight Card Enhancements & Responsiveness
 
 ### Added — Reward Points System
