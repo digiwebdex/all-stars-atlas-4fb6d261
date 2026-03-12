@@ -233,7 +233,6 @@ const RoundTripFlightCard = ({
         {/* Expanded detail - tabbed view like FlightCard */}
         <AnimatePresence>
           {isExpanded && (() => {
-            const [activeTab, setActiveTab] = React.useState("itinerary");
             const paxAdults = parseInt(cardSearchParams.get("adults") || "1");
             const paxChildren = parseInt(cardSearchParams.get("children") || "0");
             const paxInfants = parseInt(cardSearchParams.get("infants") || "0");
