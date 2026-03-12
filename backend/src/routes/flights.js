@@ -333,13 +333,14 @@ router.get('/search', async (req, res) => {
     }
 
     // Deduplicate flights from multiple providers
-    // Use flight number + departure + destination + stops + connection airports as key
-    // This preserves itineraries with same first flight but different connections
+    // Key includes ALL leg flight numbers + times to preserve different round-trip/connection combos
     const seen = new Set();
     flights = flights.filter(f => {
-      const stopKey = (f.stopCodes || []).join(',') || (f.legs || []).map(l => l.destination).join(',');
-      const key = `${f.flightNumber}-${f.departureTime}-${f.destination}-${f.stops ?? 0}-${stopKey}`;
-      if (key === '-null---0-' || key === '----0-') return true;
+      // Build a comprehensive key from all legs
+      const legsKey = (f.legs || []).map(l => `${l.flightNumber || ''}@${l.departureTime || ''}`).join('|');
+      const stopKey = (f.stopCodes || []).join(',');
+      const key = `${f.flightNumber}-${f.departureTime}-${f.arrivalTime || ''}-${f.destination}-${f.stops ?? 0}-${stopKey}-${f.direction || ''}-${legsKey}`;
+      if (key === '---------' || !f.flightNumber) return true; // keep unkeyed
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
