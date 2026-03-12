@@ -606,6 +606,10 @@ POST   /auth/reset-password
 GET    /flights/search?from=DAC&to=CXB&date=2026-03-01&passengers=2&class=Economy
 GET    /flights/:id
 POST   /flights/book
+POST   /flights/upload-travel-docs
+GET    /flights/travel-docs/:bookingId
+GET    /flights/ancillaries?airlineCode=FZ&origin=DAC&destination=DXB&flightNumber=8508&departureDate=2026-03-14
+GET    /flights/seat-map?airlineCode=FZ&origin=DAC&destination=DXB&aircraft=7M8&cabinClass=Economy
 
 GET    /hotels/search?destination=Cox%27s+Bazar&checkin=2026-03-01&checkout=2026-03-05
 GET    /hotels/:id
@@ -662,6 +666,8 @@ DELETE /admin/users/:id
 GET    /admin/bookings
 GET    /admin/bookings/:id
 PATCH  /admin/bookings/:id
+PATCH  /admin/bookings/:id/archive
+DELETE /admin/bookings/:id
 GET    /admin/payments
 GET    /admin/reports
 GET    /admin/settings

@@ -190,7 +190,9 @@
 | **TTI/ZENITH (Air Astra)** | `tti-flights.js` | Real-time flight search + booking (PNR creation). Cancel via `Cancel` method. Ticketing = manual (no API). |
 | **BDFare** | `bdf-flights.js` | Bangladesh flight aggregator (US-Bangla, Novoair, Biman) |
 | **FlyHub** | `flyhub-flights.js` | 450+ airline flight aggregator with token auth |
-| **Sabre GDS** | `sabre-flights.js` | International flights via Bargain Finder Max V5 |
+| **Sabre GDS (REST)** | `sabre-flights.js` | International flights via Bargain Finder Max V5, PNR creation with SSR injection, ticketing, cancellation |
+| **Sabre GDS (SOAP)** | `sabre-soap.js` | Enhanced Seat Map (v6.0.0) + Ancillary Offers (v3.0.0) via BinarySecurityToken session |
+| **Ancillaries Engine** | `ancillaries.js` | Priority chain: Sabre SOAP → TTI → Standard fallback for seat maps, baggage, meals |
 | **HotelBeds** | `hotelbeds.js` | 180,000+ hotels worldwide with SHA256 signature |
 | **Airalo** | `airalo.js` | eSIM for 200+ countries with QR delivery |
 | **SSL Wireless** | `ssl-recharge.js` | Mobile recharge (GP/Robi/BL/TT) + bill payments |
