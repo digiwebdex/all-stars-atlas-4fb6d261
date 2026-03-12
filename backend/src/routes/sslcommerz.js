@@ -123,18 +123,17 @@ router.post('/ipn', async (req, res) => {
         [val_id, card_type || '', new Date().toISOString(), tran_id]
       );
 
-      // Update booking if linked
+      // Auto-ticket booking if linked
       if (bookingId) {
-        await db.query(`UPDATE bookings SET status = 'confirmed', payment_status = 'paid', payment_method = ? WHERE id = ?`, [card_type || 'sslcommerz', bookingId]);
-
-        // Generate ticket for flight bookings
-        const [bookings] = await db.query('SELECT * FROM bookings WHERE id = ?', [bookingId]);
-        if (bookings.length > 0 && bookings[0].booking_type === 'flight') {
-          const ticketNo = `098-${String(Math.floor(Math.random() * 9999999999)).padStart(10, '0')}`;
-          await db.query(
-            `INSERT INTO tickets (id, booking_id, user_id, ticket_no, pnr, status, details) VALUES (?, ?, ?, ?, ?, 'active', '{}')`,
-            [uuidv4(), bookingId, userId || bookings[0].user_id, ticketNo, bookings[0].booking_ref?.slice(-6)?.toUpperCase() || 'ABCDEF']
-          );
+        await db.query(`UPDATE bookings SET payment_method = ? WHERE id = ?`, [card_type || 'sslcommerz', bookingId]);
+        try {
+          const { autoTicketAfterPayment } = require('../services/auto-ticket');
+          const ticketResult = await autoTicketAfterPayment(bookingId);
+          console.log(`[SSLCommerz] Auto-ticket result for ${bookingId}:`, ticketResult);
+        } catch (ticketErr) {
+          console.error(`[SSLCommerz] Auto-ticket error for ${bookingId}:`, ticketErr.message);
+          // Fallback: at least confirm the booking
+          await db.query(`UPDATE bookings SET status = 'confirmed', payment_status = 'paid' WHERE id = ?`, [bookingId]);
         }
       }
 

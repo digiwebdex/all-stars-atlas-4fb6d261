@@ -146,10 +146,18 @@ router.get('/callback', async (req, res) => {
           [execData.trxID, execData.customerMsisdn || '', `%${paymentID}%`]
         );
 
-        // Update linked booking
+        // Auto-ticket linked booking
         const [txns] = await db.query(`SELECT booking_id FROM transactions WHERE meta LIKE ?`, [`%${paymentID}%`]);
         if (txns.length > 0 && txns[0].booking_id) {
-          await db.query(`UPDATE bookings SET status = 'confirmed', payment_status = 'paid', payment_method = 'bkash' WHERE id = ?`, [txns[0].booking_id]);
+          await db.query(`UPDATE bookings SET payment_method = 'bkash' WHERE id = ?`, [txns[0].booking_id]);
+          try {
+            const { autoTicketAfterPayment } = require('../services/auto-ticket');
+            const ticketResult = await autoTicketAfterPayment(txns[0].booking_id);
+            console.log(`[bKash] Auto-ticket result:`, ticketResult);
+          } catch (ticketErr) {
+            console.error(`[bKash] Auto-ticket error:`, ticketErr.message);
+            await db.query(`UPDATE bookings SET status = 'confirmed', payment_status = 'paid' WHERE id = ?`, [txns[0].booking_id]);
+          }
         }
 
         res.redirect(`${frontendUrl}/dashboard/payments?status=success&method=bkash`);

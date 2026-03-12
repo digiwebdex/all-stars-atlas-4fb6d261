@@ -134,7 +134,15 @@ router.get('/callback', async (req, res) => {
         await db.query(`UPDATE transactions SET status = 'completed' WHERE reference = ?`, [order_id]);
         const [txns] = await db.query(`SELECT booking_id FROM transactions WHERE reference = ?`, [order_id]);
         if (txns.length > 0 && txns[0].booking_id) {
-          await db.query(`UPDATE bookings SET status = 'confirmed', payment_status = 'paid', payment_method = 'nagad' WHERE id = ?`, [txns[0].booking_id]);
+          await db.query(`UPDATE bookings SET payment_method = 'nagad' WHERE id = ?`, [txns[0].booking_id]);
+          try {
+            const { autoTicketAfterPayment } = require('../services/auto-ticket');
+            const ticketResult = await autoTicketAfterPayment(txns[0].booking_id);
+            console.log(`[Nagad] Auto-ticket result:`, ticketResult);
+          } catch (ticketErr) {
+            console.error(`[Nagad] Auto-ticket error:`, ticketErr.message);
+            await db.query(`UPDATE bookings SET status = 'confirmed', payment_status = 'paid' WHERE id = ?`, [txns[0].booking_id]);
+          }
         }
         res.redirect(`${frontendUrl}/dashboard/payments?status=success&method=nagad`);
       } else {
