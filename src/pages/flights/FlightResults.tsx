@@ -1967,9 +1967,22 @@ const FlightResults = () => {
   const toggleLayoverAirport = useCallback((a: string) => setSelectedLayoverAirports(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]), []);
   const toggleBaggage = useCallback((b: string) => setSelectedBaggage(prev => prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]), []);
 
-  // Airline stats for the top bar — from real API data
+  // Airline stats for the top bar — count from round-trip pairs for correct display
   const airlineStats = useMemo(() => {
-    const relevantFlights = isRoundTrip && hasDirections ? outboundFlights : (isMultiCity ? allMultiCityFlights : flights);
+    if (isRoundTrip && hasDirections) {
+      // Count from actual pairs so airline bar matches displayed results
+      const map: Record<string, { code: string; name: string; cheapest: number; count: number }> = {};
+      for (const p of roundTripPairs) {
+        const code = p.outbound.airlineCode || '';
+        const name = p.outbound.airline || code;
+        if (!code) continue;
+        if (!map[code]) map[code] = { code, name, cheapest: p.totalPrice, count: 0 };
+        map[code].count++;
+        if (p.totalPrice < map[code].cheapest) map[code].cheapest = p.totalPrice;
+      }
+      return Object.values(map).sort((a, b) => a.cheapest - b.cheapest);
+    }
+    const relevantFlights = isMultiCity ? allMultiCityFlights : flights;
     const map: Record<string, { code: string; name: string; cheapest: number; count: number }> = {};
     for (const f of relevantFlights) {
       const code = f.airlineCode || '';
@@ -1980,7 +1993,7 @@ const FlightResults = () => {
       if ((f.price || Infinity) < map[code].cheapest) map[code].cheapest = f.price;
     }
     return Object.values(map).sort((a, b) => a.cheapest - b.cheapest);
-  }, [flights, outboundFlights, isRoundTrip, hasDirections, isMultiCity, allMultiCityFlights]);
+  }, [flights, roundTripPairs, isRoundTrip, hasDirections, isMultiCity, allMultiCityFlights]);
 
   // Quick sort summaries — Cheapest, Fastest, Best from real data
   const quickSortSummary = useMemo(() => {
