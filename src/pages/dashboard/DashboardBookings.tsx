@@ -613,7 +613,19 @@ const DashboardBookings = () => {
         </div>
       </div>
 
-      <BookingDetailDialog booking={viewBooking} onClose={() => setViewBooking(null)} />
+      <BookingDetailDialog booking={viewBooking} onClose={() => setViewBooking(null)} onPayNow={handlePayNow} />
+
+      {/* Travel Document Verification Modal — for international flights before payment */}
+      {docVerifyBooking && (
+        <TravelDocVerificationModal
+          open={!!docVerifyBooking}
+          onOpenChange={(open) => { if (!open) setDocVerifyBooking(null); }}
+          onVerified={handleDocVerified}
+          passengers={docVerifyBooking.passengers || []}
+          bookingRef={docVerifyBooking.id}
+          bookingId={docVerifyBooking.rawId}
+        />
+      )}
     </div>
   );
 };
