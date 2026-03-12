@@ -1164,59 +1164,153 @@ const RoundTripFlightCard = ({
   );
 };
 
-/* ─── Multi-City Expanded Details Panel ─── */
+/* ─── Multi-City Expanded Details Panel — matches one-way/round-trip system ─── */
 const MultiCityExpandedDetails = ({ flight, segments }: { flight: any; segments: any[] }) => {
   const [activeTab, setActiveTab] = useState("itinerary");
   const [cardSearchParams] = useSearchParams();
   const price = flight.price ?? 0;
   const taxes = flight.taxes ?? 0;
   const baseFare = Math.max(0, Math.round(price - taxes));
-  const cancellationPolicy = flight.cancellationPolicy || null;
-  const dateChangePolicy = flight.dateChangePolicy || null;
+  const refundable = flight.refundable ?? false;
+
+  // Fare calculation matching one-way/round-trip
+  const paxAdults = parseInt(cardSearchParams.get("adults") || "1");
+  const paxChildren = parseInt(cardSearchParams.get("children") || "0");
+  const paxInfants = parseInt(cardSearchParams.get("infants") || "0");
+  const DISCOUNT_PCT = flight.fareRules?.discount ?? 6.3;
+  const AIT_VAT_PCT = flight.fareRules?.aitVat ?? 0.3;
+
+  const fareRows: { paxType: string; baseFare: number; tax: number; other: number; discount: number; aitVat: number; count: number; amount: number }[] = [];
+  if (paxAdults > 0) {
+    const disc = Math.round(baseFare * DISCOUNT_PCT / 100);
+    const aitVat = Math.round((baseFare - disc) * AIT_VAT_PCT / 100);
+    fareRows.push({ paxType: "Adult", baseFare, tax: taxes, other: 0, discount: disc, aitVat, count: paxAdults, amount: (baseFare - disc + taxes + aitVat) * paxAdults });
+  }
+  if (paxChildren > 0) {
+    const childBase = Math.round(baseFare * 0.75);
+    const disc = Math.round(childBase * DISCOUNT_PCT / 100);
+    const aitVat = Math.round((childBase - disc) * AIT_VAT_PCT / 100);
+    fareRows.push({ paxType: "Child", baseFare: childBase, tax: taxes, other: 0, discount: disc, aitVat, count: paxChildren, amount: (childBase - disc + taxes + aitVat) * paxChildren });
+  }
+  if (paxInfants > 0) {
+    const infantBase = Math.round(baseFare * 0.1);
+    const infantTax = Math.round(taxes * 0.5);
+    const disc = Math.round(infantBase * DISCOUNT_PCT / 100);
+    const aitVat = Math.round((infantBase - disc) * AIT_VAT_PCT / 100);
+    fareRows.push({ paxType: "Infant", baseFare: infantBase, tax: infantTax, other: 0, discount: disc, aitVat, count: paxInfants, amount: (infantBase - disc + infantTax + aitVat) * paxInfants });
+  }
+  const totalPayable = fareRows.reduce((s, r) => s + r.amount, 0);
 
   return (
     <div className="border-t border-border/50 bg-muted/10">
       {/* Tabs */}
-      <div className="flex border-b border-border/50 px-4">
-        {[
-          { key: "itinerary", label: "Flight Details" },
-          { key: "fare", label: "Fare Summary" },
-          { key: "baggage", label: "Baggage" },
-          { key: "cancellation", label: "Cancellation" },
-        ].map(tab => (
-          <button key={tab.key}
-            className={`px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-colors ${activeTab === tab.key ? "border-accent text-accent" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-            onClick={() => setActiveTab(tab.key)}>
-            {tab.label}
+      <div className="flex border-b border-border/50">
+        <div className="flex overflow-x-auto scrollbar-none">
+          {[
+            { key: "itinerary", label: "Flight Details" },
+            { key: "fare", label: "Fare Summary" },
+            { key: "baggage", label: "Baggage" },
+            { key: "cancellation", label: "Cancellation" },
+            { key: "datechange", label: "Date Change" },
+          ].map(tab => (
+            <button key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap shrink-0 ${
+                activeTab === tab.key ? "border-accent text-accent" : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="ml-auto px-3 flex items-center">
+          <button className="flex items-center gap-1 text-accent text-xs font-semibold hover:underline">
+            <Info className="w-3 h-3" /> Fare terms &amp; policy
           </button>
-        ))}
+        </div>
       </div>
 
       <div className="p-4 sm:p-5">
-        {/* Flight Details Tab */}
+        {/* Flight Details Tab — full airport names, layover info, seats left */}
         {activeTab === "itinerary" && (
           <div className="space-y-6">
             {segments.map((seg: any, i: number) => {
               const segLegs = seg.legs || [];
               const logo = getAirlineLogo(seg.airlineCode);
+              const cabin = seg.cabinClass || flight.cabinClass || "Economy";
+              const bkClass = seg.bookingClass || flight.bookingClass || "";
+              const cabDisp = bkClass ? `${cabin} - ${bkClass}` : cabin;
+              const seats = seg.availableSeats ?? flight.availableSeats ?? null;
+              const ac = seg.aircraft || "";
+
               return (
-                <div key={i} className="space-y-3">
-                  <p className="text-xs font-bold text-muted-foreground">Segment {i + 1}: {seg.origin} → {seg.destination}</p>
-                  {(segLegs.length > 0 ? segLegs : [seg]).map((leg: any, li: number) => (
-                    <div key={li} className="flex items-start gap-4 p-3 rounded-lg bg-muted/30">
-                      <div className="flex flex-col items-center gap-1 w-16 shrink-0">
-                        {logo ? <img src={logo} alt="" className="w-7 h-7 object-contain" /> : <Plane className="w-5 h-5 text-muted-foreground" />}
-                        <p className="text-[9px] text-muted-foreground">{leg.flightNumber || seg.flightNumber}</p>
+                <div key={i}>
+                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2">
+                    <Plane className="w-4 h-4 text-accent" />
+                    {seg.origin} → {seg.destination}
+                    <span className="text-muted-foreground font-normal text-xs">· {formatShortDate(seg.departureTime)}</span>
+                    <span className="text-muted-foreground font-normal text-xs">· {seg.stops === 0 ? "Non-Stop" : `${seg.stops} Stop${seg.stops > 1 ? "s" : ""}`}</span>
+                  </h4>
+                  {(segLegs.length > 0 ? segLegs : [{ origin: seg.origin, destination: seg.destination, departureTime: seg.departureTime, arrivalTime: seg.arrivalTime, duration: seg.duration, flightNumber: seg.flightNumber, airlineCode: seg.airlineCode, aircraft: ac }]).map((leg: any, li: number) => (
+                    <div key={li} className="space-y-3 mb-4">
+                      {/* Airline info row */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {logo && <img src={logo} alt="" className="w-7 h-7 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                        <span className="text-sm font-semibold">{seg.airline || flight.airline}</span>
+                        <span className="text-sm text-muted-foreground">{leg.flightNumber || seg.flightNumber}</span>
+                        {(leg.aircraft || ac) && <><span className="text-muted-foreground text-sm">|</span><span className="text-sm text-muted-foreground">{leg.aircraft || ac}</span></>}
+                        <span className="text-muted-foreground text-sm">|</span>
+                        <span className="text-sm font-medium">{cabDisp}</span>
+                        {seats !== null && seats <= 9 && <span className="text-sm text-orange-500 font-bold">{seats} Seat{seats !== 1 ? "s" : ""} Left</span>}
                       </div>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="font-bold">{formatTime(leg.departureTime || seg.departureTime)} — {leg.origin || seg.origin}</span>
-                          <span className="font-bold">{formatTime(leg.arrivalTime || seg.arrivalTime)} — {leg.destination || seg.destination}</span>
+                      {/* Times with arc and full airport names */}
+                      <div className="flex items-start justify-between pt-2 pb-1">
+                        <div className="text-left shrink-0 max-w-[38%]">
+                          <p className="text-xl font-black">{formatTime(leg.departureTime || seg.departureTime)}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{formatShortDate(leg.departureTime || seg.departureTime)}</p>
+                          <p className="text-[11px] text-muted-foreground mt-1">{getAirportName(leg.origin || seg.origin)} ({leg.origin || seg.origin})</p>
                         </div>
-                        <p className="text-[10px] text-muted-foreground">
-                          Duration: {leg.duration || seg.duration} · {leg.aircraft || seg.aircraft || "N/A"} · Class: {flight.bookingClass || "E"}
-                        </p>
+                        <div className="flex-1 flex flex-col items-center justify-center pt-1 px-4">
+                          <div className="w-full relative h-10">
+                            <svg className="w-full h-full" viewBox="0 0 200 40" preserveAspectRatio="none">
+                              <path d="M 8 34 Q 100 2 192 34" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-muted-foreground/40" strokeDasharray="5 4" />
+                              <circle cx="8" cy="34" r="3" className="fill-muted-foreground/60" />
+                              <circle cx="192" cy="34" r="3" className="fill-muted-foreground/60" />
+                            </svg>
+                            <Plane className="w-3.5 h-3.5 text-muted-foreground absolute top-0.5 left-1/2 -translate-x-1/2 rotate-90" />
+                          </div>
+                          <p className="text-xs text-muted-foreground font-medium -mt-0.5">{leg.duration || seg.duration}</p>
+                        </div>
+                        <div className="text-right shrink-0 max-w-[38%]">
+                          <p className="text-xl font-black">{formatTime(leg.arrivalTime || seg.arrivalTime)}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{formatShortDate(leg.arrivalTime || seg.arrivalTime)}</p>
+                          <p className="text-[11px] text-muted-foreground mt-1">{getAirportName(leg.destination || seg.destination)} ({leg.destination || seg.destination})</p>
+                        </div>
                       </div>
+                      {/* Layover between legs */}
+                      {li < (segLegs.length > 0 ? segLegs.length : 1) - 1 && segLegs.length > 1 && (() => {
+                        const nextLeg = segLegs[li + 1];
+                        const transitCode = leg.destination || "";
+                        const transitCity = transitCode ? getAirportCity(transitCode) : "";
+                        let layoverStr = "";
+                        if (nextLeg?.departureTime && leg.arrivalTime) {
+                          const layoverMin = Math.round((new Date(nextLeg.departureTime).getTime() - new Date(leg.arrivalTime).getTime()) / 60000);
+                          const h = Math.floor(layoverMin / 60);
+                          const m = layoverMin % 60;
+                          layoverStr = `${h > 0 ? `${h}h ` : ""}${m > 0 ? `${m}m` : ""}`;
+                        }
+                        return (
+                          <div className="flex items-center gap-2 py-3 px-4 my-2">
+                            <div className="flex-1 h-px bg-warning/30" />
+                            <div className="flex items-center gap-2 text-xs bg-warning/10 px-4 py-2 rounded-full border border-warning/20">
+                              <span className="text-destructive font-semibold">Change of planes</span>
+                              <span className="text-foreground font-medium">
+                                {layoverStr && <>{layoverStr} </>}Layover{transitCity ? ` in ${transitCity}` : ""}
+                              </span>
+                            </div>
+                            <div className="flex-1 h-px bg-warning/30" />
+                          </div>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>
@@ -1225,43 +1319,128 @@ const MultiCityExpandedDetails = ({ flight, segments }: { flight: any; segments:
           </div>
         )}
 
-        {/* Fare Summary Tab */}
+        {/* Fare Summary — full table with Discount, AIT VAT matching one-way/round-trip */}
         {activeTab === "fare" && (
-          <div className="max-w-sm space-y-2">
-            <div className="flex justify-between text-sm"><span className="text-muted-foreground">Base Fare</span><span className="font-bold">BDT {baseFare.toLocaleString()}</span></div>
-            <div className="flex justify-between text-sm"><span className="text-muted-foreground">Taxes & Fees</span><span className="font-bold">BDT {taxes.toLocaleString()}</span></div>
-            <Separator />
-            <div className="flex justify-between text-sm font-black"><span>Total</span><span className="text-accent">BDT {price.toLocaleString()}</span></div>
-            <p className="text-[10px] text-muted-foreground">Price for {parseInt(cardSearchParams.get("adults") || "1")} traveller(s)</p>
+          <div className="space-y-3">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
+                <thead>
+                  <tr className="bg-muted/50">
+                    <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground text-xs">Pax Type</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground text-xs">Base Fare</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground text-xs">Tax</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground text-xs">Other</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground text-xs">Discount</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground text-xs">AIT VAT</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground text-xs">Pax Count</th>
+                    <th className="text-right px-3 py-2.5 font-semibold text-muted-foreground text-xs">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fareRows.map((row, i) => (
+                    <tr key={i} className="border-t border-border/50">
+                      <td className="px-3 py-2.5 font-medium">{row.paxType}</td>
+                      <td className="px-3 py-2.5">{row.baseFare.toLocaleString()}</td>
+                      <td className="px-3 py-2.5">{row.tax.toLocaleString()}</td>
+                      <td className="px-3 py-2.5">{row.other}</td>
+                      <td className="px-3 py-2.5">{row.discount}</td>
+                      <td className="px-3 py-2.5">{row.aitVat}</td>
+                      <td className="px-3 py-2.5">{row.count}</td>
+                      <td className="px-3 py-2.5 text-right font-semibold">BDT {row.amount.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end items-center gap-6 pt-1">
+              <span className="font-bold text-sm">Total Payable</span>
+              <span className="font-black text-base">BDT {totalPayable.toLocaleString()}</span>
+            </div>
           </div>
         )}
 
-        {/* Baggage Tab */}
+        {/* Baggage — table layout matching one-way/round-trip */}
         {activeTab === "baggage" && (
-          <div className="space-y-3">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
+              <thead>
+                <tr className="bg-muted/50">
+                  <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground text-xs">Sector</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground text-xs">Checkin</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground text-xs">Cabin</th>
+                </tr>
+              </thead>
+              <tbody>
+                {segments.map((seg: any, i: number) => (
+                  <tr key={i} className="border-t border-border/50">
+                    <td className="px-4 py-3 font-semibold text-base"><span className="flex items-center gap-2">{seg.origin} <Plane className="w-3.5 h-3.5 text-muted-foreground" /> {seg.destination}</span></td>
+                    <td className="px-4 py-3 text-muted-foreground">{seg.baggage ? `ADT : ${seg.baggage}` : "Not provided"}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{seg.handBaggage ? `ADT : ${seg.handBaggage}` : "Not provided"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Cancellation — sector-based matching one-way/round-trip */}
+        {activeTab === "cancellation" && (
+          <div className="space-y-4">
             {segments.map((seg: any, i: number) => (
-              <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-muted/30">
-                <p className="text-xs font-bold w-28 shrink-0">{seg.origin} → {seg.destination}</p>
-                <div className="flex gap-4 text-xs">
-                  {seg.handBaggage && <span className="flex items-center gap-1 text-accent"><Luggage className="w-3.5 h-3.5" /> Hand: {seg.handBaggage}</span>}
-                  {seg.baggage && <span className="flex items-center gap-1 text-accent"><Luggage className="w-3.5 h-3.5" /> Checked: {seg.baggage}</span>}
-                  {!seg.handBaggage && !seg.baggage && <span className="text-muted-foreground">Check with airline</span>}
+              <div key={i} className="border border-border rounded-lg overflow-hidden">
+                <div className="bg-muted/50 px-4 py-3 flex items-center gap-2 text-base font-semibold">
+                  {seg.origin} <Plane className="w-3.5 h-3.5 text-muted-foreground" /> {seg.destination}
                 </div>
+                <table className="w-full text-sm">
+                  <thead><tr className="border-t border-border">
+                    <th className="text-left px-4 py-2.5 font-semibold text-foreground">Timeframe<br/><span className="font-normal text-xs text-muted-foreground">(From Scheduled flight departure)</span></th>
+                    <th className="text-left px-4 py-2.5 font-semibold text-foreground">Airline Fee + Service Fee<br/><span className="font-normal text-xs text-muted-foreground">(Per passenger)</span></th>
+                  </tr></thead>
+                  <tbody><tr className="border-t border-border/50">
+                    <td className="px-4 py-3 text-muted-foreground">Any Time</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {seg.cancellationPolicy?.beforeDeparture != null
+                        ? `Cancellation allowed with fees + BDT ${Number(seg.cancellationPolicy.beforeDeparture).toLocaleString()}`
+                        : refundable ? "Cancellation allowed with fees" : "Non-refundable"}
+                    </td>
+                  </tr></tbody>
+                </table>
               </div>
             ))}
+            <div className="p-3 rounded-lg border border-destructive/20 bg-destructive/5 text-xs text-muted-foreground">
+              <span className="font-bold text-foreground">*Important:</span> The airline fee is indicative. We do not guarantee the accuracy of this information. All fees mentioned are per passenger. Purchased baggage and seat selections are non-refundable.
+            </div>
           </div>
         )}
 
-        {/* Cancellation Tab */}
-        {activeTab === "cancellation" && (
-          <div className="space-y-3 max-w-md">
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs font-bold mb-1">Cancellation</p>
-              <p className="text-xs text-muted-foreground">{cancellationPolicy || (flight.refundable ? "Cancellation allowed with fee — check with airline for exact charges." : "This ticket is non-refundable.")}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs font-bold mb-1">Date Change</p>
-              <p className="text-xs text-muted-foreground">{dateChangePolicy || "Date change may be allowed with fee — check with airline."}</p>
+        {/* Date Change — sector-based matching one-way/round-trip */}
+        {activeTab === "datechange" && (
+          <div className="space-y-4">
+            {segments.map((seg: any, i: number) => (
+              <div key={i} className="border border-border rounded-lg overflow-hidden">
+                <div className="bg-muted/50 px-4 py-3 flex items-center gap-2 text-base font-semibold">
+                  {seg.origin} <Plane className="w-3.5 h-3.5 text-muted-foreground" /> {seg.destination}
+                </div>
+                <table className="w-full text-sm">
+                  <thead><tr className="border-t border-border">
+                    <th className="text-left px-4 py-2.5 font-semibold text-foreground">Timeframe<br/><span className="font-normal text-xs text-muted-foreground">(From Scheduled flight departure)</span></th>
+                    <th className="text-left px-4 py-2.5 font-semibold text-foreground">Airline Fee + Service Fee + Fare difference<br/><span className="font-normal text-xs text-muted-foreground">(Per passenger)</span></th>
+                  </tr></thead>
+                  <tbody><tr className="border-t border-border/50">
+                    <td className="px-4 py-3 text-muted-foreground">Any Time</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {seg.dateChangePolicy?.changeAllowed === false
+                        ? "Date change not permitted"
+                        : seg.dateChangePolicy?.changeFee != null
+                          ? `Date change allowed with fees + BDT ${Number(seg.dateChangePolicy.changeFee).toLocaleString()}`
+                          : "Date change allowed with fees"}
+                    </td>
+                  </tr></tbody>
+                </table>
+              </div>
+            ))}
+            <div className="p-3 rounded-lg border border-destructive/20 bg-destructive/5 text-xs text-muted-foreground">
+              <span className="font-bold text-foreground">*Important:</span> The airline fee is indicative. We do not guarantee the accuracy of this information. All fees mentioned are per passenger. Date change charges are applicable only on selecting the same airline on a new date. The difference in fares between the old and the new booking will also be payable by the user.
             </div>
           </div>
         )}
