@@ -2068,10 +2068,7 @@ const FlightResults = () => {
   }, [isRoundTrip, hasDirections, outboundFlights, returnFlights]);
 
   // Combine all multi-city flights for filter computation
-  const allMultiCityFlights = useMemo(() => {
-    if (!isMultiCity) return [];
-    return Object.values(multiCityResults).flat();
-  }, [isMultiCity, multiCityResults]);
+  const allMultiCityFlights = multiCityFlights;
 
   const allFlightsForFilters = isMultiCity ? allMultiCityFlights : flights;
 
