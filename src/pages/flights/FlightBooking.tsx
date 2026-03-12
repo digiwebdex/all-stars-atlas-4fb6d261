@@ -1153,36 +1153,27 @@ const FlightBooking = () => {
                   <CardHeader className="bg-accent/5 border-b border-border">
                     <CardTitle className="text-sm sm:text-base flex items-center gap-2">
                       <Armchair className="w-5 h-5 text-accent" /> Select Your Seats
-                      {seatMapSource !== "none" && (
-                        <Badge className="bg-accent/10 text-accent border-0 text-[9px] ml-2">
-                          {seatMapSource === "sabre" ? "Live Sabre Data" : seatMapSource === "tti" ? "Live Airline Data" : "Aircraft Layout"}
-                        </Badge>
-                      )}
                     </CardTitle>
                     <p className="text-xs text-muted-foreground mt-1">Choose preferred seats for each passenger. Seat assignments are subject to airline confirmation.</p>
                   </CardHeader>
                   <CardContent className="p-3 sm:p-5">
-                    {seatMapLoading ? (
-                      <div className="space-y-3 py-6">
-                        <Skeleton className="h-8 w-48 mx-auto" />
-                        <Skeleton className="h-[300px] w-full max-w-[400px] mx-auto" />
-                      </div>
-                    ) : (
-                      <SeatMap
-                        flightNumber={`${outboundFlight?.airlineCode || ""}${outboundFlight?.flightNumber || ""}`}
-                        aircraft={seatMapData?.aircraft || outboundFlight?.aircraft || "A320"}
-                        cabinClass={outboundFlight?.cabinClass || searchCabin || "Economy"}
-                        passengers={passengers.map((p, i) => ({
-                          firstName: p.firstName || paxTypes[i]?.label || `Pax ${i + 1}`,
-                          lastName: p.lastName || "",
-                          title: p.title || "",
-                        }))}
-                        selectedSeats={selectedSeats}
-                        onSeatSelect={handleSeatSelect}
-                        onSeatDeselect={handleSeatDeselect}
-                        isDomestic={domestic}
-                      />
-                    )}
+                    <SeatMap
+                      flightNumber={`${outboundFlight?.airlineCode || ""}${outboundFlight?.flightNumber || ""}`}
+                      aircraft={seatMapData?.aircraft || outboundFlight?.aircraft}
+                      cabinClass={outboundFlight?.cabinClass || searchCabin || "Economy"}
+                      passengers={passengers.map((p, i) => ({
+                        firstName: p.firstName || paxTypes[i]?.label || `Pax ${i + 1}`,
+                        lastName: p.lastName || "",
+                        title: p.title || "",
+                      }))}
+                      selectedSeats={selectedSeats}
+                      onSeatSelect={handleSeatSelect}
+                      onSeatDeselect={handleSeatDeselect}
+                      isDomestic={domestic}
+                      seatMapData={seatMapData}
+                      seatMapSource={seatMapSource}
+                      seatMapLoading={seatMapLoading}
+                    />
                   </CardContent>
                 </Card>
 
