@@ -1,7 +1,7 @@
 # Seven Trip — Working Deployment Commands
 
 > **Auto-updated** with every change. Copy-paste ready commands for your VPS.
-> Last updated: 2026-03-12 (v3.7.2 — Rewards route auth middleware hotfix for 502 crash)
+> Last updated: 2026-03-12 (v3.7.3 — White search bar redesign, bigger search modification chips)
 
 ---
 
