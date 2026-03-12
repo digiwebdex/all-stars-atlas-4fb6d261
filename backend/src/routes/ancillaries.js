@@ -283,7 +283,7 @@ router.get('/sabre-soap-diagnostic', async (req, res) => {
         children: 0,
       });
       results.ancillaries = {
-        success: !!(ancillaryResult && (ancillaryResult.meals?.length > 0 || ancillaryResult.baggage?.length > 0)),
+        success: !!(ancillaryResult && !ancillaryResult._error && (ancillaryResult.meals?.length > 0 || ancillaryResult.baggage?.length > 0)),
         source: ancillaryResult?.source || 'sabre-soap',
         mealsCount: ancillaryResult?.meals?.length || 0,
         baggageCount: ancillaryResult?.baggage?.length || 0,
@@ -292,6 +292,7 @@ router.get('/sabre-soap-diagnostic', async (req, res) => {
         baggage: ancillaryResult?.baggage || [],
         other: ancillaryResult?.other || [],
         rawData: ancillaryResult,
+        errorXml: ancillaryResult?._error ? ancillaryResult.rawXml : undefined,
       };
       console.log(`[DIAG] Ancillaries: ${results.ancillaries.success ? 'SUCCESS' : 'NO DATA'} — ${results.ancillaries.mealsCount} meals, ${results.ancillaries.baggageCount} baggage`);
     } catch (err) {
