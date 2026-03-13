@@ -619,6 +619,152 @@ router.get('/:id', async (req, res) => {
 // Bangladesh domestic airports
 const BD_AIRPORTS = ['DAC', 'CXB', 'CGP', 'ZYL', 'JSR', 'RJH', 'SPD', 'BZL', 'IRD', 'TKR'];
 
+function flattenLegs(items = []) {
+  return (Array.isArray(items) ? items : []).flatMap((item) => {
+    if (Array.isArray(item?.legs) && item.legs.length > 0) return flattenLegs(item.legs);
+    return item ? [item] : [];
+  });
+}
+
+function mergeBookingFlightData({ flightData, returnFlightData, multiCityFlights = [], isRoundTrip = false }) {
+  const merged = { ...(flightData || {}) };
+
+  if (isRoundTrip && returnFlightData) {
+    const outLegs = flattenLegs(flightData?.legs?.length ? flightData.legs : [flightData]);
+    const retLegs = flattenLegs(returnFlightData?.legs?.length ? returnFlightData.legs : [returnFlightData]);
+    merged.legs = [...outLegs, ...retLegs];
+  } else if (Array.isArray(multiCityFlights) && multiCityFlights.length >= 2) {
+    merged.legs = flattenLegs(multiCityFlights);
+  } else {
+    merged.legs = flattenLegs(flightData?.legs?.length ? flightData.legs : [flightData]);
+  }
+
+  return merged;
+}
+
+function toDateOnly(dateTime) {
+  if (!dateTime) return null;
+  const raw = String(dateTime);
+  const m = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (m) return m[1];
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+
+function getPassengerCounts(passengers = []) {
+  return passengers.reduce((acc, p) => {
+    const type = String(p?.type || 'adult').toLowerCase();
+    if (type === 'child') acc.children += 1;
+    else if (type === 'infant') acc.infants += 1;
+    else acc.adults += 1;
+    return acc;
+  }, { adults: 0, children: 0, infants: 0 });
+}
+
+function extractDistinctSabreAirlinePnr(rawBooking, gdsPnr) {
+  const gds = String(gdsPnr || '').trim().toUpperCase();
+  const candidates = [];
+  const stack = [rawBooking];
+  const seen = new Set();
+
+  while (stack.length) {
+    const node = stack.pop();
+    if (!node || typeof node !== 'object') continue;
+    if (seen.has(node)) continue;
+    seen.add(node);
+
+    if (Array.isArray(node)) {
+      node.forEach((item) => stack.push(item));
+      continue;
+    }
+
+    for (const [key, value] of Object.entries(node)) {
+      if (value && typeof value === 'object') {
+        stack.push(value);
+        continue;
+      }
+      if (typeof value !== 'string') continue;
+      if (!/(vendorlocator|airlinelocator|airlinepnr|confirmationid|confirmationnumber|locator|recordlocator)/i.test(key)) continue;
+      const code = value.trim().toUpperCase();
+      if (/^[A-Z0-9]{5,20}$/.test(code)) candidates.push(code);
+    }
+  }
+
+  const distinct = candidates.find((code) => code !== gds);
+  return distinct || null;
+}
+
+async function hydrateTtiContextForBooking({ mergedFlightData, returnFlightData, isRoundTrip, passengers }) {
+  if (mergedFlightData?._ttiOffer?.Ref && mergedFlightData?._ttiItineraryRef) {
+    return mergedFlightData;
+  }
+
+  const legs = flattenLegs(mergedFlightData?.legs?.length ? mergedFlightData.legs : [mergedFlightData]);
+  const firstLeg = legs[0];
+  if (!firstLeg?.origin || !firstLeg?.destination || !firstLeg?.departureTime) {
+    return mergedFlightData;
+  }
+
+  const counts = getPassengerCounts(passengers);
+  const returnDate = isRoundTrip
+    ? (toDateOnly(returnFlightData?.departureTime)
+      || toDateOnly(legs.find((l) => l?.origin === firstLeg.destination && l?.destination === firstLeg.origin)?.departureTime))
+    : undefined;
+
+  const searchParams = {
+    origin: firstLeg.origin,
+    destination: firstLeg.destination,
+    departDate: toDateOnly(firstLeg.departureTime),
+    returnDate,
+    adults: Math.max(counts.adults, 1),
+    children: counts.children,
+    infants: counts.infants,
+    cabinClass: mergedFlightData?.cabinClass || 'Economy',
+  };
+
+  try {
+    const results = await ttiSearch(searchParams);
+    if (!Array.isArray(results) || results.length === 0) {
+      return mergedFlightData;
+    }
+
+    const wantedFlightNo = String(firstLeg.flightNumber || '').replace(/\D/g, '');
+    const wantedAirline = String(firstLeg.airlineCode || '').toUpperCase();
+
+    const best = results.find((r) => {
+      if (!r?._ttiOffer?.Ref || !r?._ttiItineraryRef) return false;
+      if (wantedAirline && String(r.airlineCode || '').toUpperCase() !== wantedAirline) return false;
+      if (!wantedFlightNo) return true;
+      return String(r.flightNumber || '').replace(/\D/g, '') === wantedFlightNo;
+    }) || results.find((r) => r?._ttiOffer?.Ref && r?._ttiItineraryRef);
+
+    if (!best) return mergedFlightData;
+
+    console.log('[Booking][TTI] Hydrated search context:', JSON.stringify({
+      itineraryRef: best._ttiItineraryRef,
+      offerRef: best._ttiOffer?.Ref || null,
+      airline: best.airlineCode,
+      flightNumber: best.flightNumber,
+    }));
+
+    return {
+      ...mergedFlightData,
+      _ttiItineraryRef: best._ttiItineraryRef,
+      _ttiRawItinerary: best._ttiRawItinerary,
+      _ttiRawFares: best._ttiRawFares,
+      _ttiRawSegments: best._ttiRawSegments,
+      _ttiFullFareInfo: best._ttiFullFareInfo,
+      _ttiAllSegments: best._ttiAllSegments,
+      _ttiOffer: best._ttiOffer,
+      _ttiPassengers: best._ttiPassengers,
+    };
+  } catch (err) {
+    console.warn('[Booking][TTI] Context hydration failed:', err.message);
+    return mergedFlightData;
+  }
+}
+
 /**
  * Determine payment deadline.
  * API-ONLY: Uses airline-provided timeLimit / LastTicketingDate from GDS.
