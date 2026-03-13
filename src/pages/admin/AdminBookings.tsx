@@ -247,9 +247,9 @@ const AdminBookings = () => {
 
   const statCards = [
     { label: "Total Bookings", value: stats.total, icon: Ticket, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Confirmed", value: stats.confirmed, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-100 dark:bg-emerald-900/30" },
+    { label: "With PNR", value: stats.confirmed, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-100 dark:bg-emerald-900/30" },
     { label: "Pending", value: stats.pending, icon: Clock, color: "text-warning", bg: "bg-warning/10" },
-    { label: "Cancelled", value: stats.cancelled, icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
+    { label: "Failed (No PNR)", value: stats.failed, icon: AlertTriangle, color: "text-destructive", bg: "bg-destructive/10" },
   ];
 
   // Passenger info can be array or object
