@@ -1038,6 +1038,21 @@ function getAirlineName(code) {
 
 function extractSabrePnrFromCreateResponse(response) {
   const rs = response?.CreatePassengerNameRecordRS || {};
+
+  // CRITICAL: Check ApplicationResults status FIRST — if NotProcessed, the PNR was never created
+  const appStatus = rs?.ApplicationResults?.status || '';
+  if (appStatus === 'NotProcessed' || appStatus === 'Incomplete') {
+    const errors = rs?.ApplicationResults?.Error || [];
+    const errArr = Array.isArray(errors) ? errors : [errors];
+    const errMsgs = errArr.map(e => {
+      const sysResults = e?.SystemSpecificResults || {};
+      const msgArr = Array.isArray(sysResults) ? sysResults : [sysResults];
+      return msgArr.map(s => s?.Message || s?.ShortText || '').filter(Boolean).join('; ');
+    }).filter(Boolean).join(' | ');
+    console.error(`[Sabre] CreatePNR REJECTED by GDS: status=${appStatus} errors=${errMsgs}`);
+    return null;
+  }
+
   const itineraryRefs = [
     rs?.ItineraryRef,
     rs?.TravelItineraryRead?.TravelItinerary?.ItineraryRef,
@@ -1464,6 +1479,14 @@ async function createBooking({ flightData, passengers, contactInfo, specialServi
       });
     }
 
+    // Final fallback: no SpecialReqDetails at all (some airlines reject DOCS for certain PCC configs)
+    const bodyNoSpecial = JSON.parse(JSON.stringify(body));
+    delete bodyNoSpecial.CreatePassengerNameRecordRQ.SpecialReqDetails;
+    requestVariants.push({
+      label: 'no_special_req',
+      body: bodyNoSpecial,
+    });
+
     let finalResponse = null;
     let finalPnr = null;
     let finalErrorMessage = '';
@@ -1496,11 +1519,15 @@ async function createBooking({ flightData, passengers, contactInfo, specialServi
         finalErrorMessage = `No PNR returned from ${variant.label}`;
         console.warn(`[Sabre] ${finalErrorMessage}`);
         console.warn(`[Sabre] Response keys:`, JSON.stringify(Object.keys(response || {})));
-      } catch (err) {
+        // Continue to next variant — PNR extraction failed (likely NotProcessed/rejected)
+        if (attemptIndex < requestVariants.length - 1) {
+          console.warn(`[Sabre] Retrying with next variant: ${requestVariants[attemptIndex + 1].label}`);
+          continue;
+        }
         finalErrorMessage = err.message;
         console.error(`[Sabre] ✗ CreatePNR attempt failed (${variant.label}):`, err.message);
 
-        const shouldRetry = /VALIDATION_FAILED|NotProcessed|AdvancePassenger|SpecialReqDetails|Document|PersonName|NamePrefix|not allowed/i.test(err.message || '');
+        const shouldRetry = /VALIDATION_FAILED|NotProcessed|AdvancePassenger|SpecialReqDetails|Document|PersonName|NamePrefix|not allowed|UNABLE TO PROCESS|FORMAT|INVALID/i.test(err.message || '');
         const hasNextVariant = attemptIndex < requestVariants.length - 1;
         if (!(shouldRetry && hasNextVariant)) {
           console.error(`[Sabre] No more fallback variants — booking failed`);
@@ -1672,6 +1699,7 @@ async function getBooking({ pnr }) {
 
     const response = await sabreRequest(config, '/v1/trip/orders/getBooking', body);
     console.log('[Sabre] GetBooking success for PNR:', pnr);
+    console.log('[Sabre] GetBooking response keys:', JSON.stringify(Object.keys(response || {})));
 
     // Extract useful booking info
     const booking = response || {};
@@ -1679,12 +1707,39 @@ async function getBooking({ pnr }) {
     const passengers = booking.travelers || booking.passengers || [];
     const ticketing = booking.ticketing || [];
 
+    // Deep-extract vendor/airline locators from the response
+    // Sabre GetBooking puts airline confirmations in various nested paths
+    const vendorLocators = [];
+    const stack = [response];
+    const visited = new Set();
+    while (stack.length) {
+      const node = stack.pop();
+      if (!node || typeof node !== 'object') continue;
+      if (visited.has(node)) continue;
+      visited.add(node);
+      if (Array.isArray(node)) { node.forEach(i => stack.push(i)); continue; }
+      for (const [k, v] of Object.entries(node)) {
+        if (v && typeof v === 'object') { stack.push(v); continue; }
+        if (typeof v !== 'string') continue;
+        // Match vendor/airline locator keys
+        if (/(vendorlocator|airlinelocator|airlinepnr|airlineconfirmation|vendorconfirmation|vendorPNR|otherPNR|supplierlocator)/i.test(k)) {
+          const code = v.trim().toUpperCase();
+          if (/^[A-Z0-9]{5,20}$/.test(code) && code !== pnr.toUpperCase()) {
+            vendorLocators.push(code);
+          }
+        }
+      }
+    }
+
+    console.log('[Sabre] GetBooking vendor locators found:', JSON.stringify(vendorLocators));
+
     return {
       success: true,
       pnr,
       flights,
       passengers,
       ticketing,
+      vendorLocators,
       status: booking.status || booking.bookingStatus || 'unknown',
       rawResponse: response,
     };

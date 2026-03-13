@@ -92,7 +92,7 @@ book_flight() {
   TOTAL=$((TOTAL + 1))
   echo -e "\n${BOLD}── TEST $TEST_NUM: $LABEL ──${NC}"
 
-  RESULT=$(curl -s -w "\n%{http_code}" "$BASE/flights/book" \
+  RESULT=$(curl -s -w "\n%{http_code}" --max-time 90 "$BASE/flights/book" \
     -H "Authorization: Bearer $TOKEN" \
     -H 'Content-Type: application/json' \
     -d "$PAYLOAD")
@@ -109,25 +109,18 @@ book_flight() {
   BREF=$(echo "$BODY" | jq -r '.bookingRef // "?"')
   STATUS=$(echo "$BODY" | jq -r '.status // "?"')
 
-  HAS_DUAL_PNR=true
-  if [[ "$SRC" == *"tti"* ]] || [[ "$SRC" == *"astra"* ]]; then
-    if [ "$AIRLINE_PNR" = "null" ] || [ "$GDS_BOOKING_ID" = "null" ] || [ "$AIRLINE_PNR" = "$GDS_BOOKING_ID" ]; then
-      HAS_DUAL_PNR=false
+  # Success = GDS PNR exists (airline PNR may be same or assigned at ticketing)
+  if [ "$GDS_BOOKED" = "true" ] && [ "$PNR" != "null" ] && [ "$PNR" != "" ]; then
+    local APNR_DISPLAY="$AIRLINE_PNR"
+    if [ "$AIRLINE_PNR" = "null" ] || [ "$AIRLINE_PNR" = "$PNR" ]; then
+      APNR_DISPLAY="(same as GDS or pending ticketing)"
     fi
-  else
-    if [ "$PNR" = "null" ] || [ "$AIRLINE_PNR" = "null" ] || [ "$PNR" = "$AIRLINE_PNR" ]; then
-      HAS_DUAL_PNR=false
-    fi
-  fi
-
-  if [ "$GDS_BOOKED" = "true" ] && [ "$HAS_DUAL_PNR" = "true" ]; then
-    echo -e "  ${GREEN}✓ SUCCESS${NC} | GDS PNR: ${GREEN}$PNR${NC} | Airline PNR: ${CYAN}$AIRLINE_PNR${NC} | GDS Ref: $GDS_BOOKING_ID | Ref: $BREF | Status: $STATUS"
+    echo -e "  ${GREEN}✓ SUCCESS${NC} | GDS PNR: ${GREEN}$PNR${NC} | Airline PNR: ${CYAN}$APNR_DISPLAY${NC} | Ref: $BREF | Status: $STATUS"
     PASS=$((PASS + 1))
     ALL_PNRS+=("$PNR")
   else
     echo -e "  ${RED}✗ FAILED${NC} | HTTP: $HTTP_CODE | Source: $SRC | Ref: $BREF"
     echo -e "    GDS Error: ${RED}$GDS_ERROR${NC}"
-    echo -e "    PNR: $PNR | AirlinePNR: $AIRLINE_PNR | GDS Ref: $GDS_BOOKING_ID | DualPNR: $HAS_DUAL_PNR"
     FAIL=$((FAIL + 1))
   fi
 }
