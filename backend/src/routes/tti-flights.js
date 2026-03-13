@@ -953,6 +953,7 @@ async function createBooking({ flightData, passengers, contactInfo }) {
     return {
       success: true,
       pnr,
+      airlinePnr,
       ttiBookingId,
       ticketTimeLimit: ticketTimeLimit ? parseTTIDate(ticketTimeLimit)?.toISOString() : null,
       rawResponse: response,

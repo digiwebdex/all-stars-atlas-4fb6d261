@@ -661,7 +661,7 @@ router.post('/book', authenticate, async (req, res) => {
       `INSERT INTO bookings (id, user_id, booking_type, booking_ref, pnr, status, ticket_status, provider, route, total_amount, payment_method, payment_status, details, passenger_info, contact_info, payment_deadline)
        VALUES (?, ?, 'flight', ?, ?, ?, 'not_issued', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [bookingId, req.user.sub, bookingRef, gdsPnr || null, status, flightProvider, flightRoute, totalAmount || 0, paymentMethod || 'pay_later', payStatus,
-       JSON.stringify({ ...details, gdsPnr, gdsBookingResult: gdsBookingResult || null }),
+       JSON.stringify({ ...details, gdsPnr, airlinePnr, gdsBookingId, gdsBookingResult: gdsBookingResult || null }),
        JSON.stringify(passengers || []), JSON.stringify(contactInfo || {}),
        paymentDeadline]
     );
