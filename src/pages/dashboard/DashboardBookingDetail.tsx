@@ -527,10 +527,12 @@ const DashboardBookingDetail = () => {
               </DialogHeader>
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">Are you sure you want to cancel <strong>{booking.id}</strong>?</p>
-                {booking.pnr !== "—" && (
+                {(booking.pnr !== "—" || booking.gdsBookingId) && (
                   <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 text-sm">
                     <p className="font-semibold text-destructive">⚠️ GDS Cancellation</p>
-                    <p className="text-xs text-muted-foreground mt-1">This will attempt to cancel PNR <strong className="font-mono">{booking.pnr}</strong> in the airline system. Cancellation fees may apply.</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      This will attempt to cancel {booking.airlinePnr ? `PNR ${booking.airlinePnr}` : `Booking ${booking.gdsBookingId || booking.pnr}`} in the airline system. Cancellation fees may apply.
+                    </p>
                   </div>
                 )}
                 <Textarea placeholder="Reason for cancellation (optional)" value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} />
