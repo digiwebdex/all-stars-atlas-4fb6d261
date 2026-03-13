@@ -127,6 +127,11 @@
 - **Action Required**: Contact Sabre account manager to activate NDC carrier agreements
 - **Code Status**: `DataSources: { NDC: "Enable" }` already in BFM request
 
+#### Issue #7: REST GetSeats PNR Access/Schema Mismatch (v3.9.9.4)
+- **Symptom**: `/flights/seats-rest` returned 400 `Failed to read HTTP message` or viewership/security errors for some PNRs
+- **Root Cause**: Mixed contract behavior across GetSeats versions + PNR ownership/viewership constraints (`code 700102`)
+- **Fix**: Probe v3 and v1 payload variants, surface `hint` for viewership restrictions, and auto-fallback to SOAP EnhancedSeatMapRQ for reliable seat visibility
+
 ---
 
 ## 🔧 Sabre SOAP Integration

@@ -2,12 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
-## [3.9.9.4] — 2026-03-13 — REST GetSeats v1 Confirmed Endpoint
+## [3.9.9.4] — 2026-03-13 — REST GetSeats Resilience + SOAP Fallback
 
 ### Fixed
-- **REST GetSeats corrected to v1**: `/v1/offers/getseats` (confirmed from Sabre developer portal — v2/v3 paths returned 400/404)
-- Multi-variant payload probing: tries `requestType: pnrLocator` (INFINI format), `SeatAvailabilityRQ` wrapper, and simple `confirmationId` — locks working format via `debugAttempts`
-- Handles both NDC v2 response (`seatMaps[].cabin.rows[].seats[]`) and legacy (`GetSeatMapRS.SeatMap.Row[]`) formats
+- **`GET /flights/seats-rest` now tries both contracts**: Sabre REST v3 (`/v3/offers/getseats/byPnrLocator`) and v1 (`/v1/offers/getseats`) with multiple payload variants
+- **PNR viewership restriction handling**: when Sabre returns `Viewership is restricted for the PNR` (code 700102), API now returns a clear hint instead of generic failure
+- **Automatic SOAP fallback**: if REST variants fail, endpoint falls back to SOAP `EnhancedSeatMapRQ` and returns real seat rows when available
 
 ### Verified — Production Airline Support Matrix (21 Airlines Tested)
 | Airline | Code | Route | Pre-Booking Seat Map | Rows | Source |

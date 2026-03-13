@@ -8,10 +8,10 @@
 ## v3.9.9.4 — 2026-03-13
 
 ### Fixed
-- `GET /flights/seats-rest` — Corrected to use confirmed Sabre endpoint `/v1/offers/getseats` (v2 returned 404, v3 returned 400)
-- Multi-variant payload probing: `requestType: pnrLocator` with/without `pointOfSale`, `SeatAvailabilityRQ` wrapper, simple `confirmationId`
-- Dual response parser: handles NDC v2 (`seatMaps[].cabin.rows[].seats[]`) and legacy (`GetSeatMapRS.SeatMap.Row[]`) formats
-- `debugAttempts` array in error responses shows exactly which variants were tried
+- `GET /flights/seats-rest` now probes **both** Sabre contracts: v3 (`/v3/offers/getseats/byPnrLocator`) and v1 (`/v1/offers/getseats`)
+- Added explicit handling for PNR ownership/viewership errors (`code 700102`) with actionable `hint` in response
+- Added automatic fallback to SOAP `EnhancedSeatMapRQ` when REST variants fail, so seat maps still return for supported carriers
+- `debugAttempts` now includes endpoint-qualified variant names for faster root-cause analysis
 
 ### Confirmed Sabre Endpoints (from developer portal)
 - Auth: `/v2/auth/token`

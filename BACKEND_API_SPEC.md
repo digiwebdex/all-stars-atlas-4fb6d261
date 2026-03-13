@@ -929,7 +929,7 @@ Same request/response as `/auth/login`. The frontend checks that `user.role` is 
 }
 ```
 
-### `GET /flights/seats-rest` ⚡ NEW v3.9.9
+### `GET /flights/seats-rest` ⚡ NEW v3.9.9 (hardened in v3.9.9.4)
 
 **Query Params:**
 | Param | Type | Required | Example |
@@ -941,19 +941,42 @@ Same request/response as `/auth/login`. The frontend checks that `user.role` is 
 | flightNumber | string | yes | 585 |
 | cabinClass | string | no | Economy |
 | pnr | string | no | JIUKMY |
+| offerId | string | no | OFFER-123 |
+
+**Behavior:**
+- Tries Sabre REST GetSeats contracts in sequence (v3 + v1 variants)
+- If REST fails (schema mismatch or viewership restriction), auto-falls back to SOAP EnhancedSeatMapRQ
+- Returns `debugAttempts` and `hint` for faster diagnostics
 
 **Response (200):**
 ```json
 {
   "success": true,
   "source": "sabre-rest",
-  "rows": [{ "rowNumber": 1, "seats": [...] }],
+  "variant": "v3_byPnr_pnrLocator@/v3/offers/getseats/byPnrLocator",
+  "rows": [{ "rowNumber": 1, "seats": [] }],
   "columns": ["A", "B", "C", "D", "E", "F"],
   "exitRows": [12, 13],
   "totalRows": 40,
   "totalSeats": 240,
   "available": true
 }
+```
+
+**Fallback Response (200):**
+```json
+{
+  "success": true,
+  "source": "sabre-soap-fallback",
+  "variant": "soap_enhanced_seat_map_fallback",
+  "warning": "REST GetSeats blocked by PNR viewership restriction; SOAP fallback used.",
+  "rows": [{ "rowNumber": 1, "seats": [] }],
+  "totalRows": 33,
+  "totalSeats": 198,
+  "available": true,
+  "debugAttempts": ["v1_pnrLocator_with_pos@/v1/offers/getseats: ..."]
+}
+```
 
 ---
 
