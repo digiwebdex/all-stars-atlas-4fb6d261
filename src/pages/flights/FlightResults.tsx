@@ -1930,13 +1930,7 @@ const FlightCard = ({
 
                               {/* Arc */}
                               <div className="flex-1 flex flex-col items-center justify-center pt-1 px-3 sm:px-8">
-                                <div className="w-full relative h-12">
-                                  <svg className="w-full h-full" viewBox="0 0 200 45" preserveAspectRatio="none">
-                                    <path d="M 8 38 Q 100 2 192 38" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-muted-foreground/40" strokeDasharray="5 4" />
-                                    <circle cx="8" cy="38" r="3" className="fill-muted-foreground/60" />
-                                    <circle cx="192" cy="38" r="3" className="fill-muted-foreground/60" />
-                                  </svg>
-                                  <Plane className="w-4 h-4 text-muted-foreground absolute top-1 left-1/2 -translate-x-1/2 rotate-90" />
+                                <AnimatedFlightArc height={12} compact />
                                 </div>
                                 <p className="text-xs text-muted-foreground font-medium -mt-1">{leg.duration || duration}</p>
                               </div>
