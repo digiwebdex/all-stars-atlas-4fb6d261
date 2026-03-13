@@ -1,7 +1,7 @@
 # Seven Trip — Working Deployment Commands
 
 > **Auto-updated** with every change. Copy-paste ready commands for your VPS.
-> Last updated: 2026-03-13 (v3.9.5 — Unified animated flight arc across all views: cards, round-trip, expanded detail)
+> Last updated: 2026-03-13 (v3.9.6 — TTI cancel ID mapping fix, Sabre SOAP cancel fallback, NDC PCC investigation)
 
 ---
 
@@ -112,7 +112,7 @@ pm2 logs seventrip-api --lines 30
 
 | Date | Change | Deploy Command |
 |------|--------|----------------|
-| 2026-03-13 | Sabre SOAP cancel fallback fix (local config loader, export fix), TTI cancel ID mapping (ttiBookingId from GDS response), unified flight card animations for all trip types | Standard Deployment |
+| 2026-03-13 | TTI cancel fix: uses airline PNR (not internal TTI ID) for cancellation — probe matrix identified correct payload shape. Sabre SOAP cancel fallback: local config loader + export fix. NDC investigation: BFM request correct (`NDC: Enable`) but PCC J4YL lacks NDC entitlements — contact Sabre to activate. Unified flight card animations for all trip types | Standard Deployment |
 | 2026-03-12 | Animated flight timeline: glowing teal plane on gradient dashed track, pulsing dots, arc animation with SVG gradients | Frontend Only |
 | 2026-03-12 | Branded fares: Sabre BFM extracts brand names (Economy Light/Smart), per-brand baggage/policies; dedup fix for round-trip combos | Standard Deployment |
 | 2026-03-12 | Round-trip dedup fix: key now includes all leg flight numbers/times/direction — preserves all outbound+return combinations | Backend Only |

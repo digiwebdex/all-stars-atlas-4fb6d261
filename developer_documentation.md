@@ -912,7 +912,11 @@ Sabre BFM supports a `CompressResponse` flag that returns results as a base64-en
 
 ### NDC Fares
 
-The BFM request includes `DataSources: { NDC: 'Enable' }`, but NDC content requires the Sabre agency PCC to have active NDC carrier agreements. Contact Sabre support to enable NDC content for your PCC if NDC fares are not appearing.
+The BFM request includes `DataSources: { NDC: 'Enable' }`, but NDC content requires the Sabre agency PCC to have active NDC carrier agreements. **Status (2026-03-13):** PCC `J4YL` does NOT have NDC entitlements enabled. Sabre confirmed this is a PCC-level configuration — no code changes needed. Contact your Sabre account manager to activate NDC carrier content on PCC `J4YL`. Once enabled, NDC fares will automatically appear in search results.
+
+### TTI Cancellation
+
+TTI/ZENITH `Cancel` API requires the **airline PNR** (e.g., `S2240313001234`), NOT the internal TTI booking ID (e.g., `STTTI-xxx`). The backend extracts the airline PNR from `booking.details.gdsResponse` using a priority chain: `RecordLocator` → `BookingReference` → `PNR` → `ETTicketFares[0].Ref`, falling back to `ttiBookingId` only if no airline PNR is found.
 
 ### Preferred Airline Filter
 

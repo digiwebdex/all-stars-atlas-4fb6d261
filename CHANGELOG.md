@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [3.9.6] — 2026-03-13 — TTI Cancellation Fix & NDC Investigation
+
+### Fixed
+- **TTI cancellation using wrong ID**: `cancelBooking()` was sending the internal TTI booking ID (e.g., `STTTI-xxx`) to the `Cancel` API method, which requires the **airline PNR** (e.g., `S2240313001234`). Probe matrix of 6 payload combinations identified that `{ BookingID: airlinePNR }` is the correct shape. Backend now extracts the airline PNR from `booking.details.gdsResponse` fields (`RecordLocator`, `BookingReference`, `PNR`, `ETTicketFares[0].Ref`) and falls back to `ttiBookingId`
+- **Sabre SOAP cancel fallback**: Fixed missing `getSabreConfig` import in `sabre-soap.js` (was using undefined variable), added `cancelPnrViaSoap` to module exports
+
+### Investigated
+- **NDC fares not appearing**: BFM v5 request correctly includes `DataSources: { NDC: "Enable", ATPCO: "Enable", LCC: "Enable" }`, but Sabre confirmed NDC content requires PCC-level entitlements. PCC `J4YL` does not have NDC enabled — no code changes needed, Sabre account manager must activate NDC carrier agreements on the PCC
+
+---
+
 ## [3.9.3] — 2026-03-12 — Sabre DOCS Schema Fix for PNR Creation
 
 ### Fixed

@@ -116,7 +116,7 @@
 
 ---
 
-## 🎯 Features (100% Complete — Audited 2026-03-12 v3.5)
+## 🎯 Features (100% Complete — Audited 2026-03-13 v3.9.6)
 
 ### Public Site (10 Services)
 - **Homepage** — 11 CMS-driven sections with parallax hero video, animated counters, and section reordering
@@ -188,7 +188,7 @@
 ### GDS & API Integrations (All Admin-Panel Configurable)
 | Integration | File | Description |
 |-------------|------|-------------|
-| **TTI/ZENITH (Air Astra)** | `tti-flights.js` | Real-time flight search + booking (PNR creation). Cancel via `Cancel` method. Ticketing = manual (no API). |
+| **TTI/ZENITH (Air Astra)** | `tti-flights.js` | Real-time flight search + booking (PNR creation). Cancel via `Cancel` method using airline PNR. Ticketing = manual (no API). |
 | **BDFare** | `bdf-flights.js` | Bangladesh flight aggregator (US-Bangla, Novoair, Biman) |
 | **FlyHub** | `flyhub-flights.js` | 450+ airline flight aggregator with token auth |
 | **Sabre GDS (REST)** | `sabre-flights.js` | International flights via Bargain Finder Max V5, PNR creation with SSR injection, ticketing, cancellation |
@@ -285,7 +285,7 @@ Express, mysql2, bcryptjs, jsonwebtoken, multer, uuid, cors, helmet, morgan, exp
 | Document | Description |
 |----------|-------------|
 | [README.md](./README.md) | This file — project overview |
-| [CHANGELOG.md](./CHANGELOG.md) | Version history (v1.0–v3.2) |
+| [CHANGELOG.md](./CHANGELOG.md) | Version history (v1.0–v3.9.6) |
 | [BACKEND_API_SPEC.md](./BACKEND_API_SPEC.md) | 90+ API endpoints with request/response schemas |
 | [Deployment.md](./Deployment.md) | VPS deployment automation guide (Ubuntu 24.04, Nginx, PM2, SSL) |
 | [developer_documentation.md](./developer_documentation.md) | Developer handbook (architecture, patterns, conventions) |
