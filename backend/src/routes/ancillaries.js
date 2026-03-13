@@ -204,16 +204,17 @@ router.get('/seat-map', async (req, res) => {
       }
     }
 
-    // ── Priority 2: Sabre REST /v1/offers/getseats fallback ──
-    if (!seatLayout && airlineCode && flightNumber && origin && destination && departureDate) {
+    // ── Priority 2: Sabre REST /v1/offers/getseats fallback (requires PNR) ──
+    if (!seatLayout && req.query.pnr && airlineCode && flightNumber && origin && destination && departureDate) {
       try {
         const { getSeatsRest } = require('./sabre-flights');
         if (getSeatsRest) {
-          console.log(`[SeatMap] Trying Sabre REST GetSeats for ${airlineCode}${flightNumber}`);
+          console.log(`[SeatMap] Trying Sabre REST GetSeats for ${airlineCode}${flightNumber} (PNR: ${req.query.pnr})`);
           const restResult = await getSeatsRest({
             origin, destination, departureDate, airlineCode,
             flightNumber: flightNumber.replace(/^[A-Z]{2}/i, ''),
             cabinClass: cabinClass || 'Economy',
+            pnr: req.query.pnr,
           });
           if (restResult && restResult.rows && restResult.rows.length > 0) {
             source = 'sabre-rest';

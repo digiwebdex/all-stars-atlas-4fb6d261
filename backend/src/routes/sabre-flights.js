@@ -1692,36 +1692,50 @@ async function checkTicketStatus({ pnr }) {
 }
 
 /**
- * Get seat map via Sabre REST /v1/offers/getseats
- * Alternative to SOAP EnhancedSeatMapRQ — simpler auth, no session management
+ * Get seat map via Sabre REST /v1/offers/getseats (v2)
+ * NOTE: This API requires either an offerId from prior BFM/NDC search,
+ * or a PNR (confirmationId). It does NOT support raw flight+date lookup
+ * like SOAP EnhancedSeatMapRQ does. Falls back gracefully.
  */
 async function getSeatsRest({ origin, destination, departureDate, airlineCode, flightNumber, cabinClass, pnr }) {
   const config = await getSabreConfig();
   if (!config) throw new Error('Sabre API not configured');
 
   const numericFlight = String(flightNumber || '').replace(/\D/g, '');
-  console.log(`[Sabre] REST GetSeats: ${airlineCode}${numericFlight} ${origin}-${destination} ${departureDate}`);
+  console.log(`[Sabre] REST GetSeats: ${airlineCode}${numericFlight} ${origin}-${destination} ${departureDate}${pnr ? ` PNR:${pnr}` : ''}`);
+
+  // GetSeats v2 requires either offerId or confirmationId (PNR)
+  // Without a PNR or offer context, this API cannot work — return graceful failure
+  if (!pnr) {
+    console.log('[Sabre] REST GetSeats requires PNR or offerId — use SOAP EnhancedSeatMapRQ for pre-booking seat maps');
+    return {
+      success: false,
+      source: 'sabre-rest',
+      error: 'GetSeats REST requires PNR. Use SOAP EnhancedSeatMapRQ for pre-booking.',
+      rows: [],
+      available: false,
+      note: 'Pre-booking seat maps use SOAP EnhancedSeatMapRQ (no PNR needed)',
+    };
+  }
 
   try {
+    // GetSeats v2 with confirmationId (PNR-based request)
     const body = {
-      GetSeatMapRQ: {
-        SeatMapQueryEnhanced: {
-          RequestType: pnr ? 'Stateful' : 'Payload',
-          ...(pnr ? { PNR: pnr } : {}),
-          Flight: [{
-            DepartureDate: departureDate,
-            DepartureTime: '00:00',
-            Marketing: {
-              Carrier: airlineCode,
-              FlightNumber: numericFlight,
-            },
-            Origin: origin,
-            Destination: destination,
-          }],
-          CabinDefinition: [{
-            RBD: cabinClass === 'Business' ? 'C' : cabinClass === 'First' ? 'F' : 'Y',
-          }],
-        },
+      requestType: 'payload',
+      request: {
+        confirmationId: pnr,
+        flight: [{
+          departureDate: departureDate,
+          marketing: {
+            carrier: airlineCode,
+            flightNumber: numericFlight,
+          },
+          origin: origin,
+          destination: destination,
+        }],
+        cabinDefinition: [{
+          rbd: cabinClass === 'Business' ? 'C' : cabinClass === 'First' ? 'F' : 'Y',
+        }],
       },
     };
 
