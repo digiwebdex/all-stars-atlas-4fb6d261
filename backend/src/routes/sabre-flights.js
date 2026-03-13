@@ -26,9 +26,17 @@ async function getSabreConfig() {
     const cfg = JSON.parse(rows[0].setting_value);
     if (cfg.enabled !== 'true' && cfg.enabled !== true) return null;
 
-    // Auto-detect production: if environment is set, use it; otherwise check if prod URL/credentials exist
+    // Production detection: explicit environment OR presence of prod credentials
+    // IMPORTANT: 'cert' = pre-production/UAT, 'production'/'prod' = live
     const isProd = cfg.environment === 'production' || cfg.environment === 'prod'
       || (!cfg.environment && (cfg.prod_url || cfg.prod_basic_auth || cfg.prodPassword));
+
+    // Production URLs (confirmed by Sabre JV_BD):
+    //   REST: https://api.platform.sabre.com
+    //   SOAP: https://webservices.platform.sabre.com
+    // Cert/UAT URLs:
+    //   REST: https://api.cert.platform.sabre.com
+    //   SOAP: https://webservices.cert.platform.sabre.com
     const baseUrl = isProd
       ? (cfg.prod_url || 'https://api.platform.sabre.com')
       : (cfg.sandbox_url || 'https://api.cert.platform.sabre.com');
@@ -64,6 +72,8 @@ async function getSabreConfig() {
       return null;
     }
 
+    const resolvedEnv = isProd ? 'production' : (cfg.environment || 'cert');
+
     _configCache = {
       baseUrl: baseUrl.replace(/\/$/, ''),
       clientId,
@@ -72,12 +82,12 @@ async function getSabreConfig() {
       pcc: cfg.pcc || cfg.scCode || '',
       epr,
       agencyPassword,
-      environment: cfg.environment || 'cert',
+      environment: resolvedEnv,
       ptr: cfg.ptr || cfg.PTR || '',
       tamPool: cfg.tamPool || '',
     };
     _configCacheTime = Date.now();
-    console.log(`[Sabre] Config loaded: env=${_configCache.environment}, PCC=${_configCache.pcc}, EPR=${_configCache.epr}, hasBasicAuth=${!!basicAuth}`);
+    console.log(`[Sabre] Config loaded: env=${_configCache.environment}, PCC=${_configCache.pcc}, EPR=${_configCache.epr}, baseUrl=${_configCache.baseUrl}, hasBasicAuth=${!!basicAuth}`);
     return _configCache;
   } catch (err) {
     console.error('[Sabre] Config load error:', err.message);
