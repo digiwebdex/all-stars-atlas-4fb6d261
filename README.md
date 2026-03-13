@@ -108,15 +108,15 @@
 │   ├── sitemap.xml           # SEO sitemap
 │   ├── robots.txt            # Crawler rules
 │   └── favicon.png           # App icon
-├── BACKEND_API_SPEC.md       # 90+ API endpoint spec
-├── CHANGELOG.md              # Version history (v1.0–v3.5)
+├── BACKEND_API_SPEC.md       # 94+ API endpoint spec
+├── CHANGELOG.md              # Version history (v1.0–v3.9.9)
 ├── Deployment.md             # VPS deployment guide
 └── developer_documentation.md # Dev handbook
 ```
 
 ---
 
-## 🎯 Features (100% Complete — Audited 2026-03-13 v3.9.7)
+## 🎯 Features (100% Complete — Audited 2026-03-13 v3.9.9)
 
 ### Public Site (10 Services)
 - **Homepage** — 11 CMS-driven sections with parallax hero video, animated counters, and section reordering

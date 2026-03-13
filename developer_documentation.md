@@ -625,6 +625,11 @@ POST   /auth/reset-password
 GET    /flights/search?from=DAC&to=CXB&date=2026-03-01&passengers=2&class=Economy
 GET    /flights/:id
 POST   /flights/book
+POST   /flights/cancel
+POST   /flights/revalidate-price          # v3.9.9 — Sabre BFM revalidation before booking
+GET    /flights/booking/:pnr              # v3.9.9 — Retrieve PNR details via Sabre REST
+GET    /flights/ticket-status/:pnr        # v3.9.9 — Check ticket issuance status
+GET    /flights/seats-rest                # v3.9.9 — REST seat map (/v1/offers/getseats)
 POST   /flights/upload-travel-docs
 GET    /flights/travel-docs/:bookingId
 GET    /flights/ancillaries?airlineCode=FZ&origin=DAC&destination=DXB&flightNumber=8508&departureDate=2026-03-14

@@ -849,6 +849,112 @@ Same request/response as `/auth/login`. The frontend checks that `user.role` is 
 }
 ```
 
+### `POST /flights/revalidate-price` ⚡ NEW v3.9.9
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Request:**
+```json
+{
+  "flights": [
+    {
+      "origin": "DAC",
+      "destination": "DXB",
+      "departureTime": "2026-04-15T21:55:00",
+      "arrivalTime": "2026-04-16T01:30:00",
+      "airlineCode": "EK",
+      "flightNumber": "585",
+      "bookingClass": "Y"
+    }
+  ],
+  "adults": 1,
+  "children": 0,
+  "infants": 0,
+  "cabinClass": "Economy"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "pricedItineraries": [
+    {
+      "totalFare": 45000,
+      "baseFare": 38000,
+      "taxes": 7000,
+      "currency": "BDT",
+      "validatingCarrier": "EK",
+      "lastTicketDate": "2026-04-10"
+    }
+  ]
+}
+```
+
+### `GET /flights/booking/:pnr` ⚡ NEW v3.9.9
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "pnr": "JIUKMY",
+  "flights": [],
+  "passengers": [],
+  "ticketing": [],
+  "status": "confirmed"
+}
+```
+
+### `GET /flights/ticket-status/:pnr` ⚡ NEW v3.9.9
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "pnr": "JIUKMY",
+  "tickets": [
+    {
+      "ticketNumber": "1572401234567",
+      "status": "ticketed",
+      "passengerName": "UDDIN/RAHIM MR",
+      "issueDate": "2026-03-13",
+      "airline": "EK"
+    }
+  ],
+  "allTicketed": true
+}
+```
+
+### `GET /flights/seats-rest` ⚡ NEW v3.9.9
+
+**Query Params:**
+| Param | Type | Required | Example |
+|-------|------|----------|---------|
+| origin | string | yes | DAC |
+| destination | string | yes | DXB |
+| departureDate | string | yes | 2026-04-15 |
+| airlineCode | string | yes | EK |
+| flightNumber | string | yes | 585 |
+| cabinClass | string | no | Economy |
+| pnr | string | no | JIUKMY |
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "source": "sabre-rest",
+  "rows": [{ "rowNumber": 1, "seats": [...] }],
+  "columns": ["A", "B", "C", "D", "E", "F"],
+  "exitRows": [12, 13],
+  "totalRows": 40,
+  "totalSeats": 240,
+  "available": true
+}
+
 ---
 
 ## 7. API Endpoints — Hotels

@@ -1,7 +1,7 @@
 # Seven Trip — GDS Integration History & Troubleshooting
 
 > Complete timeline of all GDS provider integrations, issues encountered, and solutions applied.
-> Last updated: 2026-03-13 (v3.9.7)
+> Last updated: 2026-03-13 (v3.9.9)
 
 ---
 
@@ -190,7 +190,7 @@ key = flightNumber + departureTime + arrivalTime + destination + stops +
 
 ### Provider Priority for Ancillaries
 ```
-Seat Map:  Sabre SOAP EnhancedSeatMapRQ → TTI GetSeatMap → "Not Available"
+Seat Map:  Sabre SOAP EnhancedSeatMapRQ → Sabre REST GetSeats → TTI GetSeatMap → "Not Available"
 Meals:     Sabre SOAP GetAncillaryOffersRQ → TTI → empty
 Baggage:   Sabre SOAP GetAncillaryOffersRQ → TTI → empty
 ```
@@ -205,8 +205,13 @@ Baggage:   Sabre SOAP GetAncillaryOffersRQ → TTI → empty
 | Flight Search | BDFare | 3-6 seconds |
 | Flight Search | TTI | 1-3 seconds |
 | Seat Map | Sabre SOAP | 1-3 seconds |
+| Seat Map | Sabre REST | 1-3 seconds |
 | Ancillaries | Sabre SOAP GAO | 2-4 seconds |
 | PNR Creation | Sabre REST | 3-8 seconds |
+| Price Revalidation | Sabre REST | 2-4 seconds |
+| Get Booking | Sabre REST | 1-2 seconds |
+| Ticket Status | Sabre REST | 1-2 seconds |
+| Ticketing | Sabre REST v1.3.0 | 3-8 seconds |
 | Booking Cancel | Sabre REST | 1-3 seconds |
 | Booking Cancel | TTI | 1-2 seconds |
 
