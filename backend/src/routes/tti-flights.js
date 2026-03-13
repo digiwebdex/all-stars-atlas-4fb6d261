@@ -704,7 +704,7 @@ async function createBooking({ flightData, passengers, contactInfo }) {
   if (!config) throw new Error('TTI API not configured');
 
   // Build passenger list for TTI — must match WCF DataContract format
-  const selectedItinRef = flightData._ttiItineraryRef || flightData.itineraryRef;
+  const selectedItinRef = flightData._ttiItineraryRef || flightData.itineraryRef || flightData?._ttiRawItinerary?.Ref || null;
   
   // ── Get search response's passenger groups to link named passengers ──
   const searchPassengers = flightData._ttiPassengers || [];
@@ -792,9 +792,10 @@ async function createBooking({ flightData, passengers, contactInfo }) {
   
   console.log('[TTI BOOKING] Named passengers:', JSON.stringify(ttiPassengers.map(p => ({ Ref: p.Ref, RefItinerary: p.RefItinerary, Type: p.PassengerTypeCode, Name: p.FirstName + ' ' + p.LastName }))));
 
-  // ── CRITICAL: TTI CreateBooking requires the Offer from search response ──
-  // Without Offer.Ref, TTI can't link this booking to the search session → NullReferenceException
+  // ── CRITICAL: TTI CreateBooking requires Offer.Ref from SearchFlights response ──
+  // For strict GDS mode, fail fast if this context is missing.
   const offer = flightData._ttiOffer || null;
+  const offerRef = offer?.Ref || offer?.ref || null;
   
   // ── Only send the SELECTED itinerary's segments, not ALL search results ──
   const rawSegments = flightData._ttiRawSegments || [];
@@ -840,11 +841,22 @@ async function createBooking({ flightData, passengers, contactInfo }) {
   console.log('[TTI BOOKING] Selected itinerary:', selectedItinRef);
   console.log('[TTI BOOKING] Segments count:', segments.length, '| FareInfo.Itineraries:', (fareInfo.Itineraries || []).length, '| FareInfo.ETTicketFares:', (fareInfo.ETTicketFares || []).length);
 
+  if (!selectedItinRef) {
+    return { success: false, error: 'TTI booking error: Missing itinerary reference (_ttiItineraryRef)' };
+  }
+  if (!offerRef) {
+    return { success: false, error: 'TTI booking error: Missing Offer.Ref from search context. Book only from live TTI search result payload.' };
+  }
+  if (!Array.isArray(segments) || segments.length === 0) {
+    return { success: false, error: 'TTI booking error: No valid TTI segments found for CreateBooking payload' };
+  }
+
   // Add RefItinerary to Offer — TTI requires this to know which itinerary to book
-  const offerWithRef = offer ? {
+  const offerWithRef = {
     ...offer,
+    Ref: offerRef,
     RefItinerary: selectedItinRef,
-  } : { RefItinerary: selectedItinRef };
+  };
 
   const request = {
     RequestInfo: { AuthenticationKey: config.key },
@@ -952,7 +964,8 @@ async function createBooking({ flightData, passengers, contactInfo }) {
     const isLikelyAirlinePnr = (val) => {
       const code = normalizeCode(val);
       if (!code) return false;
-      return /^[A-Z0-9]{5,8}$/.test(code);
+      // Air Astra may return long airline references (e.g., S2240313001234), not only 6-char locators.
+      return /^[A-Z0-9]{5,20}$/.test(code);
     };
 
     const airlinePnrCandidates = [
@@ -988,13 +1001,24 @@ async function createBooking({ flightData, passengers, contactInfo }) {
     const ttiBookingId = booking.Id || booking.BookingId || etFare0.Ref || seg0.Ref ||
                           response.BookingId || booking.Reference || booking.Ref || pax0.Ref || null;
 
-    // Backward-compatible top-level pnr: prefer airline locator, fallback to internal booking ID
-    const pnr = airlinePnr || ttiBookingId || null;
+    // Strict success criteria: booking is successful only when an actual airline/GDS PNR exists.
+    const pnr = airlinePnr || null;
 
     const ticketTimeLimit = seg0.TimeLimit || booking.TicketTimeLimit || booking.TimeLimit ||
                              response.TicketTimeLimit || null;
 
     console.log('[TTI BOOKING] ✅ Extracted — AirlinePNR:', airlinePnr, '| TTI BookingId:', ttiBookingId, '| PNR (used):', pnr, '| TimeLimit:', ticketTimeLimit);
+
+    if (!pnr) {
+      return {
+        success: false,
+        error: 'TTI booking succeeded upstream but no airline/GDS PNR was returned',
+        pnr: null,
+        airlinePnr: null,
+        ttiBookingId,
+        rawResponse: response,
+      };
+    }
 
     return {
       success: true,

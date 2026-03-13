@@ -151,7 +151,7 @@ async function getAccessToken(config) {
 }
 
 // ── Sabre API Request Helper ──
-async function sabreRequest(config, endpoint, body, method = 'POST') {
+async function sabreRequest(config, endpoint, body, method = 'POST', timeoutMs = 30000) {
   const token = await getAccessToken(config);
   if (!token) throw new Error('Sabre authentication failed');
 
@@ -163,7 +163,7 @@ async function sabreRequest(config, endpoint, body, method = 'POST') {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(timeoutMs),
   };
 
   if (body && method !== 'GET') {
@@ -1066,7 +1066,34 @@ function extractSabrePnrFromCreateResponse(response) {
     pnrCandidates.push(ref.RecordLocator, ref.BookingReference, ref.Locator, ref.ID, ref.id, ref.Id);
   });
 
-  return pnrCandidates.find((value) => {
+  const deepCandidates = [];
+  const visited = new Set();
+  const stack = [response];
+  while (stack.length) {
+    const node = stack.pop();
+    if (!node || typeof node !== 'object') continue;
+    if (visited.has(node)) continue;
+    visited.add(node);
+
+    if (Array.isArray(node)) {
+      node.forEach((item) => stack.push(item));
+      continue;
+    }
+
+    for (const [k, v] of Object.entries(node)) {
+      if (v && typeof v === 'object') {
+        stack.push(v);
+        continue;
+      }
+      if (typeof v !== 'string') continue;
+      if (/(recordlocator|bookingreference|locator|confirmationid|pnr)$/i.test(k)) {
+        deepCandidates.push(v);
+      }
+    }
+  }
+
+  const allCandidates = [...pnrCandidates, ...deepCandidates];
+  return allCandidates.find((value) => {
     if (typeof value !== 'string') return false;
     const trimmed = value.trim();
     return /^[A-Z0-9]{5,8}$/i.test(trimmed);
@@ -1326,35 +1353,21 @@ async function createBooking({ flightData, passengers, contactInfo, specialServi
         }
         const nationality = docCountry;
 
-        // Format DOB for DOCS: YYYY-MM-DD
-        let dobFormatted = '';
-        const rawDob = pax.dateOfBirth || pax.dob || '';
-        if (rawDob) {
-          const dRaw = String(rawDob).replace(/['"]/g, '').trim();
-          if (/^\d{4}-\d{2}-\d{2}$/.test(dRaw)) {
-            dobFormatted = dRaw;
-          } else {
-            const dd = new Date(dRaw);
-            if (!isNaN(dd.getTime())) dobFormatted = dd.toISOString().slice(0, 10);
-          }
+        if (!expiryFormatted) {
+          throw new Error(`Missing or invalid passport expiry for passenger ${i + 1}`);
         }
 
-        // Gender: M or F (Sabre standard)
-        const genderRaw = (pax.gender || '').toUpperCase();
-        const genderCode = genderRaw.startsWith('F') ? 'F' : 'M';
-
+        // Keep Document schema-safe for Sabre validation
+        // Required by user: always push passport data, never downgrade by stripping DOCS.
         const docPayload = {
           Type: 'P',
           Number: String(passportNo).toUpperCase(),
           IssueCountry: docCountry,
           NationalityCountry: nationality,
-          Gender: genderCode,
-          GivenName: (pax.firstName || '').toUpperCase(),
-          Surname: (pax.lastName || '').toUpperCase(),
+          ExpirationDate: expiryFormatted,
         };
 
-        if (expiryFormatted) docPayload.ExpirationDate = expiryFormatted;
-        if (dobFormatted) docPayload.DateOfBirth = dobFormatted;
+        console.log(`[Sabre] DOCS pax ${i + 1}: ${docPayload.Number} | ${docPayload.IssueCountry} | exp=${docPayload.ExpirationDate}`);
 
         advancePassenger.push({
           Document: docPayload,
@@ -1438,24 +1451,16 @@ async function createBooking({ flightData, passengers, contactInfo, specialServi
       body,
     }];
 
-    if (advancePassenger.length > 0) {
-      const bodyWithoutAdvancePassenger = JSON.parse(JSON.stringify(body));
-      const specialServiceInfo = bodyWithoutAdvancePassenger?.CreatePassengerNameRecordRQ?.SpecialReqDetails?.SpecialService?.SpecialServiceInfo;
-      if (specialServiceInfo?.AdvancePassenger) {
-        delete specialServiceInfo.AdvancePassenger;
+    if (ssrList.length > 0) {
+      // Keep passport DOCS, but allow retry without optional SSR service codes.
+      const bodyDocsOnly = JSON.parse(JSON.stringify(body));
+      const specialServiceInfo = bodyDocsOnly?.CreatePassengerNameRecordRQ?.SpecialReqDetails?.SpecialService?.SpecialServiceInfo;
+      if (specialServiceInfo?.Service) {
+        delete specialServiceInfo.Service;
       }
       requestVariants.push({
-        label: 'without_docs_doca',
-        body: bodyWithoutAdvancePassenger,
-      });
-    }
-
-    if (body?.CreatePassengerNameRecordRQ?.SpecialReqDetails) {
-      const bodyWithoutSpecialReqDetails = JSON.parse(JSON.stringify(body));
-      delete bodyWithoutSpecialReqDetails.CreatePassengerNameRecordRQ.SpecialReqDetails;
-      requestVariants.push({
-        label: 'without_special_req_details',
-        body: bodyWithoutSpecialReqDetails,
+        label: 'docs_only_no_ssr',
+        body: bodyDocsOnly,
       });
     }
 
@@ -1476,7 +1481,7 @@ async function createBooking({ flightData, passengers, contactInfo, specialServi
         const hasSSR = !!variant.body?.CreatePassengerNameRecordRQ?.SpecialReqDetails?.SpecialService?.SpecialServiceInfo?.Service;
         console.log(`[Sabre] Has DOCS: ${hasDocs} | Has SSR: ${hasSSR}`);
 
-        const response = await sabreRequest(config, '/v2.4.0/passenger/records?mode=create', variant.body);
+        const response = await sabreRequest(config, '/v2.4.0/passenger/records?mode=create', variant.body, 'POST', 60000);
         finalResponse = response;
         logSabreCreatePnrDebug(response);
 

@@ -100,19 +100,34 @@ book_flight() {
   HTTP_CODE=$(echo "$RESULT" | tail -1)
   BODY=$(echo "$RESULT" | sed '$d')
 
+  SRC=$(echo "$PAYLOAD" | jq -r '.flightData.source // "unknown"')
   PNR=$(echo "$BODY" | jq -r '.pnr // "null"')
   AIRLINE_PNR=$(echo "$BODY" | jq -r '.airlinePnr // "null"')
+  GDS_BOOKING_ID=$(echo "$BODY" | jq -r '.gdsBookingId // "null"')
   GDS_BOOKED=$(echo "$BODY" | jq -r '.gdsBooked // false')
   GDS_ERROR=$(echo "$BODY" | jq -r '.gdsError // "none"')
   BREF=$(echo "$BODY" | jq -r '.bookingRef // "?"')
   STATUS=$(echo "$BODY" | jq -r '.status // "?"')
 
-  if [ "$GDS_BOOKED" = "true" ] && [ "$PNR" != "null" ] && [ "$PNR" != "" ]; then
-    echo -e "  ${GREEN}✓ SUCCESS${NC} | GDS PNR: ${GREEN}$PNR${NC} | Airline PNR: ${CYAN}$AIRLINE_PNR${NC} | Ref: $BREF | Status: $STATUS"
+  HAS_DUAL_PNR=true
+  if [[ "$SRC" == *"tti"* ]] || [[ "$SRC" == *"astra"* ]]; then
+    if [ "$AIRLINE_PNR" = "null" ] || [ "$GDS_BOOKING_ID" = "null" ] || [ "$AIRLINE_PNR" = "$GDS_BOOKING_ID" ]; then
+      HAS_DUAL_PNR=false
+    fi
+  else
+    if [ "$PNR" = "null" ] || [ "$AIRLINE_PNR" = "null" ] || [ "$PNR" = "$AIRLINE_PNR" ]; then
+      HAS_DUAL_PNR=false
+    fi
+  fi
+
+  if [ "$GDS_BOOKED" = "true" ] && [ "$HAS_DUAL_PNR" = "true" ]; then
+    echo -e "  ${GREEN}✓ SUCCESS${NC} | GDS PNR: ${GREEN}$PNR${NC} | Airline PNR: ${CYAN}$AIRLINE_PNR${NC} | GDS Ref: $GDS_BOOKING_ID | Ref: $BREF | Status: $STATUS"
     PASS=$((PASS + 1))
     ALL_PNRS+=("$PNR")
   else
-    echo -e "  ${RED}✗ FAILED${NC} | HTTP: $HTTP_CODE | Ref: $BREF | GDS Error: ${RED}$GDS_ERROR${NC}"
+    echo -e "  ${RED}✗ FAILED${NC} | HTTP: $HTTP_CODE | Source: $SRC | Ref: $BREF"
+    echo -e "    GDS Error: ${RED}$GDS_ERROR${NC}"
+    echo -e "    PNR: $PNR | AirlinePNR: $AIRLINE_PNR | GDS Ref: $GDS_BOOKING_ID | DualPNR: $HAS_DUAL_PNR"
     FAIL=$((FAIL + 1))
   fi
 }

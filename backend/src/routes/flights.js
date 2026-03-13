@@ -619,6 +619,152 @@ router.get('/:id', async (req, res) => {
 // Bangladesh domestic airports
 const BD_AIRPORTS = ['DAC', 'CXB', 'CGP', 'ZYL', 'JSR', 'RJH', 'SPD', 'BZL', 'IRD', 'TKR'];
 
+function flattenLegs(items = []) {
+  return (Array.isArray(items) ? items : []).flatMap((item) => {
+    if (Array.isArray(item?.legs) && item.legs.length > 0) return flattenLegs(item.legs);
+    return item ? [item] : [];
+  });
+}
+
+function mergeBookingFlightData({ flightData, returnFlightData, multiCityFlights = [], isRoundTrip = false }) {
+  const merged = { ...(flightData || {}) };
+
+  if (isRoundTrip && returnFlightData) {
+    const outLegs = flattenLegs(flightData?.legs?.length ? flightData.legs : [flightData]);
+    const retLegs = flattenLegs(returnFlightData?.legs?.length ? returnFlightData.legs : [returnFlightData]);
+    merged.legs = [...outLegs, ...retLegs];
+  } else if (Array.isArray(multiCityFlights) && multiCityFlights.length >= 2) {
+    merged.legs = flattenLegs(multiCityFlights);
+  } else {
+    merged.legs = flattenLegs(flightData?.legs?.length ? flightData.legs : [flightData]);
+  }
+
+  return merged;
+}
+
+function toDateOnly(dateTime) {
+  if (!dateTime) return null;
+  const raw = String(dateTime);
+  const m = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (m) return m[1];
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+
+function getPassengerCounts(passengers = []) {
+  return passengers.reduce((acc, p) => {
+    const type = String(p?.type || 'adult').toLowerCase();
+    if (type === 'child') acc.children += 1;
+    else if (type === 'infant') acc.infants += 1;
+    else acc.adults += 1;
+    return acc;
+  }, { adults: 0, children: 0, infants: 0 });
+}
+
+function extractDistinctSabreAirlinePnr(rawBooking, gdsPnr) {
+  const gds = String(gdsPnr || '').trim().toUpperCase();
+  const candidates = [];
+  const stack = [rawBooking];
+  const seen = new Set();
+
+  while (stack.length) {
+    const node = stack.pop();
+    if (!node || typeof node !== 'object') continue;
+    if (seen.has(node)) continue;
+    seen.add(node);
+
+    if (Array.isArray(node)) {
+      node.forEach((item) => stack.push(item));
+      continue;
+    }
+
+    for (const [key, value] of Object.entries(node)) {
+      if (value && typeof value === 'object') {
+        stack.push(value);
+        continue;
+      }
+      if (typeof value !== 'string') continue;
+      if (!/(vendorlocator|airlinelocator|airlinepnr|confirmationid|confirmationnumber|locator|recordlocator)/i.test(key)) continue;
+      const code = value.trim().toUpperCase();
+      if (/^[A-Z0-9]{5,20}$/.test(code)) candidates.push(code);
+    }
+  }
+
+  const distinct = candidates.find((code) => code !== gds);
+  return distinct || null;
+}
+
+async function hydrateTtiContextForBooking({ mergedFlightData, returnFlightData, isRoundTrip, passengers }) {
+  if (mergedFlightData?._ttiOffer?.Ref && mergedFlightData?._ttiItineraryRef) {
+    return mergedFlightData;
+  }
+
+  const legs = flattenLegs(mergedFlightData?.legs?.length ? mergedFlightData.legs : [mergedFlightData]);
+  const firstLeg = legs[0];
+  if (!firstLeg?.origin || !firstLeg?.destination || !firstLeg?.departureTime) {
+    return mergedFlightData;
+  }
+
+  const counts = getPassengerCounts(passengers);
+  const returnDate = isRoundTrip
+    ? (toDateOnly(returnFlightData?.departureTime)
+      || toDateOnly(legs.find((l) => l?.origin === firstLeg.destination && l?.destination === firstLeg.origin)?.departureTime))
+    : undefined;
+
+  const searchParams = {
+    origin: firstLeg.origin,
+    destination: firstLeg.destination,
+    departDate: toDateOnly(firstLeg.departureTime),
+    returnDate,
+    adults: Math.max(counts.adults, 1),
+    children: counts.children,
+    infants: counts.infants,
+    cabinClass: mergedFlightData?.cabinClass || 'Economy',
+  };
+
+  try {
+    const results = await ttiSearch(searchParams);
+    if (!Array.isArray(results) || results.length === 0) {
+      return mergedFlightData;
+    }
+
+    const wantedFlightNo = String(firstLeg.flightNumber || '').replace(/\D/g, '');
+    const wantedAirline = String(firstLeg.airlineCode || '').toUpperCase();
+
+    const best = results.find((r) => {
+      if (!r?._ttiOffer?.Ref || !r?._ttiItineraryRef) return false;
+      if (wantedAirline && String(r.airlineCode || '').toUpperCase() !== wantedAirline) return false;
+      if (!wantedFlightNo) return true;
+      return String(r.flightNumber || '').replace(/\D/g, '') === wantedFlightNo;
+    }) || results.find((r) => r?._ttiOffer?.Ref && r?._ttiItineraryRef);
+
+    if (!best) return mergedFlightData;
+
+    console.log('[Booking][TTI] Hydrated search context:', JSON.stringify({
+      itineraryRef: best._ttiItineraryRef,
+      offerRef: best._ttiOffer?.Ref || null,
+      airline: best.airlineCode,
+      flightNumber: best.flightNumber,
+    }));
+
+    return {
+      ...mergedFlightData,
+      _ttiItineraryRef: best._ttiItineraryRef,
+      _ttiRawItinerary: best._ttiRawItinerary,
+      _ttiRawFares: best._ttiRawFares,
+      _ttiRawSegments: best._ttiRawSegments,
+      _ttiFullFareInfo: best._ttiFullFareInfo,
+      _ttiAllSegments: best._ttiAllSegments,
+      _ttiOffer: best._ttiOffer,
+      _ttiPassengers: best._ttiPassengers,
+    };
+  } catch (err) {
+    console.warn('[Booking][TTI] Context hydration failed:', err.message);
+    return mergedFlightData;
+  }
+}
+
 /**
  * Determine payment deadline.
  * API-ONLY: Uses airline-provided timeLimit / LastTicketingDate from GDS.
@@ -711,6 +857,17 @@ router.post('/book', authenticate, async (req, res) => {
     const airlineCode = String(flightData?.airlineCode || '').toUpperCase();
     const isTtiFlight = flightSource.includes('tti') || flightSource.includes('astra') || ['2A', 'S2'].includes(airlineCode);
     const isSabreFlight = flightSource.includes('sabre') || !!flightData?._sabreSource;
+    const isGdsFlight = isTtiFlight || isSabreFlight;
+
+    if (isGdsFlight) {
+      const missingPassportIndex = passengers.findIndex((p) => !p.passportNumber || !p.passportExpiry || !p.nationality);
+      if (missingPassportIndex >= 0) {
+        return res.status(422).json({
+          message: `Passenger ${missingPassportIndex + 1} missing passport fields (number/expiry/nationality)`,
+          gdsBooked: false,
+        });
+      }
+    }
 
     const details = {
       outbound: flightData || {},
@@ -729,18 +886,39 @@ router.post('/book', authenticate, async (req, res) => {
     // Create booking in external GDS first (TTI/Sabre)
     let gdsPnr = null;
     let gdsBookingResult = null;
-    let airlinePnr = null; // Actual airline record locator (e.g., "00KSQZ")
-    let gdsBookingId = null; // Internal GDS booking ID (e.g., "1654483")
+    let airlinePnr = null; // Actual airline record locator
+    let gdsBookingId = null; // Provider-specific internal booking identifier
+
+    const multiCityFlights = req.body.multiCityFlights || [];
+    const mergedFlightData = mergeBookingFlightData({ flightData, returnFlightData, multiCityFlights, isRoundTrip });
+
+    console.log('[Booking] Merged legs count:', mergedFlightData.legs?.length || 0);
+    (mergedFlightData.legs || []).forEach((l, i) => {
+      console.log(`[Booking]   Leg ${i + 1}: ${l.airlineCode || '?'}${l.flightNumber || '?'} ${l.origin || '?'}→${l.destination || '?'} ${l.departureTime || '?'}`);
+    });
 
     if (isTtiFlight) {
       console.log('[Booking] TTI/Air Astra flight detected — creating GDS booking...');
       try {
-        gdsBookingResult = await ttiCreateBooking({ flightData, passengers, contactInfo: contactInfo || {} });
-        if (gdsBookingResult.success && (gdsBookingResult.pnr || gdsBookingResult.ttiBookingId)) {
-          gdsPnr = gdsBookingResult.pnr || gdsBookingResult.ttiBookingId || null;
-          airlinePnr = gdsBookingResult.airlinePnr || null;
+        const ttiFlightData = await hydrateTtiContextForBooking({
+          mergedFlightData,
+          returnFlightData,
+          isRoundTrip: !!isRoundTrip,
+          passengers,
+        });
+
+        gdsBookingResult = await ttiCreateBooking({
+          flightData: ttiFlightData,
+          passengers,
+          contactInfo: contactInfo || {},
+        });
+
+        if (gdsBookingResult?.success && gdsBookingResult?.pnr) {
+          gdsPnr = gdsBookingResult.pnr;
+          airlinePnr = gdsBookingResult.airlinePnr || gdsBookingResult.pnr || null;
           gdsBookingId = gdsBookingResult.ttiBookingId || null;
-          console.log('[Booking] TTI PNR:', gdsPnr, '| Airline PNR:', airlinePnr, '| Booking ID:', gdsBookingId);
+          console.log('[Booking] TTI success | PNR:', gdsPnr, '| Airline PNR:', airlinePnr, '| Booking ID:', gdsBookingId);
+
           if (gdsBookingResult.ticketTimeLimit && payLater) {
             const ttiDeadline = new Date(gdsBookingResult.ticketTimeLimit);
             if (!isNaN(ttiDeadline.getTime()) && ttiDeadline > new Date()) {
@@ -748,143 +926,54 @@ router.post('/book', authenticate, async (req, res) => {
             }
           }
         } else {
-          console.warn('[Booking] TTI booking failed:', gdsBookingResult.error, '— proceeding with local booking only');
+          console.warn('[Booking] TTI booking failed:', gdsBookingResult?.error || 'Unknown TTI error');
         }
       } catch (ttiErr) {
-        console.error('[Booking] TTI CreateBooking exception:', ttiErr.message, '— proceeding with local booking');
+        console.error('[Booking] TTI CreateBooking exception:', ttiErr.message);
       }
     }
 
     if (!gdsPnr && isSabreFlight) {
       console.log('[Booking] ═══════════════════════════════════════════════════');
-      console.log('[Booking] Sabre flight detected — creating GDS booking with SSR...');
+      console.log('[Booking] Sabre flight detected — creating GDS booking with SSR/DOCS...');
       console.log('[Booking] isRoundTrip:', isRoundTrip, '| isMultiCity:', !!(req.body.isMultiCity || (req.body.multiCityFlights || []).length >= 2));
       console.log('[Booking] returnFlightData:', returnFlightData ? 'YES' : 'NO');
       console.log('[Booking] multiCityFlights:', (req.body.multiCityFlights || []).length, 'segments');
       console.log('[Booking] Passengers:', passengers.length, '| Contact:', contactInfo?.email);
       passengers.forEach((p, i) => {
-        console.log(`[Booking] Pax ${i+1}: ${p.title} ${p.firstName} ${p.lastName} | DOB: ${p.dateOfBirth || p.dob} | Passport: ${p.passportNumber || p.passport} | Expiry: ${p.passportExpiry} | Gender: ${p.gender} | Type: ${p.type}`);
+        console.log(`[Booking] Pax ${i + 1}: ${p.title} ${p.firstName} ${p.lastName} | DOB: ${p.dateOfBirth || p.dob} | Passport: ${p.passportNumber || p.passport} | Expiry: ${p.passportExpiry} | Gender: ${p.gender} | Type: ${p.type}`);
       });
+
       try {
-        // ── Merge ALL segments (outbound + return + multi-city) into a single flightData for PNR ──
-        const multiCityFlights = req.body.multiCityFlights || [];
-        const mergedFlightData = { ...flightData };
-
-        // Flatten legs: each leg or multi-city flight may itself have nested legs
-        const flattenLegs = (items) => {
-          const result = [];
-          for (const item of items) {
-            if (item?.legs?.length > 0) {
-              result.push(...item.legs);
-            } else {
-              result.push(item);
-            }
-          }
-          return result;
-        };
-
-        if (isRoundTrip && returnFlightData) {
-          // Round-trip: merge outbound + return legs into single PNR
-          const outLegs = flightData?.legs?.length > 0 ? flightData.legs : [flightData];
-          const retLegs = returnFlightData?.legs?.length > 0 ? returnFlightData.legs : [returnFlightData];
-          mergedFlightData.legs = [...flattenLegs(outLegs), ...flattenLegs(retLegs)];
-          console.log(`[Booking] Round-trip: ${outLegs.length} outbound + ${retLegs.length} return = ${mergedFlightData.legs.length} total segments`);
-        } else if (multiCityFlights.length >= 2) {
-          // Multi-city: flatten all segment legs
-          mergedFlightData.legs = flattenLegs(multiCityFlights);
-          console.log(`[Booking] Multi-city: ${multiCityFlights.length} cities → ${mergedFlightData.legs.length} total segments`);
-        } else {
-          console.log(`[Booking] One-way: ${(flightData?.legs || []).length} segment(s)`);
-        }
-
-        console.log('[Booking] Merged legs count:', mergedFlightData.legs?.length || 0);
-        (mergedFlightData.legs || []).forEach((l, i) => {
-          console.log(`[Booking]   Leg ${i+1}: ${l.airlineCode || '?'}${l.flightNumber || '?'} ${l.origin || '?'}→${l.destination || '?'} ${l.departureTime || '?'}`);
-        });
-
         gdsBookingResult = await sabreCreateBooking({
           flightData: mergedFlightData,
           passengers,
           contactInfo: contactInfo || {},
           specialServices: specialServices || {},
         });
-        console.log('[Booking] Sabre result: success=', gdsBookingResult?.success, '| pnr=', gdsBookingResult?.pnr, '| error=', gdsBookingResult?.error || 'none');
-        if (gdsBookingResult.success && gdsBookingResult.pnr) {
-          gdsPnr = gdsBookingResult.pnr;
-          airlinePnr = gdsBookingResult.pnr; // GDS PNR = initial reference
-          console.log('[Booking] ✓ Sabre PNR created:', gdsPnr);
 
-          // ── Extract airline vendor locator (actual airline PNR) via GetBooking ──
-          // GDS PNR (Sabre record locator) ≠ Airline PNR (vendor/airline confirmation)
+        console.log('[Booking] Sabre result: success=', gdsBookingResult?.success, '| pnr=', gdsBookingResult?.pnr, '| error=', gdsBookingResult?.error || 'none');
+
+        if (gdsBookingResult?.success && gdsBookingResult?.pnr) {
+          gdsPnr = gdsBookingResult.pnr;
+          gdsBookingId = gdsBookingResult.pnr;
+          console.log('[Booking] ✓ Sabre GDS PNR created:', gdsPnr);
+
           try {
-            console.log('[Booking] Fetching GetBooking to extract Airline PNR (vendor locator)...');
+            console.log('[Booking] Fetching GetBooking to extract distinct Airline PNR...');
             const bookingDetail = await sabreGetBooking({ pnr: gdsPnr });
             if (bookingDetail?.success && bookingDetail?.rawResponse) {
-              const raw = bookingDetail.rawResponse;
-              console.log('[Booking] GetBooking raw keys:', JSON.stringify(Object.keys(raw || {})));
-
-              // Method 1: Top-level vendorLocators / airlineLocators
-              const vendorLocators = raw?.vendorLocators || raw?.VendorLocators ||
-                raw?.airlineLocators || raw?.AirlineLocators || [];
-              const locArr = Array.isArray(vendorLocators) ? vendorLocators : [vendorLocators];
-              console.log('[Booking] Vendor locators found:', JSON.stringify(locArr.filter(Boolean)));
-              const firstLocator = locArr.find(vl => vl?.airlineCode || vl?.AirlineCode || vl?.locator || vl?.Locator);
-              if (firstLocator) {
-                airlinePnr = firstLocator.locator || firstLocator.Locator || firstLocator.confirmationId || firstLocator.ConfirmationId || airlinePnr;
-                console.log('[Booking] ✓ Airline PNR from vendorLocators:', airlinePnr);
-              }
-
-              // Method 2: booking.airBooking sections
-              const airBooking = raw?.booking?.airBooking || raw?.airBooking || {};
-              const segments = airBooking?.flightSegments || airBooking?.segments || airBooking?.flights || [];
-              const segArr = Array.isArray(segments) ? segments : [segments];
-              for (const seg of segArr) {
-                const vl = seg?.vendorLocator || seg?.airlineLocator || seg?.confirmationId ||
-                           seg?.VendorLocator || seg?.AirlineLocator || seg?.ConfirmationId;
-                if (vl && String(vl).trim() !== gdsPnr) {
-                  airlinePnr = String(vl).trim();
-                  console.log('[Booking] ✓ Airline PNR from flight segment:', airlinePnr);
-                  break;
-                }
-              }
-
-              // Method 3: ItineraryInfo / ReservationItems
-              const itinInfo = raw?.booking?.itinerary || raw?.TravelItineraryRead?.TravelItinerary?.ItineraryInfo || {};
-              const resItems = itinInfo?.ReservationItems || itinInfo?.reservationItems || [];
-              const resArr = Array.isArray(resItems) ? resItems : [];
-              for (const ri of resArr) {
-                const aloc = ri?.AirlineLocator || ri?.airlineLocator || ri?.VendorLocator || ri?.vendorLocator;
-                if (aloc && String(aloc).trim() !== gdsPnr) {
-                  airlinePnr = String(aloc).trim();
-                  console.log('[Booking] ✓ Airline PNR from reservation item:', airlinePnr);
-                  break;
-                }
-              }
-
-              // Method 4: Deep scan all keys for any locator-like values
-              if (airlinePnr === gdsPnr) {
-                const deepScan = JSON.stringify(raw).match(/"(?:vendorLocator|airlineLocator|AirlineLocator|VendorLocator|airline_pnr|airlinePnr|confirmationNumber)"\s*:\s*"([A-Z0-9]{5,8})"/gi);
-                if (deepScan) {
-                  for (const match of deepScan) {
-                    const val = match.match(/"([A-Z0-9]{5,8})"$/i);
-                    if (val && val[1] !== gdsPnr) {
-                      airlinePnr = val[1];
-                      console.log('[Booking] ✓ Airline PNR from deep scan:', airlinePnr);
-                      break;
-                    }
-                  }
-                }
-              }
-
-              if (airlinePnr === gdsPnr) {
-                console.log('[Booking] ⚠ Airline PNR same as GDS PNR — airline may not have issued separate locator yet');
-                console.log('[Booking] Full GetBooking response (first 2000 chars):', JSON.stringify(raw).slice(0, 2000));
+              airlinePnr = extractDistinctSabreAirlinePnr(bookingDetail.rawResponse, gdsPnr);
+              if (airlinePnr) {
+                console.log('[Booking] ✓ Distinct Airline PNR:', airlinePnr);
+              } else {
+                console.warn('[Booking] No distinct airline locator found in GetBooking payload');
               }
             } else {
               console.warn('[Booking] GetBooking returned no data:', bookingDetail?.error);
             }
           } catch (getBookErr) {
-            console.warn('[Booking] GetBooking for airline PNR extraction failed:', getBookErr.message, '— using GDS PNR as airlinePnr');
+            console.warn('[Booking] GetBooking for airline PNR extraction failed:', getBookErr.message);
           }
 
           if (gdsBookingResult.ticketTimeLimit && payLater) {
@@ -895,10 +984,27 @@ router.post('/book', authenticate, async (req, res) => {
             }
           }
         } else {
-          console.warn('[Booking] Sabre booking failed:', gdsBookingResult.error, '— proceeding with local booking only');
+          console.warn('[Booking] Sabre booking failed:', gdsBookingResult?.error || 'Unknown Sabre error');
         }
       } catch (sabreErr) {
-        console.error('[Booking] Sabre CreateBooking exception:', sabreErr.message, '— proceeding with local booking');
+        console.error('[Booking] Sabre CreateBooking exception:', sabreErr.message);
+      }
+    }
+
+    if (isGdsFlight) {
+      const strictFailure = isTtiFlight
+        ? (!airlinePnr || !gdsBookingId)
+        : (!gdsPnr || !airlinePnr);
+
+      if (strictFailure) {
+        return res.status(422).json({
+          message: 'GDS booking rejected: both GDS reference and Airline PNR are required',
+          gdsBooked: false,
+          gdsError: gdsBookingResult?.error || 'Booking failed or missing required PNR references',
+          gdsPnr: gdsPnr || null,
+          airlinePnr: airlinePnr || null,
+          gdsBookingId: gdsBookingId || null,
+        });
       }
     }
 
