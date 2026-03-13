@@ -1099,8 +1099,18 @@ async function createBooking({ flightData, passengers, contactInfo, specialServi
 
   try {
     const paxSegments = [];
-    const legs = flightData?.legs || [];
-    const segs = legs.length > 0 ? legs : [flightData];
+    const rawLegs = flightData?.legs || [];
+    // Flatten nested legs: multi-city or round-trip items may have their own sub-legs
+    const flatLegs = [];
+    for (const leg of rawLegs) {
+      if (leg?.legs?.length > 0) {
+        flatLegs.push(...leg.legs);
+      } else {
+        flatLegs.push(leg);
+      }
+    }
+    const segs = flatLegs.length > 0 ? flatLegs : [flightData];
+    console.log(`[Sabre] Creating PNR with ${segs.length} segment(s)`);
 
     const toSabreDateTime = (value) => {
       if (!value) return '';
