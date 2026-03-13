@@ -738,16 +738,78 @@ router.post('/book', authenticate, async (req, res) => {
     if (!gdsPnr && isSabreFlight) {
       console.log('[Booking] Sabre flight detected — creating GDS booking with SSR...');
       try {
+        // ── Merge ALL segments (outbound + return + multi-city) into a single flightData for PNR ──
+        const multiCityFlights = req.body.multiCityFlights || [];
+        const mergedFlightData = { ...flightData };
+
+        // Flatten legs: each leg or multi-city flight may itself have nested legs
+        const flattenLegs = (items) => {
+          const result = [];
+          for (const item of items) {
+            if (item?.legs?.length > 0) {
+              result.push(...item.legs);
+            } else {
+              result.push(item);
+            }
+          }
+          return result;
+        };
+
+        if (isRoundTrip && returnFlightData) {
+          // Round-trip: merge outbound + return legs into single PNR
+          const outLegs = flightData?.legs?.length > 0 ? flightData.legs : [flightData];
+          const retLegs = returnFlightData?.legs?.length > 0 ? returnFlightData.legs : [returnFlightData];
+          mergedFlightData.legs = [...flattenLegs(outLegs), ...flattenLegs(retLegs)];
+          console.log(`[Booking] Round-trip: ${outLegs.length} outbound + ${retLegs.length} return = ${mergedFlightData.legs.length} total segments`);
+        } else if (multiCityFlights.length >= 2) {
+          // Multi-city: flatten all segment legs
+          mergedFlightData.legs = flattenLegs(multiCityFlights);
+          console.log(`[Booking] Multi-city: ${multiCityFlights.length} cities → ${mergedFlightData.legs.length} total segments`);
+        }
+        // else: one-way — flightData.legs already correct
+
         gdsBookingResult = await sabreCreateBooking({
-          flightData,
+          flightData: mergedFlightData,
           passengers,
           contactInfo: contactInfo || {},
           specialServices: specialServices || {},
         });
         if (gdsBookingResult.success && gdsBookingResult.pnr) {
           gdsPnr = gdsBookingResult.pnr;
-          airlinePnr = gdsBookingResult.pnr;
+          airlinePnr = gdsBookingResult.pnr; // GDS PNR = initial reference
           console.log('[Booking] Sabre PNR created:', gdsPnr);
+
+          // ── Extract airline vendor locator (actual airline PNR) via GetBooking ──
+          try {
+            const bookingDetail = await sabreGetBooking({ pnr: gdsPnr });
+            if (bookingDetail?.success && bookingDetail?.rawResponse) {
+              const raw = bookingDetail.rawResponse;
+              // Sabre returns airline confirmation numbers as vendor locators
+              const vendorLocators = raw?.vendorLocators || raw?.VendorLocators ||
+                raw?.airlineLocators || raw?.AirlineLocators || [];
+              const locArr = Array.isArray(vendorLocators) ? vendorLocators : [vendorLocators];
+              const firstLocator = locArr.find(vl => vl?.airlineCode || vl?.AirlineCode);
+              if (firstLocator) {
+                airlinePnr = firstLocator.locator || firstLocator.Locator || firstLocator.confirmationId || airlinePnr;
+                console.log('[Booking] Airline PNR from GetBooking:', airlinePnr);
+              }
+              // Also check ItineraryInfo for airline locators
+              const itinInfo = raw?.booking?.itinerary || raw?.TravelItineraryRead?.TravelItinerary?.ItineraryInfo || {};
+              const resItems = itinInfo?.ReservationItems || itinInfo?.reservationItems || [];
+              const resArr = Array.isArray(resItems) ? resItems : [];
+              for (const ri of resArr) {
+                const aloc = ri?.AirlineLocator || ri?.airlineLocator || ri?.VendorLocator || ri?.vendorLocator;
+                if (aloc) {
+                  airlinePnr = String(aloc).trim();
+                  console.log('[Booking] Airline PNR from reservation item:', airlinePnr);
+                  break;
+                }
+              }
+            }
+          } catch (getBookErr) {
+            console.warn('[Booking] GetBooking for airline PNR extraction failed:', getBookErr.message, '— using GDS PNR as airlinePnr');
+          }
+
           if (gdsBookingResult.ticketTimeLimit && payLater) {
             const sabreDeadline = new Date(gdsBookingResult.ticketTimeLimit);
             if (!isNaN(sabreDeadline.getTime()) && sabreDeadline > new Date()) {
