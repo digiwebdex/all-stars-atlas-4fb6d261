@@ -1692,10 +1692,10 @@ async function checkTicketStatus({ pnr }) {
 }
 
 /**
- * Get seat map via Sabre REST GetSeats (tries multiple schema variants/endpoints).
- * NOTE: This API requires either an offerId from prior BFM/NDC search,
- * or a PNR (confirmationId/locator). It does NOT support raw flight+date lookup
- * like SOAP EnhancedSeatMapRQ does.
+ * Get seat map via Sabre REST /v1/offers/getseats
+ * Confirmed endpoint: /v1/offers/getseats (from Sabre developer portal)
+ * Requires PNR or offerId — does NOT support raw flight+date lookup.
+ * SOAP EnhancedSeatMapRQ is used for pre-booking seat maps.
  */
 async function getSeatsRest({ origin, destination, departureDate, airlineCode, flightNumber, cabinClass, pnr, offerId }) {
   const config = await getSabreConfig();
@@ -1705,198 +1705,223 @@ async function getSeatsRest({ origin, destination, departureDate, airlineCode, f
   console.log(`[Sabre] REST GetSeats: ${airlineCode}${numericFlight} ${origin}-${destination} ${departureDate}${pnr ? ` PNR:${pnr}` : ''}${offerId ? ` offerId:${offerId}` : ''}`);
 
   if (!pnr && !offerId) {
-    console.log('[Sabre] REST GetSeats requires PNR or offerId — use SOAP EnhancedSeatMapRQ for pre-booking seat maps');
     return {
-      success: false,
-      source: 'sabre-rest',
+      success: false, source: 'sabre-rest',
       error: 'GetSeats REST requires PNR or offerId. Use SOAP EnhancedSeatMapRQ for pre-booking.',
-      rows: [],
-      available: false,
+      rows: [], available: false,
       note: 'Pre-booking seat maps use SOAP EnhancedSeatMapRQ (no PNR needed)',
     };
   }
 
+  // All requests go to /v1/offers/getseats (confirmed Sabre endpoint)
+  const ENDPOINT = '/v1/offers/getseats';
   const cityCode = String(origin || 'DAC').toUpperCase().slice(0, 3);
-  const pointOfSale = {
-    pointOfSale: {
-      location: {
-        countryCode: 'BD',
-        cityCode,
-      },
-    },
-  };
 
-  const requestVariants = pnr
-    ? [
-      {
-        name: 'v3_byPnr_confirmationId',
-        endpoint: '/v3/offers/getseats/byPnrLocator',
-        body: { confirmationId: pnr },
+  const requestVariants = [];
+
+  if (pnr) {
+    // Variant 1: INFINI-documented format — requestType + request wrapper + pointOfSale
+    requestVariants.push({
+      name: 'v1_pnrLocator_with_pos',
+      body: {
+        pointOfSale: { location: { countryCode: 'BD', cityCode } },
+        requestType: 'pnrLocator',
+        request: { pnrLocator: pnr },
       },
-      {
-        name: 'v3_byPnr_pnrLocator',
-        endpoint: '/v3/offers/getseats/byPnrLocator',
-        body: { pnrLocator: pnr },
+    });
+    // Variant 2: Same without pointOfSale
+    requestVariants.push({
+      name: 'v1_pnrLocator_no_pos',
+      body: {
+        requestType: 'pnrLocator',
+        request: { pnrLocator: pnr },
       },
-      {
-        name: 'v3_byPnr_requestWrapper',
-        endpoint: '/v3/offers/getseats/byPnrLocator',
-        body: { request: { pnrLocator: pnr } },
-      },
-      {
-        name: 'v1_requestType_pnrLocator',
-        endpoint: '/v1/offers/getseats',
-        body: {
-          ...pointOfSale,
-          requestType: 'pnrLocator',
-          request: { pnrLocator: pnr },
-        },
-      },
-      {
-        name: 'v1_requestType_confirmationId',
-        endpoint: '/v1/offers/getseats',
-        body: {
-          ...pointOfSale,
-          requestType: 'pnrLocator',
-          request: { confirmationId: pnr },
-        },
-      },
-      {
-        name: 'v1_seatAvailabilityRQ_legacy',
-        endpoint: '/v1/offers/getseats',
-        body: {
-          SeatAvailabilityRQ: {
-            SeatMapQueryEnhanced: {
-              RequestType: 'Payload',
-              ConfirmationId: pnr,
-              Flight: [{
-                DepartureDate: departureDate,
-                Marketing: { Carrier: airlineCode, FlightNumber: parseInt(numericFlight, 10) || 0 },
-                Origin: origin,
-                Destination: destination,
-              }],
-            },
+    });
+    // Variant 3: SeatAvailabilityRQ legacy wrapper with ConfirmationId
+    requestVariants.push({
+      name: 'v1_legacy_confirmationId',
+      body: {
+        SeatAvailabilityRQ: {
+          SeatMapQueryEnhanced: {
+            RequestType: 'Payload',
+            ConfirmationId: pnr,
+            Flight: [{
+              DepartureDate: departureDate,
+              Marketing: { Carrier: airlineCode, FlightNumber: parseInt(numericFlight, 10) || 0 },
+              Origin: origin,
+              Destination: destination,
+            }],
           },
         },
       },
-    ]
-    : [
-      {
-        name: 'v3_byReservation_offerId_raw',
-        endpoint: '/v3/offers/getseats/byReservationPayload',
-        body: { offerId },
+    });
+    // Variant 4: Simple confirmationId at top level
+    requestVariants.push({
+      name: 'v1_simple_confirmationId',
+      body: { confirmationId: pnr },
+    });
+  } else if (offerId) {
+    // Variant for offerId (pre-booking with BFM offer)
+    requestVariants.push({
+      name: 'v1_offerId_with_pos',
+      body: {
+        pointOfSale: { location: { countryCode: 'BD', cityCode } },
+        requestType: 'offerId',
+        request: { offer: { offerId } },
       },
-      {
-        name: 'v3_byReservation_offerId_wrapped',
-        endpoint: '/v3/offers/getseats/byReservationPayload',
-        body: { requestType: 'offerId', request: { offer: { offerId } } },
+    });
+    requestVariants.push({
+      name: 'v1_offerId_no_pos',
+      body: {
+        requestType: 'offerId',
+        request: { offer: { offerId } },
       },
-      {
-        name: 'v1_offerId_with_pos',
-        endpoint: '/v1/offers/getseats',
-        body: {
-          ...pointOfSale,
-          requestType: 'offerId',
-          request: { offer: { offerId } },
-        },
-      },
-    ];
+    });
+  }
 
   const attemptErrors = [];
 
   try {
     let response;
-    let endpoint;
+    let successVariant;
 
     for (const variant of requestVariants) {
       try {
-        console.log(`[Sabre] REST GetSeats attempt: ${variant.name} -> ${variant.endpoint}`);
-        response = await sabreRequest(config, variant.endpoint, variant.body);
-        endpoint = variant.name;
+        console.log(`[Sabre] REST GetSeats attempt: ${variant.name} -> ${ENDPOINT}`);
+        response = await sabreRequest(config, ENDPOINT, variant.body);
+        successVariant = variant.name;
+        console.log(`[Sabre] REST GetSeats SUCCESS via ${variant.name}, keys: ${Object.keys(response || {}).join(', ')}`);
         break;
       } catch (variantErr) {
-        const errSnippet = variantErr.message?.slice(0, 260) || String(variantErr);
+        const errSnippet = variantErr.message?.slice(0, 300) || String(variantErr);
+        console.log(`[Sabre] REST GetSeats ${variant.name} failed: ${errSnippet}`);
         attemptErrors.push(`${variant.name}: ${errSnippet}`);
       }
     }
 
     if (!response) {
-      throw new Error(`All GetSeats variants failed. ${attemptErrors.join(' | ')}`);
+      throw new Error(`All GetSeats variants failed on ${ENDPOINT}. Attempts: ${attemptErrors.length}`);
     }
 
-    console.log(`[Sabre] REST GetSeats success via ${endpoint}, response keys: ${Object.keys(response || {}).join(', ')}`);
-
-    // Parse REST seat map response
-    const seatMapResp = response?.GetSeatMapRS || response;
-    const seatMap = seatMapResp?.SeatMap || seatMapResp?.seatMap || [];
-    const mapArr = Array.isArray(seatMap) ? seatMap : [seatMap];
-
+    // Parse response — handle both legacy (GetSeatMapRS/SeatMap) and NDC v2 (response.seatMaps) formats
     const rows = [];
     const columns = new Set();
     const exitRows = [];
 
-    for (const map of mapArr) {
-      const cabinRows = map?.Row || map?.Cabin?.Row || [];
-      const rowArr = Array.isArray(cabinRows) ? cabinRows : [cabinRows];
+    // NDC v2 format: response.seatMaps[].cabin.rows[].seats[]
+    const seatMaps = response?.response?.seatMaps || response?.seatMaps || [];
+    if (Array.isArray(seatMaps) && seatMaps.length > 0) {
+      for (const sm of seatMaps) {
+        const cabin = sm?.cabin || sm;
+        const cabinRows = cabin?.rows || cabin?.row || [];
+        const rowArr = Array.isArray(cabinRows) ? cabinRows : [cabinRows];
 
-      for (const row of rowArr) {
-        const rowNumber = parseInt(row.RowNumber || row.Number || 0);
-        if (!rowNumber) continue;
+        for (const row of rowArr) {
+          const rowNumber = parseInt(row.row || row.rowNumber || row.RowNumber || row.Number || 0);
+          if (!rowNumber) continue;
 
-        if (row.ExitRow === true || row.exitRow === true) {
-          exitRows.push(rowNumber);
+          const seats = [];
+          const seatArr = Array.isArray(row.seats) ? row.seats : (row.Seat ? (Array.isArray(row.Seat) ? row.Seat : [row.Seat]) : []);
+
+          for (const seat of seatArr) {
+            const col = seat.column || seat.Column || seat.SeatColumn || seat.Number || '';
+            columns.add(col);
+
+            // NDC uses occupationStatusCode: F=free, X/O=occupied, Z=available-for-sale
+            const occCode = (seat.occupationStatusCode || '').toUpperCase();
+            const isOccupied = occCode === 'X' || occCode === 'O'
+              || seat.Availability === 'Occupied' || seat.OccupiedInd === true
+              || seat.Availability === 'Blocked' || seat.Status === 'Occupied';
+
+            // Price from offerItemRefIDs or direct fields
+            const price = parseFloat(seat.Fee?.Amount || seat.Price?.Amount || seat.SeatPrice || 0);
+            const currency = seat.Fee?.CurrencyCode || seat.Price?.CurrencyCode || 'BDT';
+
+            let type = 'standard';
+            const chars = seat.characteristics || seat.Characteristics || seat.Facilities || [];
+            const charArr = Array.isArray(chars) ? chars : [chars];
+            const charCodes = charArr.map(c => c?.code || c?.Code || c || '').join(',');
+            const charDescs = charArr.map(c => c?.description || '').join(',');
+
+            if (charCodes.includes('W') || charDescs.includes('Window')) type = 'window';
+            else if (charCodes.includes('A') || charDescs.includes('Aisle')) type = 'aisle';
+            else if (charCodes.includes('9') || charDescs.includes('Center')) type = 'middle';
+            if (charCodes.includes('E') || charDescs.includes('ExitRow') || charDescs.includes('ExtraLegroom')) type = 'extra-legroom';
+
+            if (row.exitRow || charDescs.includes('ExitRow')) {
+              if (!exitRows.includes(rowNumber)) exitRows.push(rowNumber);
+            }
+
+            seats.push({
+              id: `${rowNumber}${col}`,
+              row: rowNumber, col, type,
+              status: isOccupied ? 'occupied' : 'available',
+              price, currency,
+              label: `${rowNumber}${col}`,
+              offerItemRefIDs: seat.offerItemRefIDs || [],
+            });
+          }
+
+          if (seats.length > 0) rows.push({ rowNumber, seats });
         }
+      }
+    }
 
-        const seats = [];
-        const seatArr = Array.isArray(row.Seat) ? row.Seat : (row.Seat ? [row.Seat] : []);
+    // Legacy format fallback: GetSeatMapRS / SeatMap
+    if (rows.length === 0) {
+      const seatMapResp = response?.GetSeatMapRS || response;
+      const seatMap = seatMapResp?.SeatMap || seatMapResp?.seatMap || [];
+      const mapArr = Array.isArray(seatMap) ? seatMap : [seatMap];
 
-        for (const seat of seatArr) {
-          const col = seat.Column || seat.SeatColumn || seat.Number || '';
-          columns.add(col);
+      for (const map of mapArr) {
+        const cabinRows = map?.Row || map?.Cabin?.Row || [];
+        const rowArr = Array.isArray(cabinRows) ? cabinRows : [cabinRows];
 
-          const isOccupied = seat.Availability === 'Occupied' || seat.OccupiedInd === true
-            || seat.Availability === 'Blocked' || seat.Status === 'Occupied';
-          const price = parseFloat(seat.Fee?.Amount || seat.Price?.Amount || seat.SeatPrice || 0);
-          const currency = seat.Fee?.CurrencyCode || seat.Price?.CurrencyCode || 'BDT';
+        for (const row of rowArr) {
+          const rowNumber = parseInt(row.RowNumber || row.Number || 0);
+          if (!rowNumber) continue;
 
-          // Determine seat type
-          let type = 'standard';
-          const chars = seat.Characteristics || seat.Facilities || [];
-          const charArr = Array.isArray(chars) ? chars : [chars];
-          const charCodes = charArr.map(c => c?.Code || c || '').join(',');
+          if (row.ExitRow === true || row.exitRow === true) exitRows.push(rowNumber);
 
-          if (charCodes.includes('W') || charCodes.includes('Window')) type = 'window';
-          else if (charCodes.includes('A') || charCodes.includes('Aisle')) type = 'aisle';
-          else if (charCodes.includes('M') || charCodes.includes('Middle')) type = 'middle';
-          if (charCodes.includes('E') || charCodes.includes('ExtraLegroom') || charCodes.includes('LE')) type = 'extra-legroom';
+          const seats = [];
+          const seatArr = Array.isArray(row.Seat) ? row.Seat : (row.Seat ? [row.Seat] : []);
 
-          seats.push({
-            id: `${rowNumber}${col}`,
-            row: rowNumber,
-            col,
-            type,
-            status: isOccupied ? 'occupied' : 'available',
-            price,
-            currency,
-            label: `${rowNumber}${col}`,
-          });
-        }
+          for (const seat of seatArr) {
+            const col = seat.Column || seat.SeatColumn || seat.Number || '';
+            columns.add(col);
+            const isOccupied = seat.Availability === 'Occupied' || seat.OccupiedInd === true
+              || seat.Availability === 'Blocked' || seat.Status === 'Occupied';
+            const price = parseFloat(seat.Fee?.Amount || seat.Price?.Amount || seat.SeatPrice || 0);
+            const currency = seat.Fee?.CurrencyCode || seat.Price?.CurrencyCode || 'BDT';
 
-        if (seats.length > 0) {
-          rows.push({ rowNumber, seats });
+            let type = 'standard';
+            const chars = seat.Characteristics || seat.Facilities || [];
+            const charArr = Array.isArray(chars) ? chars : [chars];
+            const charCodes = charArr.map(c => c?.Code || c || '').join(',');
+            if (charCodes.includes('W') || charCodes.includes('Window')) type = 'window';
+            else if (charCodes.includes('A') || charCodes.includes('Aisle')) type = 'aisle';
+            else if (charCodes.includes('M') || charCodes.includes('Middle')) type = 'middle';
+            if (charCodes.includes('E') || charCodes.includes('ExtraLegroom') || charCodes.includes('LE')) type = 'extra-legroom';
+
+            seats.push({
+              id: `${rowNumber}${col}`, row: rowNumber, col, type,
+              status: isOccupied ? 'occupied' : 'available',
+              price, currency, label: `${rowNumber}${col}`,
+            });
+          }
+          if (seats.length > 0) rows.push({ rowNumber, seats });
         }
       }
     }
 
     const sortedCols = [...columns].sort();
-    console.log(`[Sabre] REST GetSeats: ${rows.length} rows, ${sortedCols.length} columns`);
+    console.log(`[Sabre] REST GetSeats: ${rows.length} rows, ${sortedCols.length} columns via ${successVariant}`);
 
     return {
       success: rows.length > 0,
       source: 'sabre-rest',
-      rows,
-      columns: sortedCols,
-      exitRows,
+      variant: successVariant,
+      rows, columns: sortedCols, exitRows,
       totalRows: rows.length,
       totalSeats: rows.reduce((sum, r) => sum + r.seats.length, 0),
       available: rows.length > 0,
@@ -1905,11 +1930,8 @@ async function getSeatsRest({ origin, destination, departureDate, airlineCode, f
   } catch (err) {
     console.error('[Sabre] REST GetSeats failed:', err.message);
     return {
-      success: false,
-      source: 'sabre-rest',
-      error: err.message,
-      rows: [],
-      available: false,
+      success: false, source: 'sabre-rest',
+      error: err.message, rows: [], available: false,
       debugAttempts: attemptErrors,
     };
   }
