@@ -563,7 +563,54 @@ function resolvePaymentDeadline(airlineTimeLimit) {
 // POST /flights/book
 router.post('/book', authenticate, async (req, res) => {
   try {
-    const { flightData, returnFlightData, passengers, isRoundTrip, isDomestic, payLater, paymentMethod, totalAmount, baseFare, taxes, serviceCharge, addOns, contactInfo, travelDocuments, specialServices } = req.body;
+    const {
+      flightData,
+      returnFlightData,
+      passengers: rawPassengers,
+      isRoundTrip,
+      isDomestic,
+      payLater,
+      paymentMethod,
+      totalAmount,
+      baseFare,
+      taxes,
+      serviceCharge,
+      addOns,
+      contactInfo,
+      travelDocuments,
+      specialServices,
+    } = req.body;
+
+    const passengers = (Array.isArray(rawPassengers) ? rawPassengers : []).map((p) => {
+      const titleRaw = String(p?.title || p?.civility || '').trim();
+      const title = titleRaw || 'Mr';
+      const firstName = String(p?.firstName || p?.firstname || p?.givenName || '').trim();
+      const lastName = String(p?.lastName || p?.lastname || p?.surname || '').trim();
+      const dateOfBirth = p?.dateOfBirth || p?.dob || p?.birthDate || null;
+      const passportNumber = p?.passportNumber || p?.passport || p?.documentNumber || null;
+      const passportExpiry = p?.passportExpiry || p?.documentExpiry || p?.expiryDate || null;
+      const passportCountry = p?.passportCountry || p?.documentCountry || p?.nationality || 'BD';
+      const nationality = p?.nationality || passportCountry || 'BD';
+      const genderRaw = String(p?.gender || '').trim().toLowerCase();
+      const gender = genderRaw || (/^(mr|mstr)$/i.test(title) ? 'male' : 'female');
+
+      return {
+        ...p,
+        title,
+        firstName,
+        lastName,
+        dateOfBirth,
+        dob: dateOfBirth,
+        gender,
+        type: p?.type || 'adult',
+        nationality,
+        passportCountry,
+        passportNumber,
+        passport: passportNumber,
+        passportExpiry,
+      };
+    });
+
     const bookingId = uuidv4();
     const bookingRef = `ST-FL-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${String(Math.floor(Math.random()*999)).padStart(3,'0')}`;
 
@@ -584,33 +631,39 @@ router.post('/book', authenticate, async (req, res) => {
     const status = payLater ? 'on_hold' : 'confirmed';
     const payStatus = payLater ? 'pending' : 'paid';
 
+    const flightSourceRaw = flightData?.source || flightData?.provider || '';
+    const flightSource = String(flightSourceRaw).toLowerCase().trim();
+    const airlineCode = String(flightData?.airlineCode || '').toUpperCase();
+    const isTtiFlight = flightSource.includes('tti') || flightSource.includes('astra') || ['2A', 'S2'].includes(airlineCode);
+    const isSabreFlight = flightSource.includes('sabre') || !!flightData?._sabreSource;
+
     const details = {
       outbound: flightData || {},
       return: returnFlightData || null,
       isRoundTrip: !!isRoundTrip,
       isDomestic: domestic,
+      source: flightSource || null,
       addOns: addOns || {},
       specialServices: specialServices || {},
       baseFare, taxes, serviceCharge,
       travelDocuments: travelDocuments || [],
     };
 
-    // If this is a TTI/Air Astra flight, create booking in GDS first
+    // Create booking in external GDS first (TTI/Sabre)
     let gdsPnr = null;
     let gdsBookingResult = null;
     let airlinePnr = null; // Actual airline record locator (e.g., "00KSQZ")
     let gdsBookingId = null; // Internal GDS booking ID (e.g., "1654483")
-    const flightSource = flightData?.source || '';
-    if (flightSource === 'tti' || (flightData?.airlineCode === '2A' || flightData?.airlineCode === 'S2')) {
+
+    if (isTtiFlight) {
       console.log('[Booking] TTI/Air Astra flight detected — creating GDS booking...');
       try {
-        gdsBookingResult = await ttiCreateBooking({ flightData, passengers: passengers || [], contactInfo: contactInfo || {} });
-        if (gdsBookingResult.success && gdsBookingResult.pnr) {
-          gdsPnr = gdsBookingResult.pnr;
+        gdsBookingResult = await ttiCreateBooking({ flightData, passengers, contactInfo: contactInfo || {} });
+        if (gdsBookingResult.success && (gdsBookingResult.pnr || gdsBookingResult.ttiBookingId)) {
+          gdsPnr = gdsBookingResult.pnr || gdsBookingResult.ttiBookingId || null;
           airlinePnr = gdsBookingResult.airlinePnr || null;
           gdsBookingId = gdsBookingResult.ttiBookingId || null;
           console.log('[Booking] TTI PNR:', gdsPnr, '| Airline PNR:', airlinePnr, '| Booking ID:', gdsBookingId);
-          // Use TTI time limit if available
           if (gdsBookingResult.ticketTimeLimit && payLater) {
             const ttiDeadline = new Date(gdsBookingResult.ticketTimeLimit);
             if (!isNaN(ttiDeadline.getTime()) && ttiDeadline > new Date()) {
@@ -625,20 +678,19 @@ router.post('/book', authenticate, async (req, res) => {
       }
     }
 
-    // If this is a Sabre-sourced flight, create PNR with SSR in Sabre
-    if (!gdsPnr && (flightSource === 'sabre' || flightData?._sabreSource)) {
+    if (!gdsPnr && isSabreFlight) {
       console.log('[Booking] Sabre flight detected — creating GDS booking with SSR...');
       try {
         gdsBookingResult = await sabreCreateBooking({
           flightData,
-          passengers: passengers || [],
+          passengers,
           contactInfo: contactInfo || {},
           specialServices: specialServices || {},
         });
         if (gdsBookingResult.success && gdsBookingResult.pnr) {
           gdsPnr = gdsBookingResult.pnr;
+          airlinePnr = gdsBookingResult.pnr;
           console.log('[Booking] Sabre PNR created:', gdsPnr);
-          // Use Sabre ticket time limit if available
           if (gdsBookingResult.ticketTimeLimit && payLater) {
             const sabreDeadline = new Date(gdsBookingResult.ticketTimeLimit);
             if (!isNaN(sabreDeadline.getTime()) && sabreDeadline > new Date()) {

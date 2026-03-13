@@ -726,49 +726,58 @@ async function createBooking({ flightData, passengers, contactInfo }) {
   
   const ttiPassengers = passengers.map((p, i) => {
     // Fix nationality: must be ISO 2-letter country code, NOT a city/birth place
-    let natCode = (p.nationality || 'BD').toUpperCase();
-    // If it looks like a city name (>2 chars and not a known code), default to BD
+    let natCode = String(p.nationality || p.passportCountry || 'BD').toUpperCase();
     if (natCode.length > 2) natCode = 'BD';
-    
+
     // Determine passenger type
     const paxType = p.type === 'child' ? 'CHD' : p.type === 'infant' ? 'INF' : 'AD';
-    
+
     // Find the search passenger group ref for this type
     const groupRefs = paxGroupMap[paxType] || paxGroupMap['AD'] || [];
     const usedCount = paxGroupUsed[paxType] || 0;
     const groupRef = groupRefs[usedCount] || groupRefs[0] || String(i + 1);
     paxGroupUsed[paxType] = usedCount + 1;
-    
+
+    const firstName = String(p.firstName || p.givenName || '').toUpperCase();
+    const lastName = String(p.lastName || p.surname || '').toUpperCase();
+    const title = String(p.title || 'Mr').toUpperCase();
+    const rawDob = p.dateOfBirth || p.dob || null;
+    const rawPassport = p.passportNumber || p.passport || null;
+    const rawPassportExpiry = p.passportExpiry || null;
+    const genderRaw = String(p.gender || '').toLowerCase();
+    const genderCode = genderRaw.startsWith('f') ? 'F' : genderRaw.startsWith('m') ? 'M' : (title === 'MR' ? 'M' : 'F');
+
+    const dobDate = rawDob ? new Date(rawDob) : null;
+    const passportExpiryDate = rawPassportExpiry ? new Date(rawPassportExpiry) : null;
+
     return {
-      Ref: groupRef,                   // Use the SAME Ref as the search passenger group
-      RefItinerary: selectedItinRef,   // Links passenger to itinerary
+      Ref: groupRef,
+      RefItinerary: selectedItinRef,
       PassengerTypeCode: paxType,
-      PassengerQuantity: 1,            // Must match search — TTI needs this for group→named mapping
-      // ── NameElement: CRITICAL — TTI uses this to determine if passenger is "named" ──
-      // Without NameElement populated, TTI treats the passenger as an "unnamed group"
+      PassengerQuantity: 1,
       NameElement: {
-        CivilityCode: (p.title || 'Mr').toUpperCase(),
-        Firstname: (p.firstName || '').toUpperCase(),
+        CivilityCode: title,
+        Firstname: firstName,
         Middlename: null,
-        Surname: (p.lastName || '').toUpperCase(),
+        Surname: lastName,
         Extensions: null,
       },
-      Title: (p.title || 'Mr').toUpperCase(),
-      FirstName: (p.firstName || '').toUpperCase(),
-      LastName: (p.lastName || '').toUpperCase(),
-      GivenName: (p.firstName || '').toUpperCase(),
-      Surname: (p.lastName || '').toUpperCase(),
-      DateOfBirth: p.dob ? `/Date(${new Date(p.dob).getTime()})/` : null,
-      Gender: p.title === 'Mr' ? 'M' : 'F',
-      GenderCode: p.title === 'Mr' ? 'M' : 'F',
+      Title: title,
+      FirstName: firstName,
+      LastName: lastName,
+      GivenName: firstName,
+      Surname: lastName,
+      DateOfBirth: dobDate && !isNaN(dobDate.getTime()) ? `/Date(${dobDate.getTime()})/` : null,
+      Gender: genderCode,
+      GenderCode: genderCode,
       Nationality: natCode,
       NationalityCode: natCode,
-      PassportNumber: p.passport || null,
-      PassportExpiry: p.passportExpiry ? `/Date(${new Date(p.passportExpiry).getTime()})/` : null,
-      DocumentInfo: p.passport ? {
-        DocumentNumber: p.passport,
+      PassportNumber: rawPassport || null,
+      PassportExpiry: passportExpiryDate && !isNaN(passportExpiryDate.getTime()) ? `/Date(${passportExpiryDate.getTime()})/` : null,
+      DocumentInfo: rawPassport ? {
+        DocumentNumber: rawPassport,
         DocumentType: 'P',
-        ExpiryDate: p.passportExpiry ? `/Date(${new Date(p.passportExpiry).getTime()})/` : null,
+        ExpiryDate: passportExpiryDate && !isNaN(passportExpiryDate.getTime()) ? `/Date(${passportExpiryDate.getTime()})/` : null,
         NationalityCode: natCode,
       } : null,
       ContactInfo: {
