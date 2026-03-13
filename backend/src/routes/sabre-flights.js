@@ -1618,8 +1618,21 @@ async function cancelBooking({ pnr }) {
     }
   }
 
-  console.error(`[Sabre] All cancel variants failed for PNR ${pnr}`);
-  return { success: false, error: 'All Sabre cancel methods failed — PCC may not have cancel permission' };
+  // Final fallback: SOAP stateful cancel (SessionCreate → Retrieve → OTA_CancelLLSRQ → EndTransaction)
+  console.log(`[Sabre] REST cancel failed — falling back to SOAP cancel for PNR ${pnr}`);
+  try {
+    const { cancelPnrViaSoap } = require('./sabre-soap');
+    const soapResult = await cancelPnrViaSoap(pnr);
+    if (soapResult.success) {
+      console.log(`[Sabre] PNR ${pnr} cancelled via SOAP session`);
+      return soapResult;
+    }
+    console.error(`[Sabre] SOAP cancel also failed for PNR ${pnr}:`, soapResult.error);
+    return soapResult;
+  } catch (soapErr) {
+    console.error(`[Sabre] SOAP cancel exception for PNR ${pnr}:`, soapErr.message);
+    return { success: false, error: `All cancel methods failed. REST: NOT_AUTHORIZED. SOAP: ${soapErr.message}` };
+  }
 }
 
 module.exports = { searchFlights, createBooking, issueTicket, cancelBooking, getSabreConfig, clearSabreConfigCache };
