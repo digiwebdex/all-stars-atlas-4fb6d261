@@ -964,7 +964,8 @@ async function createBooking({ flightData, passengers, contactInfo }) {
     const isLikelyAirlinePnr = (val) => {
       const code = normalizeCode(val);
       if (!code) return false;
-      return /^[A-Z0-9]{5,8}$/.test(code);
+      // Air Astra may return long airline references (e.g., S2240313001234), not only 6-char locators.
+      return /^[A-Z0-9]{5,20}$/.test(code);
     };
 
     const airlinePnrCandidates = [
