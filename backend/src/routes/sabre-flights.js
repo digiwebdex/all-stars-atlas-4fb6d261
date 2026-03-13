@@ -151,7 +151,7 @@ async function getAccessToken(config) {
 }
 
 // ── Sabre API Request Helper ──
-async function sabreRequest(config, endpoint, body, method = 'POST') {
+async function sabreRequest(config, endpoint, body, method = 'POST', timeoutMs = 30000) {
   const token = await getAccessToken(config);
   if (!token) throw new Error('Sabre authentication failed');
 
@@ -163,7 +163,7 @@ async function sabreRequest(config, endpoint, body, method = 'POST') {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(timeoutMs),
   };
 
   if (body && method !== 'GET') {
