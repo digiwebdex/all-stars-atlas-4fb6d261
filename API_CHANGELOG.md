@@ -8,8 +8,8 @@
 ## v3.9.9.2 — 2026-03-13
 
 ### Fixed
-- `GET /flights/seats-rest` — Fixed REST GetSeats payload to use Sabre v2 schema (`SeatAvailabilityRQ.SeatMapQueryEnhanced` PascalCase wrapper)
-- Endpoint changed from `/v1/offers/getseats` → `/v2/offers/getseats`
+- `GET /flights/seats-rest` — Fixed REST GetSeats to use Sabre v3 API (`/v3/offers/getseats/byPnrLocator` with `{ confirmationId }` payload)
+- Endpoint changed from `/v2/offers/getseats` → `/v3/offers/getseats/byPnrLocator`
 
 ### Verified — Airline Support Matrix
 - **Pre-booking seat maps working**: EK (33 rows), SQ (35), AI (23), TG (26), TK (35), CZ (35) — all via Sabre SOAP

@@ -191,13 +191,13 @@ key = flightNumber + departureTime + arrivalTime + destination + stops +
 
 ### Provider Priority for Ancillaries
 ```
-Seat Map:  Sabre SOAP EnhancedSeatMapRQ (pre+post) → Sabre REST GetSeats v2 (post-booking PNR only) → TTI → "Not Available"
+Seat Map:  Sabre SOAP EnhancedSeatMapRQ (pre+post) → Sabre REST GetSeats v3 (post-booking PNR only) → TTI → "Not Available"
 Meals:     Sabre SOAP GetAncillaryOffersRQ (post-booking only) → TTI → empty
 Baggage:   Sabre SOAP GetAncillaryOffersRQ (post-booking only) → TTI → empty
 SSR:       REST CreatePNR (at booking time) — meals, wheelchair, medical, FF#
 ```
 
-> **Note**: Sabre REST GetSeats v2 (`/v2/offers/getseats`) requires a PNR — it cannot do raw flight+date lookups like SOAP EnhancedSeatMapRQ. SOAP remains the primary seat map provider for pre-booking.
+> **Note**: Sabre REST GetSeats v3 (`/v3/offers/getseats/byPnrLocator`) requires a PNR — it cannot do raw flight+date lookups like SOAP EnhancedSeatMapRQ. SOAP remains the primary seat map provider for pre-booking.
 
 ### Production Airline Support Matrix (Verified 2026-03-13)
 ```
