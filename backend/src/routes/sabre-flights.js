@@ -1904,7 +1904,14 @@ async function getSeatsRest({ origin, destination, departureDate, airlineCode, f
     };
   } catch (err) {
     console.error('[Sabre] REST GetSeats failed:', err.message);
-    return { success: false, source: 'sabre-rest', error: err.message, rows: [], available: false };
+    return {
+      success: false,
+      source: 'sabre-rest',
+      error: err.message,
+      rows: [],
+      available: false,
+      debugAttempts: attemptErrors,
+    };
   }
 }
 
