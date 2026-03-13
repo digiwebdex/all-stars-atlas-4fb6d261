@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [3.9.7] — 2026-03-13 — Sabre PNR NamePrefix Fix & SOAP Seat Map Retry
+
+### Fixed
+- **Sabre PNR creation failing with 400 NamePrefix error**: Sabre's `CreatePassengerNameRecordRQ` schema rejects the `NamePrefix` property inside `PersonName`. Removed `NamePrefix` and appended title (e.g., MR, MRS) directly to `GivenName` field (e.g., `GivenName: "JOHN MR"`) — this is the Sabre-standard format
+- **Retry logic enhanced**: Updated `shouldRetry` regex in `sabre-flights.js` to catch `PersonName`, `NamePrefix`, and `not allowed` validation errors, ensuring fallback booking attempts trigger correctly
+- **Seat map intermittent failures on production**: SOAP `EnhancedSeatMapRQ` was returning `layout: null` due to stale/expired session tokens in the backend cache. Added automatic retry with session cache clearing in `sabre-soap.js` — on SOAP fault or `NotProcessed` status, clears cached token and retries once with a fresh session
+
+### Verified
+- PNR `JIUKMY` created successfully on production via full_payload variant (no fallback needed)
+- Seat maps returning real available seats: AI (126), EK (276), SQ (159)
+
+---
+
 ## [3.9.6] — 2026-03-13 — TTI Cancellation Fix & NDC Investigation
 
 ### Fixed

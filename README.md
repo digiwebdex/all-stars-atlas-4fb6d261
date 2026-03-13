@@ -116,7 +116,7 @@
 
 ---
 
-## 🎯 Features (100% Complete — Audited 2026-03-13 v3.9.6)
+## 🎯 Features (100% Complete — Audited 2026-03-13 v3.9.7)
 
 ### Public Site (10 Services)
 - **Homepage** — 11 CMS-driven sections with parallax hero video, animated counters, and section reordering
@@ -285,7 +285,10 @@ Express, mysql2, bcryptjs, jsonwebtoken, multer, uuid, cors, helmet, morgan, exp
 | Document | Description |
 |----------|-------------|
 | [README.md](./README.md) | This file — project overview |
-| [CHANGELOG.md](./CHANGELOG.md) | Version history (v1.0–v3.9.6) |
+| [CHANGELOG.md](./CHANGELOG.md) | Version history (v1.0–v3.9.7) |
+| [ANALYTICS.md](./ANALYTICS.md) | Development analytics, bug tracker, GDS integration history |
+| [GDS_INTEGRATION_HISTORY.md](./GDS_INTEGRATION_HISTORY.md) | Complete GDS provider integration timeline & troubleshooting |
+| [BUG_TRACKER.md](./BUG_TRACKER.md) | All bugs found and fixed with root cause analysis |
 | [BACKEND_API_SPEC.md](./BACKEND_API_SPEC.md) | 90+ API endpoints with request/response schemas |
 | [Deployment.md](./Deployment.md) | VPS deployment automation guide (Ubuntu 24.04, Nginx, PM2, SSL) |
 | [developer_documentation.md](./developer_documentation.md) | Developer handbook (architecture, patterns, conventions) |

@@ -1,7 +1,7 @@
 # Seven Trip — Working Deployment Commands
 
 > **Auto-updated** with every change. Copy-paste ready commands for your VPS.
-> Last updated: 2026-03-13 (v3.9.6 — TTI cancel ID mapping fix, Sabre SOAP cancel fallback, NDC PCC investigation)
+> Last updated: 2026-03-13 (v3.9.7 — Sabre NamePrefix PNR fix, SOAP seat map retry)
 
 ---
 
@@ -112,6 +112,7 @@ pm2 logs seventrip-api --lines 30
 
 | Date | Change | Deploy Command |
 |------|--------|----------------|
+| 2026-03-13 | **v3.9.7** Sabre PNR fix: removed `NamePrefix` from `PersonName` (400 schema error), title appended to `GivenName`. SOAP seat map: auto-retry with fresh session on stale token. Verified PNR JIUKMY + seat maps (AI/EK/SQ) working | Standard Deployment |
 | 2026-03-13 | TTI cancel fix: uses airline PNR (not internal TTI ID) for cancellation — probe matrix identified correct payload shape. Sabre SOAP cancel fallback: local config loader + export fix. NDC investigation: BFM request correct (`NDC: Enable`) but PCC J4YL lacks NDC entitlements — contact Sabre to activate. Unified flight card animations for all trip types | Standard Deployment |
 | 2026-03-12 | Animated flight timeline: glowing teal plane on gradient dashed track, pulsing dots, arc animation with SVG gradients | Frontend Only |
 | 2026-03-12 | Branded fares: Sabre BFM extracts brand names (Economy Light/Smart), per-brand baggage/policies; dedup fix for round-trip combos | Standard Deployment |
