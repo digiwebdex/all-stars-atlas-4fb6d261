@@ -962,12 +962,19 @@ router.post('/book', authenticate, async (req, res) => {
           try {
             console.log('[Booking] Fetching GetBooking to extract distinct Airline PNR...');
             const bookingDetail = await sabreGetBooking({ pnr: gdsPnr });
-            if (bookingDetail?.success && bookingDetail?.rawResponse) {
-              airlinePnr = extractDistinctSabreAirlinePnr(bookingDetail.rawResponse, gdsPnr);
-              if (airlinePnr) {
-                console.log('[Booking] ✓ Distinct Airline PNR:', airlinePnr);
+            if (bookingDetail?.success) {
+              // Use vendorLocators array from enhanced GetBooking
+              if (bookingDetail.vendorLocators?.length > 0) {
+                airlinePnr = bookingDetail.vendorLocators[0];
+                console.log('[Booking] ✓ Distinct Airline PNR from vendorLocators:', airlinePnr);
               } else {
-                console.warn('[Booking] No distinct airline locator found in GetBooking payload');
+                // Fallback: deep scan raw response
+                airlinePnr = extractDistinctSabreAirlinePnr(bookingDetail.rawResponse, gdsPnr);
+                if (airlinePnr) {
+                  console.log('[Booking] ✓ Distinct Airline PNR from deep scan:', airlinePnr);
+                } else {
+                  console.log('[Booking] No distinct airline locator found — airline PNR may equal GDS PNR or be assigned after ticketing');
+                }
               }
             } else {
               console.warn('[Booking] GetBooking returned no data:', bookingDetail?.error);
