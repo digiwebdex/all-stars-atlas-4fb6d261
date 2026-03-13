@@ -1116,7 +1116,8 @@ async function createBooking({ flightData, passengers, contactInfo, specialServi
       }
     }
     const segs = flatLegs.length > 0 ? flatLegs : [flightData];
-    console.log(`[Sabre] Creating PNR with ${segs.length} segment(s)`);
+    console.log(`[Sabre] Creating PNR with ${segs.length} segment(s):`);
+    segs.forEach((s, i) => console.log(`[Sabre]   Seg ${i+1}: ${s.airlineCode || flightData.airlineCode}${s.flightNumber || ''} ${s.origin || '?'}→${s.destination || '?'} ${s.departureTime || '?'}`));
 
     const toSabreDateTime = (value) => {
       if (!value) return '';
