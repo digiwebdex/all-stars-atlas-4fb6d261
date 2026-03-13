@@ -1301,14 +1301,35 @@ async function createBooking({ flightData, passengers, contactInfo, specialServi
         }
         const nationality = docCountry;
 
+        // Format DOB for DOCS: YYYY-MM-DD
+        let dobFormatted = '';
+        const rawDob = pax.dateOfBirth || pax.dob || '';
+        if (rawDob) {
+          const dRaw = String(rawDob).replace(/['"]/g, '').trim();
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dRaw)) {
+            dobFormatted = dRaw;
+          } else {
+            const dd = new Date(dRaw);
+            if (!isNaN(dd.getTime())) dobFormatted = dd.toISOString().slice(0, 10);
+          }
+        }
+
+        // Gender: M or F (Sabre standard)
+        const genderRaw = (pax.gender || '').toUpperCase();
+        const genderCode = genderRaw.startsWith('F') ? 'F' : 'M';
+
         const docPayload = {
           Type: 'P',
           Number: String(passportNo).toUpperCase(),
           IssueCountry: docCountry,
           NationalityCountry: nationality,
+          Gender: genderCode,
+          GivenName: (pax.firstName || '').toUpperCase(),
+          Surname: (pax.lastName || '').toUpperCase(),
         };
 
         if (expiryFormatted) docPayload.ExpirationDate = expiryFormatted;
+        if (dobFormatted) docPayload.DateOfBirth = dobFormatted;
 
         advancePassenger.push({
           Document: docPayload,
