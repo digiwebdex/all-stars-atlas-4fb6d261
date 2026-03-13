@@ -124,14 +124,20 @@ const AdminBookings = () => {
 
   const bookings = apiBookings;
 
+  // Split: bookings WITH PNR = success, WITHOUT PNR = failed
+  const hasPnr = (b: any) => b.pnr && b.pnr !== "—" && b.pnr.trim().length > 0;
+  const successBookings = bookings.filter((b: any) => hasPnr(b));
+  const failedBookings = bookings.filter((b: any) => !hasPnr(b));
+
   const stats = {
     total: bookings.length,
-    confirmed: bookings.filter((b: any) => ["confirmed", "completed", "ticketed"].includes(b.status)).length,
-    pending: bookings.filter((b: any) => ["pending", "on_hold", "processing"].includes(b.status)).length,
-    cancelled: bookings.filter((b: any) => ["cancelled", "failed", "void", "no_show"].includes(b.status)).length,
+    confirmed: successBookings.length,
+    pending: successBookings.filter((b: any) => ["pending", "on_hold", "processing"].includes(b.status)).length,
+    cancelled: successBookings.filter((b: any) => ["cancelled", "failed", "void", "no_show"].includes(b.status)).length,
+    failed: failedBookings.length,
   };
 
-  const filtered = bookings.filter((b: any) => {
+  const applyFilters = (list: any[]) => list.filter((b: any) => {
     if (statusFilter !== "all" && b.status !== statusFilter) return false;
     if (search) {
       const q = search.toLowerCase();
@@ -139,6 +145,9 @@ const AdminBookings = () => {
     }
     return true;
   });
+
+  const filtered = applyFilters(successBookings);
+  const filteredFailed = applyFilters(failedBookings);
 
   const updateBooking = async (b: any, updates: Record<string, any>) => {
     setActionLoading(b.rawId || b.id);
