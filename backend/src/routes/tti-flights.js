@@ -1158,7 +1158,7 @@ async function issueTicket({ pnr, bookingId }) {
 
 /**
  * Cancel a TTI booking
- * Uses the same "Cancel" endpoint with CancelTicketSettings payload (TTI WCF contract)
+ * Uses the "Cancel" endpoint with flexible payload contracts (TTI schemas vary by environment)
  */
 async function cancelBooking({ pnr, bookingId }) {
   const config = await getTTIConfig();
@@ -1166,71 +1166,95 @@ async function cancelBooking({ pnr, bookingId }) {
 
   console.log('[TTI CANCEL] Cancelling booking PNR:', pnr, '| BookingId:', bookingId);
 
-  // TTI usually expects numeric ETTicketFare.Ref; keep airline PNR as fallback reference.
   const refs = [bookingId, pnr].filter(Boolean).map(v => String(v).trim());
   const uniqueRefs = [...new Set(refs)];
 
+  // Build conservative settings payloads first (avoid extra fields that may break strict contracts)
+  const buildSettingsVariants = (ref) => [
+    { Action: 'Cancel', BookingReference: ref, BookingId: bookingId || undefined },
+    { Action: 'Cancel', BookingReference: ref },
+    { BookingReference: ref, BookingId: bookingId || undefined },
+    { BookingReference: ref },
+  ];
+
   const requestVariants = [];
   for (const ref of uniqueRefs) {
-    requestVariants.push(
-      {
-        label: `Bare + CancelTicketSettings.BookingReference=${ref}`,
-        bare: true,
-        body: {
-          RequestInfo: { AuthenticationKey: config.key },
-          CancelTicketSettings: {
-            Action: 'Cancel',
-            Type: 'Cancel',
-            BookingReference: ref,
-            BookingId: bookingId || undefined,
-            CancelAll: true,
+    for (const settings of buildSettingsVariants(ref)) {
+      // Wrapped (default serializer: { request: body })
+      requestVariants.push(
+        {
+          label: `Wrapped + RequestInfo + CancelTicketSettings=${ref}`,
+          bare: false,
+          body: {
+            RequestInfo: { AuthenticationKey: config.key },
+            CancelTicketSettings: settings,
           },
         },
-      },
-      {
-        label: `Bare + top-level BookingReference=${ref}`,
-        bare: true,
-        body: {
-          RequestInfo: { AuthenticationKey: config.key },
-          BookingReference: ref,
-          BookingId: bookingId || undefined,
-          CancelTicketSettings: {
-            Action: 'Cancel',
-            Type: 'Cancel',
-            CancelAll: true,
+        {
+          label: `Wrapped + RequestInfo + cancelTicketSettings=${ref}`,
+          bare: false,
+          body: {
+            RequestInfo: { AuthenticationKey: config.key },
+            cancelTicketSettings: settings,
           },
         },
-      },
-      {
-        label: `Wrapped + CancelTicketSettings.BookingReference=${ref}`,
-        bare: false,
-        body: {
-          RequestInfo: { AuthenticationKey: config.key },
-          CancelTicketSettings: {
-            Action: 'Cancel',
-            Type: 'Cancel',
-            BookingReference: ref,
-            BookingId: bookingId || undefined,
-            CancelAll: true,
+        {
+          label: `Wrapped + CancelTicketSettings=${ref}`,
+          bare: false,
+          body: { CancelTicketSettings: settings },
+        },
+        {
+          label: `Wrapped + cancelTicketSettings=${ref}`,
+          bare: false,
+          body: { cancelTicketSettings: settings },
+        }
+      );
+
+      // Bare (direct JSON body)
+      requestVariants.push(
+        {
+          label: `Bare + RequestInfo + CancelTicketSettings=${ref}`,
+          bare: true,
+          body: {
+            RequestInfo: { AuthenticationKey: config.key },
+            CancelTicketSettings: settings,
           },
         },
-      },
-      {
-        label: `Wrapped + top-level BookingReference=${ref}`,
-        bare: false,
-        body: {
-          RequestInfo: { AuthenticationKey: config.key },
-          BookingReference: ref,
-          BookingId: bookingId || undefined,
-          AgencyInfo: { AgencyId: config.agencyId, AgencyName: config.agencyName },
-          CancelTicketSettings: {
-            Action: 'Cancel',
-            Type: 'Cancel',
-            CancelAll: true,
+        {
+          label: `Bare + RequestInfo + cancelTicketSettings=${ref}`,
+          bare: true,
+          body: {
+            RequestInfo: { AuthenticationKey: config.key },
+            cancelTicketSettings: settings,
           },
         },
-      }
-    );
+        {
+          label: `Bare + CancelTicketSettings=${ref}`,
+          bare: true,
+          body: { CancelTicketSettings: settings },
+        },
+        {
+          label: `Bare + cancelTicketSettings=${ref}`,
+          bare: true,
+          body: { cancelTicketSettings: settings },
+        },
+        {
+          label: `Bare + direct settings=${ref}`,
+          bare: true,
+          body: settings,
+        },
+        {
+          label: `Bare + request wrapper + CancelTicketSettings=${ref}`,
+          bare: true,
+          body: {
+            request: {
+              RequestInfo: { AuthenticationKey: config.key },
+              CancelTicketSettings: settings,
+            },
+          },
+        }
+      );
+    }
   }
 
   for (const variant of requestVariants) {
@@ -1246,9 +1270,7 @@ async function cancelBooking({ pnr, bookingId }) {
       if (response.ResponseInfo?.Error) {
         const errMsg = response.ResponseInfo.Error.Message || response.ResponseInfo.Error.Code || 'Unknown';
         console.error(`[TTI CANCEL] ❌ ${variant.label}: ${errMsg}`);
-        if (errMsg.includes('Missing field') || errMsg.includes('not found') || errMsg.includes('NullReference') || errMsg.includes('not valid')) {
-          continue;
-        }
+        if (errMsg.includes('Missing field') || errMsg.includes('not found') || errMsg.includes('NullReference') || errMsg.includes('not valid')) continue;
         throw new Error(`TTI cancel error: ${errMsg}`);
       }
 
