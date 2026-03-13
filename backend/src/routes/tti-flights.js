@@ -792,9 +792,10 @@ async function createBooking({ flightData, passengers, contactInfo }) {
   
   console.log('[TTI BOOKING] Named passengers:', JSON.stringify(ttiPassengers.map(p => ({ Ref: p.Ref, RefItinerary: p.RefItinerary, Type: p.PassengerTypeCode, Name: p.FirstName + ' ' + p.LastName }))));
 
-  // ── CRITICAL: TTI CreateBooking requires the Offer from search response ──
-  // Without Offer.Ref, TTI can't link this booking to the search session → NullReferenceException
+  // ── CRITICAL: TTI CreateBooking requires Offer.Ref from SearchFlights response ──
+  // For strict GDS mode, fail fast if this context is missing.
   const offer = flightData._ttiOffer || null;
+  const offerRef = offer?.Ref || offer?.ref || null;
   
   // ── Only send the SELECTED itinerary's segments, not ALL search results ──
   const rawSegments = flightData._ttiRawSegments || [];
