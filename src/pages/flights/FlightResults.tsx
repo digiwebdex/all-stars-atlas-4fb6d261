@@ -1930,7 +1930,6 @@ const FlightCard = ({
                               {/* Arc */}
                               <div className="flex-1 flex flex-col items-center justify-center pt-1 px-3 sm:px-8">
                                 <AnimatedFlightArc height={12} compact />
-                                </div>
                                 <p className="text-xs text-muted-foreground font-medium -mt-1">{leg.duration || duration}</p>
                               </div>
 
