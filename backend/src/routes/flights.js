@@ -885,6 +885,7 @@ router.post('/book', authenticate, async (req, res) => {
       airlinePnr: airlinePnr || null,
       gdsBookingId: gdsBookingId || null,
       gdsBooked: !!(gdsBookingResult?.success),
+      gdsError: gdsBookingResult && !gdsBookingResult.success ? (gdsBookingResult.error || null) : null,
       createdAt: new Date().toISOString(),
     });
   } catch (err) {
