@@ -756,7 +756,15 @@ router.post('/book', authenticate, async (req, res) => {
     }
 
     if (!gdsPnr && isSabreFlight) {
+      console.log('[Booking] ═══════════════════════════════════════════════════');
       console.log('[Booking] Sabre flight detected — creating GDS booking with SSR...');
+      console.log('[Booking] isRoundTrip:', isRoundTrip, '| isMultiCity:', !!(req.body.isMultiCity || (req.body.multiCityFlights || []).length >= 2));
+      console.log('[Booking] returnFlightData:', returnFlightData ? 'YES' : 'NO');
+      console.log('[Booking] multiCityFlights:', (req.body.multiCityFlights || []).length, 'segments');
+      console.log('[Booking] Passengers:', passengers.length, '| Contact:', contactInfo?.email);
+      passengers.forEach((p, i) => {
+        console.log(`[Booking] Pax ${i+1}: ${p.title} ${p.firstName} ${p.lastName} | DOB: ${p.dateOfBirth || p.dob} | Passport: ${p.passportNumber || p.passport} | Expiry: ${p.passportExpiry} | Gender: ${p.gender} | Type: ${p.type}`);
+      });
       try {
         // ── Merge ALL segments (outbound + return + multi-city) into a single flightData for PNR ──
         const multiCityFlights = req.body.multiCityFlights || [];
@@ -785,8 +793,14 @@ router.post('/book', authenticate, async (req, res) => {
           // Multi-city: flatten all segment legs
           mergedFlightData.legs = flattenLegs(multiCityFlights);
           console.log(`[Booking] Multi-city: ${multiCityFlights.length} cities → ${mergedFlightData.legs.length} total segments`);
+        } else {
+          console.log(`[Booking] One-way: ${(flightData?.legs || []).length} segment(s)`);
         }
-        // else: one-way — flightData.legs already correct
+
+        console.log('[Booking] Merged legs count:', mergedFlightData.legs?.length || 0);
+        (mergedFlightData.legs || []).forEach((l, i) => {
+          console.log(`[Booking]   Leg ${i+1}: ${l.airlineCode || '?'}${l.flightNumber || '?'} ${l.origin || '?'}→${l.destination || '?'} ${l.departureTime || '?'}`);
+        });
 
         gdsBookingResult = await sabreCreateBooking({
           flightData: mergedFlightData,
@@ -794,10 +808,11 @@ router.post('/book', authenticate, async (req, res) => {
           contactInfo: contactInfo || {},
           specialServices: specialServices || {},
         });
+        console.log('[Booking] Sabre result: success=', gdsBookingResult?.success, '| pnr=', gdsBookingResult?.pnr, '| error=', gdsBookingResult?.error || 'none');
         if (gdsBookingResult.success && gdsBookingResult.pnr) {
           gdsPnr = gdsBookingResult.pnr;
           airlinePnr = gdsBookingResult.pnr; // GDS PNR = initial reference
-          console.log('[Booking] Sabre PNR created:', gdsPnr);
+          console.log('[Booking] ✓ Sabre PNR created:', gdsPnr);
 
           // ── Extract airline vendor locator (actual airline PNR) via GetBooking ──
           try {
