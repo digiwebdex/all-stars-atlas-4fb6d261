@@ -1158,7 +1158,7 @@ async function issueTicket({ pnr, bookingId }) {
 
 /**
  * Cancel a TTI booking
- * Uses the "Cancel" endpoint with flexible payload contracts (TTI schemas vary by environment)
+ * Contract discovered from jsonSchema: CancelRequest uses CancelSettings (not CancelTicketSettings)
  */
 async function cancelBooking({ pnr, bookingId }) {
   const config = await getTTIConfig();
@@ -1169,99 +1169,46 @@ async function cancelBooking({ pnr, bookingId }) {
   const refs = [bookingId, pnr].filter(Boolean).map(v => String(v).trim());
   const uniqueRefs = [...new Set(refs)];
 
-  const buildSettingsVariants = (ref) => [
-    { Action: 'Cancel', Type: 'Cancel', CancelAll: true, BookingReference: ref, BookingId: bookingId || undefined },
-    { Action: 'Cancel', Type: 'Cancel', BookingReference: ref, BookingId: bookingId || undefined },
-    { Action: 'Cancel', BookingReference: ref, BookingId: bookingId || undefined },
-    { BookingReference: ref, BookingId: bookingId || undefined },
-  ];
-
-  const requestVariants = [];
-  for (const ref of uniqueRefs) {
-    for (const settings of buildSettingsVariants(ref)) {
-      const settingsShapes = [
-        { kind: 'object', value: settings },
-        { kind: 'array', value: [settings] },
-      ];
-
-      for (const shape of settingsShapes) {
-        requestVariants.push(
-          // Wrapped: sent as { request: body } by ttiRequest
-          {
-            label: `Wrapped + RequestInfo + CancelTicketSettings(${shape.kind})=${ref}`,
-            bare: false,
-            body: {
-              RequestInfo: { AuthenticationKey: config.key },
-              CancelTicketSettings: shape.value,
-            },
-          },
-          {
-            label: `Wrapped + RequestInfo + cancelTicketSettings(${shape.kind})=${ref}`,
-            bare: false,
-            body: {
-              RequestInfo: { AuthenticationKey: config.key },
-              cancelTicketSettings: shape.value,
-            },
-          },
-          {
-            label: `Wrapped + RequestInfo + CancelTicketSetting(${shape.kind})=${ref}`,
-            bare: false,
-            body: {
-              RequestInfo: { AuthenticationKey: config.key },
-              CancelTicketSetting: shape.value,
-            },
-          },
-          // Bare: direct JSON body
-          {
-            label: `Bare + RequestInfo + CancelTicketSettings(${shape.kind})=${ref}`,
-            bare: true,
-            body: {
-              RequestInfo: { AuthenticationKey: config.key },
-              CancelTicketSettings: shape.value,
-            },
-          },
-          {
-            label: `Bare + RequestInfo + cancelTicketSettings(${shape.kind})=${ref}`,
-            bare: true,
-            body: {
-              RequestInfo: { AuthenticationKey: config.key },
-              cancelTicketSettings: shape.value,
-            },
-          },
-          {
-            label: `Bare + RequestInfo + CancelTicketSetting(${shape.kind})=${ref}`,
-            bare: true,
-            body: {
-              RequestInfo: { AuthenticationKey: config.key },
-              CancelTicketSetting: shape.value,
-            },
-          },
-          {
-            label: `Bare + request wrapper + CancelTicketSettings(${shape.kind})=${ref}`,
-            bare: true,
-            body: {
-              request: {
-                RequestInfo: { AuthenticationKey: config.key },
-                CancelTicketSettings: shape.value,
-              },
-            },
-          }
-        );
-      }
-    }
-  }
-
   const isStructuralError = (msg = '') => {
-    const m = String(msg);
+    const m = String(msg || '');
     return (
       m.includes('Missing field') ||
       m.includes('Missing RequestInfo') ||
       m.includes('MissingRequestInfo') ||
-      m.includes('not found') ||
       m.includes('NullReference') ||
-      m.includes('not valid')
+      m.includes('not valid') ||
+      m.includes('not found')
     );
   };
+
+  const requestVariants = [];
+  for (const ref of uniqueRefs) {
+    const uniqueIdVariants = [null, { ID: ref }, { Ref: ref }];
+    const verificationVariants = [null, { PnrCode: pnr || ref }, { Ref: ref }];
+    const cancelSettingsVariants = [
+      { CancelSegmentSettings: {} },
+      { CancelSegmentSettings: { SegmentReferencesToCancel: [String(ref)] } },
+      { CancelSegmentSettings: {}, RefundSettings: { RefundAllTaxes: false } },
+    ];
+
+    for (const uniqueId of uniqueIdVariants) {
+      for (const verification of verificationVariants) {
+        for (const cancelSettings of cancelSettingsVariants) {
+          const baseBody = {
+            RequestInfo: { AuthenticationKey: config.key },
+            CancelSettings: cancelSettings,
+          };
+          if (uniqueId) baseBody.UniqueID = uniqueId;
+          if (verification) baseBody.Verification = verification;
+
+          requestVariants.push(
+            { label: `Wrapped CancelSettings ref=${ref}`, bare: false, body: baseBody },
+            { label: `Bare CancelSettings ref=${ref}`, bare: true, body: baseBody }
+          );
+        }
+      }
+    }
+  }
 
   for (const variant of requestVariants) {
     try {
@@ -1269,9 +1216,6 @@ async function cancelBooking({ pnr, bookingId }) {
       const response = variant.bare
         ? await ttiRequestBare('Cancel', variant.body)
         : await ttiRequest('Cancel', variant.body);
-
-      console.log('[TTI CANCEL] Response keys:', Object.keys(response));
-      console.log('[TTI CANCEL] Response:', JSON.stringify(response).substring(0, 3000));
 
       if (response.ResponseInfo?.Error) {
         const errMsg = response.ResponseInfo.Error.Message || response.ResponseInfo.Error.Code || 'Unknown';
