@@ -180,7 +180,7 @@ router.post('/cars/book', authenticate, async (req, res) => {
   try {
     const { carId, pickupDate, returnDate, driverInfo, contactInfo, paymentMethod } = req.body;
     const bookingId = uuidv4();
-    const bookingRef = `ST-CR-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${String(Math.floor(Math.random()*999)).padStart(3,'0')}`;
+    const bookingRef = `CR${String(Date.now()).slice(-8)}`;
     const [cars] = await db.query('SELECT * FROM cars WHERE id = ?', [carId]);
     const days = pickupDate && returnDate ? Math.max(1, Math.ceil((new Date(returnDate) - new Date(pickupDate)) / 86400000)) : 1;
     const totalAmount = cars.length > 0 ? parseFloat(cars[0].price_per_day) * days : 0;
