@@ -1947,9 +1947,64 @@ async function getSeatsRest({ origin, destination, departureDate, airlineCode, f
     };
   } catch (err) {
     console.error('[Sabre] REST GetSeats failed:', err.message);
+
+    const attemptsText = attemptErrors.join(' | ');
+    const isViewershipRestricted = /viewership is restricted for the pnr|security check not supported|code:\s*700102/i.test(attemptsText);
+
+    // Final fallback: SOAP EnhancedSeatMapRQ (works pre-booking and for many post-booking checks)
+    if (origin && destination && departureDate && airlineCode && flightNumber) {
+      try {
+        const sabreSoap = require('./sabre-soap');
+        if (typeof sabreSoap.getSeatMap === 'function') {
+          const BD_AIRPORTS = ['DAC', 'CXB', 'CGP', 'ZYL', 'JSR', 'RJH', 'SPD', 'BZL', 'IRD', 'TKR'];
+          const isDomestic = BD_AIRPORTS.includes(String(origin).toUpperCase()) && BD_AIRPORTS.includes(String(destination).toUpperCase());
+
+          const soapResult = await sabreSoap.getSeatMap({
+            origin,
+            destination,
+            departureDate,
+            marketingCarrier: airlineCode,
+            operatingCarrier: airlineCode,
+            flightNumber: String(flightNumber).replace(/^[A-Z]{2}/i, ''),
+            cabinClass: cabinClass || 'Economy',
+            isDomestic,
+          });
+
+          if (soapResult && !soapResult._error && Array.isArray(soapResult.rows) && soapResult.rows.length > 0) {
+            const totalSeats = soapResult.rows.reduce((sum, r) => sum + (r.seats?.length || 0), 0);
+            return {
+              success: true,
+              source: 'sabre-soap-fallback',
+              variant: 'soap_enhanced_seat_map_fallback',
+              rows: soapResult.rows,
+              columns: soapResult.columns || [],
+              exitRows: soapResult.exitRows || [],
+              totalRows: soapResult.totalRows || soapResult.rows.length,
+              totalSeats,
+              available: true,
+              warning: isViewershipRestricted
+                ? 'REST GetSeats blocked by PNR viewership restriction; SOAP fallback used.'
+                : 'REST GetSeats contract rejected this payload; SOAP fallback used.',
+              debugAttempts: attemptErrors,
+            };
+          }
+        }
+      } catch (soapErr) {
+        attemptErrors.push(`soap_fallback: ${soapErr.message}`);
+      }
+    }
+
     return {
-      success: false, source: 'sabre-rest',
-      error: err.message, rows: [], available: false,
+      success: false,
+      source: 'sabre-rest',
+      error: err.message,
+      hint: isViewershipRestricted
+        ? 'PNR viewership restriction: use a PNR created/owned by this PCC or rely on SOAP seat-map endpoint.'
+        : 'GetSeats contract rejected payloads in this environment. Use /flights/seat-map (SOAP) for pre-booking visibility.',
+      rows: [],
+      totalRows: 0,
+      totalSeats: 0,
+      available: false,
       debugAttempts: attemptErrors,
     };
   }
