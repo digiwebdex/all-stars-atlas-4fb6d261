@@ -349,3 +349,20 @@ Placeholder data persisting in production code. Lesson: zero-mock audit + automa
 | 35 | v3.9.6 | Mar 13 | 🔴 | cancelPnrViaSoap crashing | Added import + export |
 | 36 | v3.9.7 | Mar 13 | 🔴 | Sabre PNR NamePrefix rejected | Title → GivenName |
 | 37 | v3.9.7 | Mar 13 | 🔴 | Seat map null on production | Auto-retry fresh session |
+| 38 | v3.9.8 | Mar 13 | 🟡 | Post-booking ancillaries always empty | Removed restrictive source check |
+| 39 | v3.9.8 | Mar 13 | 🟡 | Post-booking seat map missing | Added SOAP seat map in dashboard endpoint |
+| 40 | v3.9.8 | Mar 13 | 🟡 | Post-booking extras missing seat UI | Added SeatMap component |
+
+---
+
+## Phase 7: Full Sabre Endpoint Coverage (Mar 13, 2026)
+
+### v3.9.9 — Mar 13 — Complete Sabre REST API Coverage
+- **Added**: `revalidatePrice()` — `/v4/shop/flights/revalidate` for pre-booking fare verification
+- **Added**: `getBooking()` — `/v1/trip/orders/getBooking` for PNR retrieval via REST
+- **Added**: `checkTicketStatus()` — `/v1/trip/orders/checkFlightTickets` for ticket verification
+- **Added**: `getSeatsRest()` — `/v1/offers/getseats` as REST alternative to SOAP seat maps
+- **Upgraded**: Ticketing from `/v1.2.1/air/ticket` to `/v1.3.0/air/ticket`
+- **Enhanced**: 3-tier seat map fallback: SOAP → REST → TTI
+- **New routes**: `POST /flights/revalidate-price`, `GET /flights/booking/:pnr`, `GET /flights/ticket-status/:pnr`, `GET /flights/seats-rest`
+- **Result**: All 12 Sabre cert endpoints now implemented
