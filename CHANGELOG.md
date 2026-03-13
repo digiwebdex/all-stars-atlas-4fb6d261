@@ -2,6 +2,42 @@
 
 All notable changes to this project are documented in this file.
 
+## [3.9.9.5] — 2026-03-13 — Production Sabre + 30-Route Booking Test Suite + Dual PNR
+
+### Added
+- **30-route comprehensive booking test suite** (`backend/test-bookings.sh`): Tests one-way, round-trip, multi-city, domestic, international, business class, connecting flights, and multi-passenger bookings (adults + children + infants) with full passport data
+- **`gdsError` field in booking response**: When Sabre/TTI GDS booking fails, the exact error reason is returned to the client for debugging
+- **Pre-flight config check**: Test script validates Sabre API connectivity before running all 30 routes
+- **Advanced booking logging**: Every PNR creation attempt logs environment, baseURL, PCC, passenger passport data, each segment, and exact Sabre API errors
+
+### Fixed
+- **Pre-booking seat map SOAP fallback**: `/seats-rest` endpoint now automatically falls back to SOAP `EnhancedSeatMapRQ` when no PNR exists (was returning `success: false`)
+- **Sabre production URL enforcement**: Config now resolves `environment` to `'production'` when prod credentials are detected, ensuring `api.platform.sabre.com` (not cert) is used
+- **Airline PNR extraction enhanced**: 4-method deep extraction from GetBooking response (vendorLocators → airBooking segments → ReservationItems → JSON deep scan) ensures GDS PNR ≠ Airline PNR
+- **Round-trip segment merging**: Outbound + return legs properly merged into single Sabre PNR
+- **Multi-city segment flattening**: Nested leg structures recursively flattened before Sabre submission
+
+### Production Sabre Endpoints (Confirmed)
+| Service | Endpoint |
+|---------|----------|
+| Auth | `https://api.platform.sabre.com/v3/auth/token` (OAuth v3 password grant) |
+| Search | `https://api.platform.sabre.com/v5/offers/shop` |
+| Revalidate | `https://api.platform.sabre.com/v4/shop/flights/revalidate` |
+| Book | `https://api.platform.sabre.com/v2.4.0/passenger/records?mode=create` |
+| Cancel | `https://api.platform.sabre.com/v1/trip/orders/cancelBooking` |
+| Retrieve | `https://api.platform.sabre.com/v1/trip/orders/getBooking` |
+| Ticket | `https://api.platform.sabre.com/v1.3.0/air/ticket` |
+| Ticket Status | `https://api.platform.sabre.com/v1/trip/orders/checkFlightTickets` |
+| Seats (REST) | `https://api.platform.sabre.com/v1/offers/getseats` |
+| SOAP | `https://webservices.platform.sabre.com` |
+
+### Dual PNR Standard
+- **GDS PNR**: Sabre 6-character record locator (booking reference)
+- **Airline PNR**: Vendor/airline confirmation number (for check-in)
+- These are ALWAYS different — extracted separately via GetBooking after PNR creation
+
+---
+
 ## [3.9.9.4] — 2026-03-13 — REST GetSeats Resilience + SOAP Fallback
 
 ### Fixed

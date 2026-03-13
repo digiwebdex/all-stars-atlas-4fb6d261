@@ -1,7 +1,7 @@
 # Seven Trip — Troubleshooting Guide
 
 > Solutions for every known issue encountered during development and production.
-> Last updated: 2026-03-13 (v3.9.9.2 — REST GetSeats v2 schema fix, Airline Support Matrix)
+> Last updated: 2026-03-13 (v3.9.9.5 — Production Sabre, Dual PNR, 30-Route Test Suite)
 
 ---
 
