@@ -1,7 +1,7 @@
 # Seven Trip — Troubleshooting Guide
 
 > Solutions for every known issue encountered during development and production.
-> Last updated: 2026-03-13 (v3.9.7)
+> Last updated: 2026-03-13 (v3.9.9)
 
 ---
 

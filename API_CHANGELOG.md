@@ -1,7 +1,22 @@
 # Seven Trip — API Changelog
 
 > All backend API changes, new endpoints, breaking changes, and schema updates per version.
-> Last updated: 2026-03-13 (v3.9.7)
+> Last updated: 2026-03-13 (v3.9.9)
+
+---
+
+## v3.9.9 — 2026-03-13
+
+### New Endpoints
+- `POST /flights/revalidate-price` — Sabre BFM revalidation (`/v4/shop/flights/revalidate`) to verify fare before booking
+- `GET /flights/booking/:pnr` — Retrieve PNR details via Sabre REST (`/v1/trip/orders/getBooking`)
+- `GET /flights/ticket-status/:pnr` — Check ticket issuance status (`/v1/trip/orders/checkFlightTickets`)
+- `GET /flights/seats-rest` — REST seat map via `/v1/offers/getseats` (alternative to SOAP)
+
+### Backend Changes
+- **Ticketing upgraded**: `issueTicket()` now uses `/v1.3.0/air/ticket` (was v1.2.1)
+- **3-tier seat map fallback**: SOAP EnhancedSeatMapRQ → REST GetSeats → TTI in `ancillaries.js`
+- **New exports from `sabre-flights.js`**: `revalidatePrice`, `getBooking`, `checkTicketStatus`, `getSeatsRest`
 
 ---
 

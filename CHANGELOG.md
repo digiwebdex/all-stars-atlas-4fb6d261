@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented in this file.
 
+## [3.9.9] — 2026-03-13 — Full Sabre Endpoint Coverage & Ticketing Upgrade
+
+### Added
+- **Price revalidation** (`revalidatePrice()`): `/v4/shop/flights/revalidate` — verify fare hasn't changed between search and booking
+- **Booking retrieval** (`getBooking()`): `/v1/trip/orders/getBooking` — retrieve full PNR details via REST
+- **Ticket status check** (`checkTicketStatus()`): `/v1/trip/orders/checkFlightTickets` — verify ticket issuance status post-booking
+- **REST seat map** (`getSeatsRest()`): `/v1/offers/getseats` — alternative to SOAP EnhancedSeatMapRQ, no session management needed
+- **3-tier seat map fallback**: SOAP EnhancedSeatMapRQ → REST GetSeats → TTI
+
+### Changed
+- **Ticketing upgraded from v1.2.1 to v1.3.0**: `issueTicket()` now calls `/v1.3.0/air/ticket`
+
+### New Routes
+- `POST /flights/revalidate-price` (authenticated)
+- `GET /flights/booking/:pnr` (authenticated)
+- `GET /flights/ticket-status/:pnr` (authenticated)
+- `GET /flights/seats-rest` (public)
+
+---
+
 ## [3.9.7] — 2026-03-13 — Sabre PNR NamePrefix Fix & SOAP Seat Map Retry
 
 ### Fixed
