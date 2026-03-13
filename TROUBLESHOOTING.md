@@ -1,7 +1,7 @@
 # Seven Trip — Troubleshooting Guide
 
 > Solutions for every known issue encountered during development and production.
-> Last updated: 2026-03-13 (v3.9.9.2 — REST GetSeats v2 schema fix, Airline Support Matrix)
+> Last updated: 2026-03-13 (v3.9.9.5 — Production Sabre, Dual PNR, 30-Route Test Suite)
 
 ---
 
@@ -19,15 +19,37 @@
 | `NotProcessed` with DateTime | Timezone offsets in segment datetimes | Use `toSabreDateTime()` to strip timezone suffix |
 | `Document` validation error | Unsupported fields in `AdvancePassenger.Document` | Only send `Type`, `Number`, `IssueCountry`, `NationalityCountry`, `ExpirationDate` |
 
-### 2. Sabre Search Returns 0 Flights
+### 2. Sabre Using CERT Instead of Production
+
+**Symptoms:** Bookings fail for certain routes, limited flight inventory
+
+**Check:** `pm2 logs seventrip-api --lines 10 | grep 'Config loaded'`
+- If it shows `env=cert` or `baseUrl=api.cert.platform.sabre.com` → **NOT production**
+- Fix: Update `system_settings` → `api_sabre` → set `environment` to `"production"`
+
+```sql
+-- Check current config
+SELECT JSON_EXTRACT(setting_value, '$.environment') FROM system_settings WHERE setting_key = 'api_sabre';
+
+-- Fix: Set to production
+UPDATE system_settings SET setting_value = JSON_SET(setting_value, '$.environment', 'production') WHERE setting_key = 'api_sabre';
+```
+
+**Production URLs:**
+- REST: `https://api.platform.sabre.com`
+- SOAP: `https://webservices.platform.sabre.com`
+- CERT (pre-prod): `https://api.cert.platform.sabre.com`
+
+### 3. Sabre Search Returns 0 Flights
 
 **Check in order:**
-1. **Compressed response?** Remove `CompressResponse: true` from BFM request
-2. **OAuth token expired?** Check `getSabreToken()` returns valid token
-3. **PCC permissions?** Verify PCC J4YL has BFM access (contact Sabre)
-4. **Network?** `curl -X POST https://api.havail.sabre.com/v5/offers/shop` from VPS
+1. **Environment set to production?** See issue #2 above
+2. **Compressed response?** Remove `CompressResponse: true` from BFM request
+3. **OAuth token expired?** Check `getSabreToken()` returns valid token
+4. **PCC permissions?** Verify PCC J4YL has BFM access (contact Sabre)
+5. **Network?** `curl -X POST https://api.platform.sabre.com/v5/offers/shop` from VPS
 
-### 3. Seat Map Returns `layout: null`
+### 4. Seat Map Returns `layout: null`
 
 **Root Cause:** Stale SOAP BinarySecurityToken (14-min TTL expired but cache not cleared)
 

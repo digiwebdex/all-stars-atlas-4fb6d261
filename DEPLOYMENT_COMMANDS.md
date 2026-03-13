@@ -1,7 +1,7 @@
 # Seven Trip — Working Deployment Commands
 
 > **Auto-updated** with every change. Copy-paste ready commands for your VPS.
-> Last updated: 2026-03-13 (v3.9.9.4 — GetSeats v3+v1 probing with SOAP fallback + viewership restriction hints)
+> Last updated: 2026-03-13 (v3.9.9.5 — Production Sabre + 30-Route Booking Test Suite + Dual PNR)
 
 ---
 
@@ -37,6 +37,26 @@ cd ~/projects/all-stars-atlas && git pull origin main && npm install && npm run 
 
 ```bash
 cd ~/projects/all-stars-atlas && git pull origin main && cd backend && npm install && pm2 restart seventrip-api
+```
+
+---
+
+## ✈️ Run 30-Route Booking Test Suite
+
+After deploying backend changes, validate all booking modes:
+
+```bash
+cd ~/projects/all-stars-atlas && git pull origin main && pm2 restart seventrip-api && sleep 5 && bash backend/test-bookings.sh
+```
+
+Check detailed logs after test:
+```bash
+pm2 logs seventrip-api --lines 300 | grep -E '\[Sabre\]|\[Booking\]' | head -200
+```
+
+Verify Sabre environment:
+```bash
+pm2 logs seventrip-api --lines 50 | grep 'Config loaded'
 ```
 
 ---

@@ -2,7 +2,7 @@
 
 > Complete timeline of all development conversations, decisions made, bugs discovered, and features implemented.
 > This serves as the institutional memory of the project — every significant interaction is recorded.
-> Last updated: 2026-03-13 (v3.9.9.2)
+> Last updated: 2026-03-13 (v3.9.9.5)
 
 ---
 

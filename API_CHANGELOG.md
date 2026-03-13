@@ -1,7 +1,28 @@
 # Seven Trip — API Changelog
 
 > All backend API changes, new endpoints, breaking changes, and schema updates per version.
-> Last updated: 2026-03-13 (v3.9.9.4)
+> Last updated: 2026-03-13 (v3.9.9.5)
+
+---
+
+## v3.9.9.5 — 2026-03-13
+
+### Changed
+- `POST /flights/book` response now includes `gdsError` field when GDS booking fails
+- `GET /flights/seats-rest` automatically falls back to SOAP for pre-booking seat maps (no PNR required)
+- Airline PNR extraction uses 4-method deep scan of GetBooking response (GDS PNR ≠ Airline PNR)
+- Sabre config auto-resolves to production (`api.platform.sabre.com`) when prod credentials present
+- Advanced logging: every CreatePNR attempt logs environment, segments, passport DOCS, and errors
+
+### Production Endpoints (Confirmed)
+| Service | URL |
+|---------|-----|
+| REST | `https://api.platform.sabre.com` |
+| SOAP | `https://webservices.platform.sabre.com` |
+| Auth | `/v3/auth/token` (OAuth v3 password grant) |
+| Book | `/v2.4.0/passenger/records?mode=create` |
+| Retrieve | `/v1/trip/orders/getBooking` |
+| Seats | `/v1/offers/getseats` |
 
 ---
 

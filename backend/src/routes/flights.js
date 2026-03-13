@@ -815,31 +815,73 @@ router.post('/book', authenticate, async (req, res) => {
           console.log('[Booking] ✓ Sabre PNR created:', gdsPnr);
 
           // ── Extract airline vendor locator (actual airline PNR) via GetBooking ──
+          // GDS PNR (Sabre record locator) ≠ Airline PNR (vendor/airline confirmation)
           try {
+            console.log('[Booking] Fetching GetBooking to extract Airline PNR (vendor locator)...');
             const bookingDetail = await sabreGetBooking({ pnr: gdsPnr });
             if (bookingDetail?.success && bookingDetail?.rawResponse) {
               const raw = bookingDetail.rawResponse;
-              // Sabre returns airline confirmation numbers as vendor locators
+              console.log('[Booking] GetBooking raw keys:', JSON.stringify(Object.keys(raw || {})));
+
+              // Method 1: Top-level vendorLocators / airlineLocators
               const vendorLocators = raw?.vendorLocators || raw?.VendorLocators ||
                 raw?.airlineLocators || raw?.AirlineLocators || [];
               const locArr = Array.isArray(vendorLocators) ? vendorLocators : [vendorLocators];
-              const firstLocator = locArr.find(vl => vl?.airlineCode || vl?.AirlineCode);
+              console.log('[Booking] Vendor locators found:', JSON.stringify(locArr.filter(Boolean)));
+              const firstLocator = locArr.find(vl => vl?.airlineCode || vl?.AirlineCode || vl?.locator || vl?.Locator);
               if (firstLocator) {
-                airlinePnr = firstLocator.locator || firstLocator.Locator || firstLocator.confirmationId || airlinePnr;
-                console.log('[Booking] Airline PNR from GetBooking:', airlinePnr);
+                airlinePnr = firstLocator.locator || firstLocator.Locator || firstLocator.confirmationId || firstLocator.ConfirmationId || airlinePnr;
+                console.log('[Booking] ✓ Airline PNR from vendorLocators:', airlinePnr);
               }
-              // Also check ItineraryInfo for airline locators
+
+              // Method 2: booking.airBooking sections
+              const airBooking = raw?.booking?.airBooking || raw?.airBooking || {};
+              const segments = airBooking?.flightSegments || airBooking?.segments || airBooking?.flights || [];
+              const segArr = Array.isArray(segments) ? segments : [segments];
+              for (const seg of segArr) {
+                const vl = seg?.vendorLocator || seg?.airlineLocator || seg?.confirmationId ||
+                           seg?.VendorLocator || seg?.AirlineLocator || seg?.ConfirmationId;
+                if (vl && String(vl).trim() !== gdsPnr) {
+                  airlinePnr = String(vl).trim();
+                  console.log('[Booking] ✓ Airline PNR from flight segment:', airlinePnr);
+                  break;
+                }
+              }
+
+              // Method 3: ItineraryInfo / ReservationItems
               const itinInfo = raw?.booking?.itinerary || raw?.TravelItineraryRead?.TravelItinerary?.ItineraryInfo || {};
               const resItems = itinInfo?.ReservationItems || itinInfo?.reservationItems || [];
               const resArr = Array.isArray(resItems) ? resItems : [];
               for (const ri of resArr) {
                 const aloc = ri?.AirlineLocator || ri?.airlineLocator || ri?.VendorLocator || ri?.vendorLocator;
-                if (aloc) {
+                if (aloc && String(aloc).trim() !== gdsPnr) {
                   airlinePnr = String(aloc).trim();
-                  console.log('[Booking] Airline PNR from reservation item:', airlinePnr);
+                  console.log('[Booking] ✓ Airline PNR from reservation item:', airlinePnr);
                   break;
                 }
               }
+
+              // Method 4: Deep scan all keys for any locator-like values
+              if (airlinePnr === gdsPnr) {
+                const deepScan = JSON.stringify(raw).match(/"(?:vendorLocator|airlineLocator|AirlineLocator|VendorLocator|airline_pnr|airlinePnr|confirmationNumber)"\s*:\s*"([A-Z0-9]{5,8})"/gi);
+                if (deepScan) {
+                  for (const match of deepScan) {
+                    const val = match.match(/"([A-Z0-9]{5,8})"$/i);
+                    if (val && val[1] !== gdsPnr) {
+                      airlinePnr = val[1];
+                      console.log('[Booking] ✓ Airline PNR from deep scan:', airlinePnr);
+                      break;
+                    }
+                  }
+                }
+              }
+
+              if (airlinePnr === gdsPnr) {
+                console.log('[Booking] ⚠ Airline PNR same as GDS PNR — airline may not have issued separate locator yet');
+                console.log('[Booking] Full GetBooking response (first 2000 chars):', JSON.stringify(raw).slice(0, 2000));
+              }
+            } else {
+              console.warn('[Booking] GetBooking returned no data:', bookingDetail?.error);
             }
           } catch (getBookErr) {
             console.warn('[Booking] GetBooking for airline PNR extraction failed:', getBookErr.message, '— using GDS PNR as airlinePnr');
