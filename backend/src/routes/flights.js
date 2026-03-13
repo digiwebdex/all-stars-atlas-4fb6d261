@@ -598,6 +598,8 @@ router.post('/book', authenticate, async (req, res) => {
     // If this is a TTI/Air Astra flight, create booking in GDS first
     let gdsPnr = null;
     let gdsBookingResult = null;
+    let airlinePnr = null; // Actual airline record locator (e.g., "00KSQZ")
+    let gdsBookingId = null; // Internal GDS booking ID (e.g., "1654483")
     const flightSource = flightData?.source || '';
     if (flightSource === 'tti' || (flightData?.airlineCode === '2A' || flightData?.airlineCode === 'S2')) {
       console.log('[Booking] TTI/Air Astra flight detected — creating GDS booking...');
@@ -605,7 +607,9 @@ router.post('/book', authenticate, async (req, res) => {
         gdsBookingResult = await ttiCreateBooking({ flightData, passengers: passengers || [], contactInfo: contactInfo || {} });
         if (gdsBookingResult.success && gdsBookingResult.pnr) {
           gdsPnr = gdsBookingResult.pnr;
-          console.log('[Booking] TTI PNR created:', gdsPnr);
+          airlinePnr = gdsBookingResult.airlinePnr || null;
+          gdsBookingId = gdsBookingResult.ttiBookingId || null;
+          console.log('[Booking] TTI PNR:', gdsPnr, '| Airline PNR:', airlinePnr, '| Booking ID:', gdsBookingId);
           // Use TTI time limit if available
           if (gdsBookingResult.ticketTimeLimit && payLater) {
             const ttiDeadline = new Date(gdsBookingResult.ticketTimeLimit);
