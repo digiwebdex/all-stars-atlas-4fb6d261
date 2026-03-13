@@ -286,19 +286,21 @@ Express, mysql2, bcryptjs, jsonwebtoken, multer, uuid, cors, helmet, morgan, exp
 |----------|-------------|
 | [README.md](./README.md) | This file — project overview |
 | [CHANGELOG.md](./CHANGELOG.md) | Complete version history (v1.0–v3.9.7, 35+ releases) |
-| [ANALYTICS.md](./ANALYTICS.md) | Development analytics, timeline, codebase statistics, feature investment |
+| [ANALYTICS.md](./ANALYTICS.md) | Development analytics, timeline, codebase statistics |
 | [BUG_TRACKER.md](./BUG_TRACKER.md) | 37+ bugs with root cause analysis and recurring patterns |
-| [GDS_INTEGRATION_HISTORY.md](./GDS_INTEGRATION_HISTORY.md) | GDS provider integration timeline, issues, and resolutions |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | System architecture deep dive (frontend, backend, GDS, state management) |
-| [SECURITY.md](./SECURITY.md) | Security measures, JWT flow, API key management, SSL, firewalls |
-| [API_CHANGELOG.md](./API_CHANGELOG.md) | Backend API changes per version (new endpoints, schema changes) |
-| [DEPLOYMENT_HISTORY.md](./DEPLOYMENT_HISTORY.md) | All 7 deployment records with exact commands and verification |
-| [DEPLOYMENT_COMMANDS.md](./DEPLOYMENT_COMMANDS.md) | Copy-paste deployment commands for VPS |
-| [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) | Solutions for all known issues (GDS, DB, frontend, deploy) |
-| [BACKEND_API_SPEC.md](./BACKEND_API_SPEC.md) | 90+ API endpoint specifications with request/response schemas |
+| [GDS_INTEGRATION_HISTORY.md](./GDS_INTEGRATION_HISTORY.md) | GDS provider integration timeline, issues, resolutions |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | System architecture (frontend, backend, GDS, design system) |
+| [SECURITY.md](./SECURITY.md) | Security measures, JWT flow, API keys, SSL, firewalls |
+| [API_CHANGELOG.md](./API_CHANGELOG.md) | Backend API changes per version (endpoints, schema) |
+| [DEPLOYMENT_HISTORY.md](./DEPLOYMENT_HISTORY.md) | All 7 deployments with exact commands and verification |
+| [DEPLOYMENT_COMMANDS.md](./DEPLOYMENT_COMMANDS.md) | Copy-paste VPS deployment commands |
+| [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) | Solutions for all known issues |
+| [VPS_SESSION_LOG.md](./VPS_SESSION_LOG.md) | Complete VPS terminal session history with outputs |
+| [DEVELOPMENT_CHAT_HISTORY.md](./DEVELOPMENT_CHAT_HISTORY.md) | Full development conversation timeline & decision log |
+| [BACKEND_API_SPEC.md](./BACKEND_API_SPEC.md) | 90+ API endpoint specifications |
 | [Deployment.md](./Deployment.md) | VPS deployment guide (Ubuntu 24.04, Nginx, PM2, SSL) |
-| [developer_documentation.md](./developer_documentation.md) | Developer handbook A-Z (architecture, patterns, conventions) |
-| [.lovable/plan.md](./.lovable/plan.md) | Project plan and phase completion tracking |
+| [developer_documentation.md](./developer_documentation.md) | Developer handbook A-Z |
+| [.lovable/plan.md](./.lovable/plan.md) | Project plan and phase tracking |
 
 ---
 
