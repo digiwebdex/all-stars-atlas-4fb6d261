@@ -1158,7 +1158,7 @@ async function issueTicket({ pnr, bookingId }) {
 
 /**
  * Cancel a TTI booking
- * TTI uses ETTicketFare.Ref (bookingId like "16751780") as the primary cancel identifier
+ * Uses the same "Cancel" endpoint with CancelTicketSettings payload (TTI WCF contract)
  */
 async function cancelBooking({ pnr, bookingId }) {
   const config = await getTTIConfig();
@@ -1166,51 +1166,106 @@ async function cancelBooking({ pnr, bookingId }) {
 
   console.log('[TTI CANCEL] Cancelling booking PNR:', pnr, '| BookingId:', bookingId);
 
-  // TTI needs the numeric booking ID (ETTicketFare.Ref), not the airline PNR code
-  const cancelRef = bookingId || pnr;
+  // TTI usually expects numeric ETTicketFare.Ref; keep airline PNR as fallback reference.
+  const refs = [bookingId, pnr].filter(Boolean).map(v => String(v).trim());
+  const uniqueRefs = [...new Set(refs)];
 
-  const methods = ['CancelBooking', 'Cancel', 'VoidTicket'];
-  
-  const payloadVariants = [
-    { label: 'BookingReference', wrapped: true, body: { RequestInfo: { AuthenticationKey: config.key }, BookingReference: cancelRef } },
-    { label: 'ETTicketFareRef', wrapped: true, body: { RequestInfo: { AuthenticationKey: config.key }, ETTicketFareRef: cancelRef, BookingReference: cancelRef } },
-    { label: 'Bare-BookingRef', wrapped: false, body: { RequestInfo: { AuthenticationKey: config.key }, BookingReference: cancelRef } },
-    { label: 'Ref-field', wrapped: true, body: { RequestInfo: { AuthenticationKey: config.key }, Ref: cancelRef } },
-    ...(pnr && pnr !== cancelRef ? [
-      { label: 'PnrCode', wrapped: true, body: { RequestInfo: { AuthenticationKey: config.key }, BookingReference: pnr, PnrCode: pnr } },
-    ] : []),
-  ];
-
-  for (const methodName of methods) {
-    for (const variant of payloadVariants) {
-      try {
-        console.log(`[TTI CANCEL] Trying: ${methodName} / ${variant.label} (ref=${cancelRef})`);
-        const response = variant.wrapped
-          ? await ttiRequest(methodName, variant.body)
-          : await ttiRequestBare(methodName, variant.body);
-
-        console.log('[TTI CANCEL] Response keys:', Object.keys(response));
-        console.log('[TTI CANCEL] Response:', JSON.stringify(response).substring(0, 3000));
-
-        if (response.ResponseInfo?.Error) {
-          const errMsg = response.ResponseInfo.Error.Message || response.ResponseInfo.Error.Code || 'Unknown';
-          console.error(`[TTI CANCEL] ❌ ${methodName}/${variant.label}: ${errMsg}`);
-          if (errMsg.includes('Missing field') || errMsg.includes('not found') || errMsg.includes('NullReference') || errMsg.includes('not valid')) continue;
-          throw new Error(`TTI cancel error: ${errMsg}`);
-        }
-
-        console.log(`[TTI CANCEL] ✅ Cancelled via "${methodName}/${variant.label}" — ref: ${cancelRef}`);
-        return { success: true, rawResponse: response, methodUsed: `${methodName} (${variant.label})` };
-      } catch (err) {
-        if (err.message.startsWith('TTI cancel error:')) throw err;
-        console.error(`[TTI CANCEL] ${methodName}/${variant.label} failed:`, err.message);
-        continue;
+  const requestVariants = [];
+  for (const ref of uniqueRefs) {
+    requestVariants.push(
+      {
+        label: `Bare + CancelTicketSettings.BookingReference=${ref}`,
+        bare: true,
+        body: {
+          RequestInfo: { AuthenticationKey: config.key },
+          CancelTicketSettings: {
+            Action: 'Cancel',
+            Type: 'Cancel',
+            BookingReference: ref,
+            BookingId: bookingId || undefined,
+            CancelAll: true,
+          },
+        },
+      },
+      {
+        label: `Bare + top-level BookingReference=${ref}`,
+        bare: true,
+        body: {
+          RequestInfo: { AuthenticationKey: config.key },
+          BookingReference: ref,
+          BookingId: bookingId || undefined,
+          CancelTicketSettings: {
+            Action: 'Cancel',
+            Type: 'Cancel',
+            CancelAll: true,
+          },
+        },
+      },
+      {
+        label: `Wrapped + CancelTicketSettings.BookingReference=${ref}`,
+        bare: false,
+        body: {
+          RequestInfo: { AuthenticationKey: config.key },
+          CancelTicketSettings: {
+            Action: 'Cancel',
+            Type: 'Cancel',
+            BookingReference: ref,
+            BookingId: bookingId || undefined,
+            CancelAll: true,
+          },
+        },
+      },
+      {
+        label: `Wrapped + top-level BookingReference=${ref}`,
+        bare: false,
+        body: {
+          RequestInfo: { AuthenticationKey: config.key },
+          BookingReference: ref,
+          BookingId: bookingId || undefined,
+          AgencyInfo: { AgencyId: config.agencyId, AgencyName: config.agencyName },
+          CancelTicketSettings: {
+            Action: 'Cancel',
+            Type: 'Cancel',
+            CancelAll: true,
+          },
+        },
       }
+    );
+  }
+
+  for (const variant of requestVariants) {
+    try {
+      console.log(`[TTI CANCEL] Trying: ${variant.label}`);
+      const response = variant.bare
+        ? await ttiRequestBare('Cancel', variant.body)
+        : await ttiRequest('Cancel', variant.body);
+
+      console.log('[TTI CANCEL] Response keys:', Object.keys(response));
+      console.log('[TTI CANCEL] Response:', JSON.stringify(response).substring(0, 3000));
+
+      if (response.ResponseInfo?.Error) {
+        const errMsg = response.ResponseInfo.Error.Message || response.ResponseInfo.Error.Code || 'Unknown';
+        console.error(`[TTI CANCEL] ❌ ${variant.label}: ${errMsg}`);
+        if (errMsg.includes('Missing field') || errMsg.includes('not found') || errMsg.includes('NullReference') || errMsg.includes('not valid')) {
+          continue;
+        }
+        throw new Error(`TTI cancel error: ${errMsg}`);
+      }
+
+      console.log(`[TTI CANCEL] ✅ Cancelled via "${variant.label}"`);
+      return { success: true, rawResponse: response, methodUsed: `Cancel (${variant.label})` };
+    } catch (err) {
+      if (err.message.startsWith('TTI cancel error:')) throw err;
+      console.error(`[TTI CANCEL] Variant "${variant.label}" failed:`, err.message);
+      continue;
     }
   }
 
-  console.error('[TTI CANCEL] ❌ All cancel variants failed for ref:', cancelRef, 'PNR:', pnr);
-  return { success: false, error: `TTI Cancel: all formats failed for booking ${cancelRef}. Cancel via Air Astra back-office.` };
+  console.error('[TTI CANCEL] ❌ All cancel variants failed for refs:', uniqueRefs.join(', '));
+  return {
+    success: false,
+    error: `TTI Cancel API: all request formats failed for refs ${uniqueRefs.join(', ')}. Cancel via Air Astra back-office.`,
+  };
 }
 
 
