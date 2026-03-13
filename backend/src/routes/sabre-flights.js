@@ -1719,27 +1719,34 @@ async function getSeatsRest({ origin, destination, departureDate, airlineCode, f
   }
 
   try {
-    // GetSeats v2 with confirmationId (PNR-based request)
+    // GetSeats v2 — correct Sabre schema: SeatAvailabilityRQ wrapper
+    // Ref: Sabre REST API docs — /v2/offers/getseats
+    const rbd = cabinClass === 'Business' ? 'C' : cabinClass === 'First' ? 'F' : 'Y';
     const body = {
-      requestType: 'payload',
-      request: {
-        confirmationId: pnr,
-        flight: [{
-          departureDate: departureDate,
-          marketing: {
-            carrier: airlineCode,
-            flightNumber: numericFlight,
-          },
-          origin: origin,
-          destination: destination,
-        }],
-        cabinDefinition: [{
-          rbd: cabinClass === 'Business' ? 'C' : cabinClass === 'First' ? 'F' : 'Y',
-        }],
+      SeatAvailabilityRQ: {
+        SeatMapQueryEnhanced: {
+          RequestType: 'Payload',
+          ConfirmationId: pnr,
+          Flight: [{
+            DepartureDate: departureDate,
+            Marketing: {
+              Carrier: airlineCode,
+              FlightNumber: parseInt(numericFlight, 10),
+            },
+            OperatingCarrierInfo: {
+              Carrier: airlineCode,
+            },
+            Origin: origin,
+            Destination: destination,
+          }],
+          CabinDefinition: [{
+            RBD: rbd,
+          }],
+        },
       },
     };
 
-    const response = await sabreRequest(config, '/v1/offers/getseats', body);
+    const response = await sabreRequest(config, '/v2/offers/getseats', body);
 
     // Parse REST seat map response
     const seatMapResp = response?.GetSeatMapRS || response;
