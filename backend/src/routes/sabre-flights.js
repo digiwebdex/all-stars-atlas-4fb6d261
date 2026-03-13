@@ -1479,6 +1479,14 @@ async function createBooking({ flightData, passengers, contactInfo, specialServi
       });
     }
 
+    // Final fallback: no SpecialReqDetails at all (some airlines reject DOCS for certain PCC configs)
+    const bodyNoSpecial = JSON.parse(JSON.stringify(body));
+    delete bodyNoSpecial.CreatePassengerNameRecordRQ.SpecialReqDetails;
+    requestVariants.push({
+      label: 'no_special_req',
+      body: bodyNoSpecial,
+    });
+
     let finalResponse = null;
     let finalPnr = null;
     let finalErrorMessage = '';

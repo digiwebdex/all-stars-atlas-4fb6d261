@@ -991,21 +991,17 @@ router.post('/book', authenticate, async (req, res) => {
       }
     }
 
-    if (isGdsFlight) {
-      const strictFailure = isTtiFlight
-        ? (!airlinePnr || !gdsBookingId)
-        : (!gdsPnr || !airlinePnr);
-
-      if (strictFailure) {
-        return res.status(422).json({
-          message: 'GDS booking rejected: both GDS reference and Airline PNR are required',
-          gdsBooked: false,
-          gdsError: gdsBookingResult?.error || 'Booking failed or missing required PNR references',
-          gdsPnr: gdsPnr || null,
-          airlinePnr: airlinePnr || null,
-          gdsBookingId: gdsBookingId || null,
-        });
-      }
+    // GDS PNR is MANDATORY — without it, booking is failed
+    // Airline PNR is best-effort (often only available after ticketing for Sabre)
+    if (isGdsFlight && !gdsPnr) {
+      return res.status(422).json({
+        message: 'GDS booking failed: no PNR was returned from the provider',
+        gdsBooked: false,
+        gdsError: gdsBookingResult?.error || 'Booking failed - no GDS PNR generated',
+        gdsPnr: null,
+        airlinePnr: null,
+        gdsBookingId: gdsBookingId || null,
+      });
     }
 
     // Use real PNR as booking reference when available
