@@ -1697,83 +1697,131 @@ async function checkTicketStatus({ pnr }) {
  * or a PNR (confirmationId). It does NOT support raw flight+date lookup
  * like SOAP EnhancedSeatMapRQ does. Falls back gracefully.
  */
-async function getSeatsRest({ origin, destination, departureDate, airlineCode, flightNumber, cabinClass, pnr }) {
+async function getSeatsRest({ origin, destination, departureDate, airlineCode, flightNumber, cabinClass, pnr, offerId }) {
   const config = await getSabreConfig();
   if (!config) throw new Error('Sabre API not configured');
 
   const numericFlight = String(flightNumber || '').replace(/\D/g, '');
-  console.log(`[Sabre] REST GetSeats: ${airlineCode}${numericFlight} ${origin}-${destination} ${departureDate}${pnr ? ` PNR:${pnr}` : ''}`);
+  console.log(`[Sabre] REST GetSeats: ${airlineCode}${numericFlight} ${origin}-${destination} ${departureDate}${pnr ? ` PNR:${pnr}` : ''}${offerId ? ` offerId:${offerId}` : ''}`);
 
-  // GetSeats v2 requires either offerId or confirmationId (PNR)
-  // Without a PNR or offer context, this API cannot work — return graceful failure
-  if (!pnr) {
+  if (!pnr && !offerId) {
     console.log('[Sabre] REST GetSeats requires PNR or offerId — use SOAP EnhancedSeatMapRQ for pre-booking seat maps');
     return {
       success: false,
       source: 'sabre-rest',
-      error: 'GetSeats REST requires PNR. Use SOAP EnhancedSeatMapRQ for pre-booking.',
+      error: 'GetSeats REST requires PNR or offerId. Use SOAP EnhancedSeatMapRQ for pre-booking.',
       rows: [],
       available: false,
       note: 'Pre-booking seat maps use SOAP EnhancedSeatMapRQ (no PNR needed)',
     };
   }
 
+  const cityCode = String(origin || 'DAC').toUpperCase().slice(0, 3);
+  const pointOfSale = {
+    pointOfSale: {
+      location: {
+        countryCode: 'BD',
+        cityCode,
+      },
+    },
+  };
+
+  const requestVariants = pnr
+    ? [
+      {
+        name: 'v3_byPnr_confirmationId',
+        endpoint: '/v3/offers/getseats/byPnrLocator',
+        body: { confirmationId: pnr },
+      },
+      {
+        name: 'v3_byPnr_pnrLocator',
+        endpoint: '/v3/offers/getseats/byPnrLocator',
+        body: { pnrLocator: pnr },
+      },
+      {
+        name: 'v3_byPnr_requestWrapper',
+        endpoint: '/v3/offers/getseats/byPnrLocator',
+        body: { request: { pnrLocator: pnr } },
+      },
+      {
+        name: 'v1_requestType_pnrLocator',
+        endpoint: '/v1/offers/getseats',
+        body: {
+          ...pointOfSale,
+          requestType: 'pnrLocator',
+          request: { pnrLocator: pnr },
+        },
+      },
+      {
+        name: 'v1_requestType_confirmationId',
+        endpoint: '/v1/offers/getseats',
+        body: {
+          ...pointOfSale,
+          requestType: 'pnrLocator',
+          request: { confirmationId: pnr },
+        },
+      },
+      {
+        name: 'v1_seatAvailabilityRQ_legacy',
+        endpoint: '/v1/offers/getseats',
+        body: {
+          SeatAvailabilityRQ: {
+            SeatMapQueryEnhanced: {
+              RequestType: 'Payload',
+              ConfirmationId: pnr,
+              Flight: [{
+                DepartureDate: departureDate,
+                Marketing: { Carrier: airlineCode, FlightNumber: parseInt(numericFlight, 10) || 0 },
+                Origin: origin,
+                Destination: destination,
+              }],
+            },
+          },
+        },
+      },
+    ]
+    : [
+      {
+        name: 'v3_byReservation_offerId_raw',
+        endpoint: '/v3/offers/getseats/byReservationPayload',
+        body: { offerId },
+      },
+      {
+        name: 'v3_byReservation_offerId_wrapped',
+        endpoint: '/v3/offers/getseats/byReservationPayload',
+        body: { requestType: 'offerId', request: { offer: { offerId } } },
+      },
+      {
+        name: 'v1_offerId_with_pos',
+        endpoint: '/v1/offers/getseats',
+        body: {
+          ...pointOfSale,
+          requestType: 'offerId',
+          request: { offer: { offerId } },
+        },
+      },
+    ];
+
+  const attemptErrors = [];
+
   try {
-    // GetSeats — Sabre REST API
-    // v3 byPnrLocator requires correct wrapper; fallback to v1 if v3 fails
-    // Ref: INFINI docs, Sabre developer portal
     let response;
     let endpoint;
 
-    if (pnr) {
-      // Try v3 first with proper schema, then v1 fallback
-      const v3Body = {
-        requestType: 'pnrLocator',
-        request: {
-          pnrLocator: pnr,
-        },
-      };
-
-      const v1Body = {
-        SeatAvailabilityRQ: {
-          SeatMapQueryEnhanced: {
-            RequestType: 'Payload',
-            Flight: [{
-              DepartureDate: departureDate,
-              Marketing: { Carrier: airlineCode, FlightNumber: parseInt(numericFlight, 10) },
-              Origin: origin,
-              Destination: destination,
-            }],
-          },
-        },
-      };
-
-      // Try v3 byPnrLocator
+    for (const variant of requestVariants) {
       try {
-        console.log(`[Sabre] REST GetSeats v3 byPnrLocator: PNR=${pnr}`);
-        response = await sabreRequest(config, '/v3/offers/getseats/byPnrLocator', v3Body);
-        endpoint = 'v3/byPnrLocator';
-      } catch (v3Err) {
-        console.log(`[Sabre] v3 byPnrLocator failed, trying v1: ${v3Err.message?.slice(0, 200)}`);
-        // Fallback to v1
-        try {
-          response = await sabreRequest(config, '/v1/offers/getseats', v1Body);
-          endpoint = 'v1';
-        } catch (v1Err) {
-          console.log(`[Sabre] v1 GetSeats also failed: ${v1Err.message?.slice(0, 200)}`);
-          throw v1Err;
-        }
+        console.log(`[Sabre] REST GetSeats attempt: ${variant.name} -> ${variant.endpoint}`);
+        response = await sabreRequest(config, variant.endpoint, variant.body);
+        endpoint = variant.name;
+        break;
+      } catch (variantErr) {
+        const errSnippet = variantErr.message?.slice(0, 260) || String(variantErr);
+        attemptErrors.push(`${variant.name}: ${errSnippet}`);
       }
-    } else if (offerId) {
-      const body = {
-        requestType: 'offerId',
-        request: { offer: { offerId } },
-      };
-      console.log(`[Sabre] REST GetSeats v3 byReservationPayload: offerId=${offerId}`);
-      response = await sabreRequest(config, '/v3/offers/getseats/byReservationPayload', body);
-      endpoint = 'v3/byReservationPayload';
-    } else {
-      return { success: false, source: 'sabre-rest', error: 'No PNR or offerId provided', rows: [], available: false };
+    }
+
+    if (!response) {
+      throw new Error(`All GetSeats variants failed. ${attemptErrors.join(' | ')}`);
     }
 
     console.log(`[Sabre] REST GetSeats success via ${endpoint}, response keys: ${Object.keys(response || {}).join(', ')}`);
