@@ -92,7 +92,7 @@
 | Mar 12 | v3.9.3 | DOCS schema fix (remove unsupported fields) |
 | Mar 13 | v3.9.7 | **NamePrefix removal** — title appended to GivenName |
 | Mar 13 | v3.9.9 | **Full endpoint coverage**: revalidatePrice, getBooking, checkTicketStatus, getSeatsRest; ticketing upgraded to v1.3.0 |
-| Mar 13 | v3.9.9.3 | **REST GetSeats v3**: `/v3/offers/getseats/byPnrLocator` — correct endpoint path |
+| Mar 13 | v3.9.9.4 | **REST GetSeats v1**: `/v1/offers/getseats` — confirmed from Sabre developer portal; multi-variant payload probing |
 
 ### Issues & Resolutions
 
