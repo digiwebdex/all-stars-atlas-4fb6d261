@@ -697,7 +697,9 @@ router.post('/book', authenticate, async (req, res) => {
     const details = {
       outbound: flightData || {},
       return: returnFlightData || null,
+      multiCityFlights: req.body.multiCityFlights || [],
       isRoundTrip: !!isRoundTrip,
+      isMultiCity: !!(req.body.isMultiCity || (req.body.multiCityFlights || []).length >= 2),
       isDomestic: domestic,
       source: flightSource || null,
       addOns: addOns || {},
