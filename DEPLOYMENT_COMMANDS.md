@@ -1,7 +1,7 @@
 # Seven Trip — Working Deployment Commands
 
 > **Auto-updated** with every change. Copy-paste ready commands for your VPS.
-> Last updated: 2026-03-12 (v3.9.3 — Sabre DOCS schema fix for PNR creation)
+> Last updated: 2026-03-13 (v3.9.4 — Sabre SOAP cancel fix + TTI cancel ID mapping + unified flight card animations)
 
 ---
 
