@@ -928,20 +928,27 @@ async function createBooking({ flightData, passengers, contactInfo }) {
       console.log('[TTI BOOKING] ETTicketFare[0] scalars:', JSON.stringify(etScalars));
     }
 
-    const pnr = booking.RecordLocator || booking.BookingReference || booking.PNR || 
-                 booking.Reference || booking.Ref ||
+    // ── IMPORTANT: Airline PNR vs Internal Booking ID ──
+    // Airline PNR = actual record locator (e.g., "00KSQZ") — only from RecordLocator/AirlinePNR fields
+    // TTI Booking ID = internal reference (e.g., "1654483") — from ETTicketFare.Ref, Booking.Id, etc.
+    // Do NOT use ETTicketFare.Ref or Segment.Ref as airline PNR — those are internal IDs
+    const airlinePnr = booking.RecordLocator || booking.BookingReference || booking.PNR || 
                  seg0.RecordLocator || seg0.AirlinePNR || seg0.PNR || seg0.BookingReference ||
-                 pax0.RecordLocator || pax0.PNR || pax0.BookingReference || pax0.Ref ||
-                 etFare0.Ref ||  // ETTicketFare Ref (e.g. "16545817")
-                 seg0.Ref ||     // Segment Ref as last resort (e.g. "978508")
+                 pax0.RecordLocator || pax0.PNR || pax0.BookingReference ||
                  response.BookingReference || response.PNR || response.RecordLocator || 
                  null;
+    
+    // Internal TTI booking ID — used for cancel/ticket operations
     const ttiBookingId = booking.Id || booking.BookingId || etFare0.Ref || seg0.Ref ||
-                          response.BookingId || null;
+                          response.BookingId || booking.Reference || booking.Ref || pax0.Ref || null;
+    
+    // Use airline PNR if available, otherwise use ttiBookingId as fallback identifier
+    const pnr = airlinePnr || ttiBookingId || null;
+    
     const ticketTimeLimit = seg0.TimeLimit || booking.TicketTimeLimit || booking.TimeLimit ||
                              response.TicketTimeLimit || null;
 
-    console.log('[TTI BOOKING] ✅ Extracted — PNR:', pnr, '| BookingId:', ttiBookingId, '| TimeLimit:', ticketTimeLimit);
+    console.log('[TTI BOOKING] ✅ Extracted — AirlinePNR:', airlinePnr, '| TTI BookingId:', ttiBookingId, '| PNR (used):', pnr, '| TimeLimit:', ticketTimeLimit);
 
     return {
       success: true,
