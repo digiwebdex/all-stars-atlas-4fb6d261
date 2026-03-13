@@ -2,13 +2,55 @@
 
 All notable changes to this project are documented in this file.
 
+## [3.9.9.2] — 2026-03-13 — Airline Support Matrix & REST GetSeats Schema Fix
+
+### Fixed
+- **REST GetSeats payload schema**: Fixed `SeatAvailabilityRQ` wrapper to match Sabre v2 API schema (`/v2/offers/getseats`). Previous v1 payload used lowercase camelCase; v2 requires PascalCase with `SeatMapQueryEnhanced` wrapper
+- **REST GetSeats endpoint upgraded**: `/v1/offers/getseats` → `/v2/offers/getseats`
+
+### Verified — Production Airline Support Matrix (21 Airlines Tested)
+| Airline | Code | Route | Pre-Booking Seat Map | Rows | Source |
+|---------|------|-------|---------------------|------|--------|
+| Emirates | EK | DAC→DXB | ✅ | 33 | Sabre SOAP |
+| Singapore Airlines | SQ | DAC→SIN | ✅ | 35 | Sabre SOAP |
+| Air India | AI | DAC→DEL | ✅ | 23 | Sabre SOAP |
+| Thai Airways | TG | DAC→BKK | ✅ | 26 | Sabre SOAP |
+| Turkish Airlines | TK | DAC→IST | ✅ | 35 | Sabre SOAP |
+| China Southern | CZ | DAC→CAN | ✅ | 35 | Sabre SOAP |
+| Biman Bangladesh | BG | DAC→CXB | ❌ | 0 | — |
+| US-Bangla | BS | DAC→CXB | ❌ | 0 | — |
+| Air Astra | 2A | DAC→CXB | ❌ | 0 | — |
+| Qatar Airways | QR | DAC→DOH | ❌ | 0 | — |
+| Saudia | SV | DAC→JED | ❌ | 0 | — |
+| Gulf Air | GF | DAC→BAH | ❌ | 0 | — |
+| Kuwait Airways | KU | DAC→KWI | ❌ | 0 | — |
+| Oman Air | WY | DAC→MCT | ❌ | 0 | — |
+| Etihad | EY | DAC→AUH | ❌ | 0 | — |
+| flydubai | FZ | DAC→DXB | ❌ | 0 | — |
+| Air Arabia | G9 | DAC→SHJ | ❌ | 0 | — |
+| Malaysia Airlines | MH | DAC→KUL | ❌ | 0 | — |
+| Cathay Pacific | CX | DAC→HKG | ❌ | 0 | — |
+| IndiGo | 6E | DAC→CCU | ❌ | 0 | — |
+| SriLankan | UL | DAC→CMB | ❌ | 0 | — |
+
+### Ancillary Feature Availability
+| Feature | Pre-Booking | Post-Booking (PNR) | Source |
+|---------|-------------|-------------------|--------|
+| Seat Map View | ✅ 6 airlines | ✅ 6 airlines | SOAP EnhancedSeatMapRQ |
+| Seat Selection | ❌ | ✅ (with PNR) | REST GetSeats v2 |
+| Extra Baggage | ❌ | ✅ (with PNR) | SOAP GetAncillaryOffersRQ |
+| Meal Selection | ❌ | ✅ (with PNR) | SOAP GetAncillaryOffersRQ |
+| Special Requests (SSR) | ✅ (booking form) | ✅ (injected to PNR) | REST CreatePNR |
+
+---
+
 ## [3.9.9] — 2026-03-13 — Full Sabre Endpoint Coverage & Ticketing Upgrade
 
 ### Added
 - **Price revalidation** (`revalidatePrice()`): `/v4/shop/flights/revalidate` — verify fare hasn't changed between search and booking
 - **Booking retrieval** (`getBooking()`): `/v1/trip/orders/getBooking` — retrieve full PNR details via REST
 - **Ticket status check** (`checkTicketStatus()`): `/v1/trip/orders/checkFlightTickets` — verify ticket issuance status post-booking
-- **REST seat map** (`getSeatsRest()`): `/v1/offers/getseats` — alternative to SOAP EnhancedSeatMapRQ, no session management needed
+- **REST seat map** (`getSeatsRest()`): `/v2/offers/getseats` — alternative to SOAP EnhancedSeatMapRQ, requires PNR
 - **3-tier seat map fallback**: SOAP EnhancedSeatMapRQ → REST GetSeats → TTI
 
 ### Changed

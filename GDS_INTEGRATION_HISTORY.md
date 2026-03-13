@@ -191,12 +191,30 @@ key = flightNumber + departureTime + arrivalTime + destination + stops +
 
 ### Provider Priority for Ancillaries
 ```
-Seat Map:  Sabre SOAP EnhancedSeatMapRQ (pre+post) → Sabre REST GetSeats (post-booking PNR only) → TTI → "Not Available"
-Meals:     Sabre SOAP GetAncillaryOffersRQ → TTI → empty
-Baggage:   Sabre SOAP GetAncillaryOffersRQ → TTI → empty
+Seat Map:  Sabre SOAP EnhancedSeatMapRQ (pre+post) → Sabre REST GetSeats v2 (post-booking PNR only) → TTI → "Not Available"
+Meals:     Sabre SOAP GetAncillaryOffersRQ (post-booking only) → TTI → empty
+Baggage:   Sabre SOAP GetAncillaryOffersRQ (post-booking only) → TTI → empty
+SSR:       REST CreatePNR (at booking time) — meals, wheelchair, medical, FF#
 ```
 
-> **Note**: Sabre REST GetSeats (`/v1/offers/getseats`) requires a PNR or offerId — it cannot do raw flight+date lookups like SOAP EnhancedSeatMapRQ. SOAP remains the primary seat map provider for pre-booking.
+> **Note**: Sabre REST GetSeats v2 (`/v2/offers/getseats`) requires a PNR — it cannot do raw flight+date lookups like SOAP EnhancedSeatMapRQ. SOAP remains the primary seat map provider for pre-booking.
+
+### Production Airline Support Matrix (Verified 2026-03-13)
+```
+✅ SEAT MAP WORKING (6 airlines):
+   EK (Emirates) 33 rows | SQ (Singapore) 35 rows | AI (Air India) 23 rows
+   TG (Thai) 26 rows | TK (Turkish) 35 rows | CZ (China Southern) 35 rows
+
+❌ NO SEAT MAP (15 airlines — Sabre SOAP returns no data for these carriers from DAC):
+   BG (Biman) | BS (US-Bangla) | 2A (Air Astra) | QR (Qatar) | SV (Saudia)
+   GF (Gulf Air) | KU (Kuwait) | WY (Oman Air) | EY (Etihad) | FZ (flydubai)
+   G9 (Air Arabia) | MH (Malaysia) | CX (Cathay Pacific) | 6E (IndiGo) | UL (SriLankan)
+
+📋 ANCILLARIES (meals/baggage/seat selection):
+   Pre-booking: NOT available (GAO requires PNR context)
+   Post-booking: Available for airlines with active GAO support
+   SSR injection: Available at PNR creation for ALL carriers
+```
 
 ---
 
