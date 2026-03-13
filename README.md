@@ -188,7 +188,7 @@
 ### GDS & API Integrations (All Admin-Panel Configurable)
 | Integration | File | Description |
 |-------------|------|-------------|
-| **TTI/ZENITH (Air Astra)** | `tti-flights.js` | Real-time flight search + booking (PNR creation). Cancel via `Cancel` method. Ticketing = manual (no API). |
+| **TTI/ZENITH (Air Astra)** | `tti-flights.js` | Real-time flight search + booking (PNR creation). Cancel via `Cancel` method using airline PNR. Ticketing = manual (no API). |
 | **BDFare** | `bdf-flights.js` | Bangladesh flight aggregator (US-Bangla, Novoair, Biman) |
 | **FlyHub** | `flyhub-flights.js` | 450+ airline flight aggregator with token auth |
 | **Sabre GDS (REST)** | `sabre-flights.js` | International flights via Bargain Finder Max V5, PNR creation with SSR injection, ticketing, cancellation |
