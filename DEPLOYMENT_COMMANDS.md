@@ -1,7 +1,7 @@
 # Seven Trip — Working Deployment Commands
 
 > **Auto-updated** with every change. Copy-paste ready commands for your VPS.
-> Last updated: 2026-03-13 (v3.9.4 — Sabre SOAP cancel fix + TTI cancel ID mapping + unified flight card animations)
+> Last updated: 2026-03-13 (v3.9.5 — Unified animated flight arc across all views: cards, round-trip, expanded detail)
 
 ---
 
